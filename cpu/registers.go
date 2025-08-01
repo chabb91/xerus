@@ -51,10 +51,13 @@ func SetHighByte(original uint16, newHighByte byte) uint16 {
 // high byte=AB of ABCD
 func getHighByte(fullValue uint16) byte {
 	return byte((0xFF00 & fullValue) >> 8)
-
 }
 
 // low byte=CD of ABCD
 func getLowByte(fullValue uint16) byte {
 	return byte(0x00FF & fullValue)
+}
+
+func isPageBoundaryCrossed(addr1, addr2 uint16) bool {
+	return (addr1 & 0xFF00) != (addr2 & 0xFF00)
 }
