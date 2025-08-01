@@ -33,31 +33,3 @@ func (c *registers) setFlag(flag byte, reset bool) {
 func (c *registers) hasFlag(flag byte) bool {
 	return (c.P & flag) != 0
 }
-
-// SetLowByte takes a 16-bit value and an 8-bit value,
-// and returns a new 16-bit value with the low byte updated.
-// The high byte of the original value is preserved.
-func SetLowByte(original uint16, newLowByte byte) uint16 {
-	return (original & 0xFF00) | uint16(newLowByte)
-}
-
-// SetHighByte takes a 16-bit value and an 8-bit value,
-// and returns a new 16-bit value with the high byte updated.
-// The low byte of the original value is preserved.
-func SetHighByte(original uint16, newHighByte byte) uint16 {
-	return (original & 0x00FF) | (uint16(newHighByte) << 8)
-}
-
-// high byte=AB of ABCD
-func getHighByte(fullValue uint16) byte {
-	return byte((0xFF00 & fullValue) >> 8)
-}
-
-// low byte=CD of ABCD
-func getLowByte(fullValue uint16) byte {
-	return byte(0x00FF & fullValue)
-}
-
-func isPageBoundaryCrossed(addr1, addr2 uint16) bool {
-	return (addr1 & 0xFF00) != (addr2 & 0xFF00)
-}
