@@ -14,12 +14,16 @@ const (
 type registers struct {
 	A  uint16 //accumulator
 	X  uint16 //index
+	Y  uint16 //index
 	PC uint16 //program counter
 	S  uint16 //stack pointer
 	P  byte   //processor status register, holds the first 8 flags using masks
 	D  uint16 //zeropage offset      ;expands 8bit  [nn]   to 16bit [00:nn+D]
 	DB byte   //Data Bank            ;expands 16bit [nnnn] to 24bit [DB:nnnn]
 	PB byte   //Program Counter Bank ;expands 16bit PC     to 24bit PB:PC
+
+	//its the emulation flag. bit cringe for it to be grouped with the registers but it makes the code cleaner
+	E bool
 }
 
 func (c *registers) setFlag(flag byte, reset bool) {
@@ -32,4 +36,36 @@ func (c *registers) setFlag(flag byte, reset bool) {
 
 func (c *registers) hasFlag(flag byte) bool {
 	return (c.P & flag) != 0
+}
+
+func (r *registers) GetStackAddr() uint32 {
+	return uint32(r.GetStack())
+}
+
+// It's paramount to interact with the values that can be locked to 8 bit through a getter/setter
+// this prevents the return of a wrong value in emulation mode/with certain registers set
+func (r *registers) GetStack() uint16 {
+	if r.E {
+		// Emulation mode: $01SS
+		return 0x0100 | (r.S & 0x00FF)
+	}
+	// Native mode: $SSSS
+	return r.S
+}
+
+func (r *registers) SetStack(val uint16) {
+	if r.E {
+		r.S = 0x0100 | (val & 0x00FF)
+	} else {
+		r.S = val
+	}
+}
+
+func (r *registers) EmulationON() {
+	if !r.E {
+		r.E = true
+		r.P |= 0x30
+		r.S = 0x0100 | (r.S & 0x00FF)
+	}
+
 }

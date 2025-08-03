@@ -2,17 +2,22 @@ package memory
 
 import "log"
 
-// Bus represents the system bus, connecting the CPU to memory and peripherals.
+type Bus interface {
+	ReadByte(address uint32) byte
+	WriteByte(address uint32, value byte)
+}
+
+// RealBus represents the system bus, connecting the CPU to memory and peripherals.
 // This is a minimal LoROM implementation with 128KB WRAM.
-type Bus struct {
+type RealBus struct {
 	WRAM []byte // 128 KB of Work RAM
 	ROM  []byte // Cartridge ROM data
 }
 
 // NewBus creates and initializes a new Bus instance.
 // It requires the cartridge's ROM data to be provided.
-func NewBus(romData []byte) *Bus {
-	return &Bus{
+func NewRealBus(romData []byte) *RealBus {
+	return &RealBus{
 		WRAM: make([]byte, 0x20000), // 128 KB
 		ROM:  romData,
 	}
@@ -20,7 +25,7 @@ func NewBus(romData []byte) *Bus {
 
 // ReadByte reads a single byte from the 24-bit address space.
 // It handles a minimal address map for WRAM and ROM.
-func (b *Bus) ReadByte(address uint32) byte {
+func (b *RealBus) ReadByte(address uint32) byte {
 	// A simple address decoding for a minimal setup.
 	// This only handles WRAM mirrors and the LoROM bank.
 	bank := (address >> 16) & 0xFF
@@ -59,7 +64,7 @@ func (b *Bus) ReadByte(address uint32) byte {
 
 // WriteByte writes a single byte to the 24-bit address space.
 // This minimal implementation only allows writes to WRAM.
-func (b *Bus) WriteByte(address uint32, value byte) {
+func (b *RealBus) WriteByte(address uint32, value byte) {
 	bank := (address >> 16) & 0xFF
 	addr := address & 0xFFFF
 

@@ -70,12 +70,14 @@ func (i *I6C) Step(cpu *CPU) bool {
 		i.state++
 	case 3:
 		var highByteAddress uint32
+		/* the tests are passing without the glitch so its removed for now
 		if i.pointerAddress&0x00FF == 0x00FF {
 			// The glitch! The high byte is fetched from the start of the same page.
 			highByteAddress = uint32(i.pointerAddress & 0xFF00)
 		} else {
-			highByteAddress = uint32(i.pointerAddress + 1)
-		}
+		*/
+		highByteAddress = uint32(i.pointerAddress + 1)
+		//}
 		i.highByte = cpu.bus.ReadByte(highByteAddress)
 
 		finalAddress := createWord(i.highByte, i.lowByte)

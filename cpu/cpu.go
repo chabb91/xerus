@@ -5,17 +5,15 @@ import "SNES_emulator/memory"
 type CPU struct {
 	r *registers
 
-	E bool
-
 	instructions       map[byte]Instruction
 	currentInstruction Instruction
 
-	bus *memory.Bus
+	bus memory.Bus
 }
 
 func NewCPU(bus memory.Bus) *CPU {
 	cpu := &CPU{
-		bus:                &bus,
+		bus:                bus,
 		r:                  &registers{},
 		instructions:       NewInstructionMap(),
 		currentInstruction: nil,
@@ -25,7 +23,7 @@ func NewCPU(bus memory.Bus) *CPU {
 
 func (c *CPU) Reset() {
 	// set emulation flag
-	c.E = true
+	c.r.E = true
 
 	c.r.PB = 0x00
 	c.r.DB = 0x00
@@ -41,14 +39,16 @@ func (c *CPU) Reset() {
 	c.r.PC = createWord(c.bus.ReadByte(0x00FFFD), c.bus.ReadByte(0x00FFFC))
 }
 
-func (c *CPU) stepCycle() {
+func (c *CPU) stepCycle() bool {
 	if c.currentInstruction == nil {
 		opcode := c.fetchByte()
 		c.currentInstruction = c.instructions[opcode]
 		c.currentInstruction.Reset()
 	} else if c.currentInstruction.Step(c) {
 		c.currentInstruction = nil
+		return true
 	}
+	return false
 }
 
 // mapAddress combines the Program Bank and Program Counter into a 24-bit address.
