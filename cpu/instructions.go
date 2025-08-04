@@ -16,6 +16,7 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x6C] = &I6C{}
 	ret[0x7C] = &I7C{}
 	ret[0xDC] = &IDC{}
+	ret[0x20] = &I20{}
 
 	return ret
 }
@@ -202,5 +203,44 @@ func (i *IDC) Step(cpu *CPU) bool {
 }
 
 func (i *IDC) Reset() {
+	i.state = 0
+}
+
+// I20 represents the CALL nnnn instruction
+type I20 struct {
+	state int
+
+	lowByte  byte
+	highByte byte
+
+	pointerAddress uint16
+}
+
+// Step runs one cycle of the JMP instruction
+//MLB active TODO
+func (i *I20) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.lowByte = cpu.fetchByte()
+		i.state++
+	case 1:
+		i.highByte = cpu.fetchByte()
+		i.pointerAddress = createWord(i.highByte, i.lowByte)
+		i.state++
+	case 2:
+		i.highByte, i.lowByte = splitWord(cpu.r.PC - 1)
+		cpu.PushByte(i.highByte)
+		i.state++
+	case 3:
+		cpu.PushByte(i.lowByte)
+		i.state++
+	case 4:
+		cpu.r.PC = i.pointerAddress
+		return true
+	}
+	return false
+}
+
+func (i *I20) Reset() {
 	i.state = 0
 }

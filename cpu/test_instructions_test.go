@@ -10,7 +10,7 @@ import (
 var cause string
 
 func Test4C(t *testing.T) {
-	tests, err := debugger.LoadTests("../testdata/dc.n.json")
+	tests, err := debugger.LoadTests("../testdata/20.e.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,6 +40,15 @@ func Test4C(t *testing.T) {
 
 		if !compareState(cpu, tc.Final) {
 			t.Errorf("FAIL: %v, %s", tc.Name, cause)
+			/*
+				t.Errorf("Expected: %v", tc.Final.RAM)
+				for _, v := range tc.Final.RAM {
+					if cpu.bus.ReadByte(v.Address) != v.Data {
+						t.Error(cpu.bus.ReadByte(v.Address))
+					}
+				}
+			*/
+
 		}
 	}
 }

@@ -74,3 +74,31 @@ func (c *CPU) fetchByte() byte {
 
 	return ret
 }
+
+// PushByte pushes one byte onto the stack and updates SP.
+func (cpu *CPU) PushByte(val byte) {
+	addr := cpu.r.GetStackAddr()
+	cpu.bus.WriteByte(addr, val)
+	cpu.r.S--
+}
+
+// PopByte pops one byte from the stack and updates SP.
+func (cpu *CPU) PopByte() byte {
+	cpu.r.S++
+	addr := cpu.r.GetStackAddr()
+	return cpu.bus.ReadByte(addr)
+}
+
+// PushWord pushes a 16-bit word onto the stack (high byte first).
+func (cpu *CPU) PushWord(val uint16) {
+	high, low := splitWord(val)
+	cpu.PushByte(high)
+	cpu.PushByte(low)
+}
+
+// PopWord pops a 16-bit word from the stack (low byte first).
+func (cpu *CPU) PopWord() uint16 {
+	low := cpu.PopByte()
+	high := cpu.PopByte()
+	return createWord(high, low)
+}

@@ -43,3 +43,12 @@ func isPageBoundaryCrossed(addr1, addr2 uint16) bool {
 func createWord(high, low byte) uint16 {
 	return (uint16(high) << 8) | uint16(low)
 }
+
+// splits a word into two bytes
+// hi,lo is returned
+func splitWord(word uint16) (high, low byte) {
+	high = byte(word >> 8)
+	low = byte(word & 0xFF)
+
+	return high, low
+}
