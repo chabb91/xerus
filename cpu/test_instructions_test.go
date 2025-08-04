@@ -3,13 +3,14 @@ package cpu
 import (
 	"SNES_emulator/debugger"
 	"SNES_emulator/memory"
+	"strings"
 	"testing"
 )
 
 var cause string
 
 func Test4C(t *testing.T) {
-	tests, err := debugger.LoadTests("../testdata/6c.n.json")
+	tests, err := debugger.LoadTests("../testdata/4c.e.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -19,9 +20,19 @@ func Test4C(t *testing.T) {
 		cpu := NewCPU(ram)
 		cpu.Reset()
 		setState(cpu, tc.Initial)
+		i := 0
 		for {
+			if i < len(tc.Cycles) {
+				if !compareCycle(cpu, tc.Cycles[i]) {
+					t.Errorf("INACCURATE CYCLE: %v, %s[%v]", tc.Name, "cycle", i)
+				}
+			}
 			ret := cpu.stepCycle()
+			i++
 			if ret {
+				if len(tc.Cycles) != i {
+					t.Errorf("CYCLE COUNT MISMATCH: %v, %s[%v]", tc.Name, "cycle", i)
+				}
 				break
 			}
 		}
@@ -30,6 +41,20 @@ func Test4C(t *testing.T) {
 			t.Errorf("FAIL: %v, %s", tc.Name, cause)
 		}
 	}
+}
+
+func compareCycle(c *CPU, ref []any) bool {
+	addr := uint32(ref[0].(float64))
+	val := byte(ref[1].(float64))
+	out := ref[2].(string)
+	if c.bus.ReadByte(addr) == val {
+		ok1 := strings.ContainsRune(out, 'm') == c.r.hasFlag(FlagM)
+		ok2 := strings.ContainsRune(out, 'x') == c.r.hasFlag(FlagX)
+		ok3 := strings.ContainsRune(out, 'e') == c.r.E
+		return ok1 && ok2 && ok3
+
+	}
+	return false
 }
 
 func setState(c *CPU, s debugger.CPUState) {
