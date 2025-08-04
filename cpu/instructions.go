@@ -12,7 +12,10 @@ func NewInstructionMap() map[byte]Instruction {
 	ret := make(map[byte]Instruction)
 
 	ret[0x4C] = &I4C{}
+	ret[0x5C] = &I5C{}
 	ret[0x6C] = &I6C{}
+	ret[0x7C] = &I7C{}
+	ret[0xDC] = &IDC{}
 
 	return ret
 }
@@ -41,6 +44,38 @@ func (i *I4C) Step(cpu *CPU) bool {
 }
 
 func (i *I4C) Reset() {
+	i.state = 0
+}
+
+// I5C represents the JMP $XXXXXX instruction (opcode 0x5C)
+type I5C struct {
+	state    int
+	lowByte  byte
+	highByte byte
+	pbByte   byte
+	address  uint16
+}
+
+// Step runs one cycle of the JMP instruction
+func (i *I5C) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.lowByte = cpu.fetchByte()
+		i.state++
+	case 1:
+		i.highByte = cpu.fetchByte()
+		i.state++
+	case 2:
+		i.pbByte = cpu.fetchByte()
+		i.address = createWord(i.highByte, i.lowByte)
+		cpu.r.PC = i.address
+		cpu.r.PB = i.pbByte
+		return true
+	}
+	return false
+}
+
+func (i *I5C) Reset() {
 	i.state = 0
 }
 
@@ -89,5 +124,83 @@ func (i *I6C) Step(cpu *CPU) bool {
 }
 
 func (i *I6C) Reset() {
+	i.state = 0
+}
+
+// I7C represents the JMP [nnnn+X] instruction (opcode 0x7C)
+type I7C struct {
+	state int
+
+	lowByte  byte
+	highByte byte
+
+	pointerAddress uint16
+}
+
+// Step runs one cycle of the JMP instruction
+func (i *I7C) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.lowByte = cpu.fetchByte()
+		i.state++
+	case 1:
+		i.highByte = cpu.fetchByte()
+		i.pointerAddress = createWord(i.highByte, i.lowByte)
+		i.state++
+	case 2:
+		i.pointerAddress += cpu.r.GetX()
+		i.state++
+	case 3:
+		i.lowByte = cpu.bus.ReadByte(cpu.mapAddressToBank(cpu.r.PB, i.pointerAddress))
+		i.state++
+	case 4:
+		i.highByte = cpu.bus.ReadByte(cpu.mapAddressToBank(cpu.r.PB, i.pointerAddress+1))
+		cpu.r.PC = createWord(i.highByte, i.lowByte)
+		return true
+	}
+	return false
+}
+
+func (i *I7C) Reset() {
+	i.state = 0
+}
+
+// IDC represents the JMP FAR[nnnn] instruction
+type IDC struct {
+	state int
+
+	lowByte  byte
+	highByte byte
+	pbByte   byte
+
+	pointerAddress uint16
+}
+
+// Step runs one cycle of the JMP instruction
+func (i *IDC) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.lowByte = cpu.fetchByte()
+		i.state++
+	case 1:
+		i.highByte = cpu.fetchByte()
+		i.pointerAddress = createWord(i.highByte, i.lowByte)
+		i.state++
+	case 2:
+		i.lowByte = cpu.bus.ReadByte(uint32(i.pointerAddress))
+		i.state++
+	case 3:
+		i.highByte = cpu.bus.ReadByte(uint32(i.pointerAddress + 1))
+		i.state++
+	case 4:
+		i.pbByte = cpu.bus.ReadByte(uint32(i.pointerAddress + 2))
+		cpu.r.PC = createWord(i.highByte, i.lowByte)
+		cpu.r.PB = i.pbByte
+		return true
+	}
+	return false
+}
+
+func (i *IDC) Reset() {
 	i.state = 0
 }

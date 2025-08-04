@@ -10,7 +10,7 @@ import (
 var cause string
 
 func Test4C(t *testing.T) {
-	tests, err := debugger.LoadTests("../testdata/4c.e.json")
+	tests, err := debugger.LoadTests("../testdata/dc.n.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,9 +54,17 @@ func compareCycle(c *CPU, ref []any) bool {
 		return false
 	}
 
-	val, ok := ref[1].(float64)
-	if !ok {
-		return false
+	var val byte
+	if ref[1] != nil {
+		floatVal, ok := ref[1].(float64)
+		if !ok {
+			return false
+		}
+		val = byte(floatVal)
+
+		if c.bus.ReadByte(uint32(addr)) != val {
+			return false
+		}
 	}
 
 	out, ok := ref[2].(string)
@@ -64,14 +72,11 @@ func compareCycle(c *CPU, ref []any) bool {
 		return false
 	}
 
-	if c.bus.ReadByte(uint32(addr)) == byte(val) {
-		ok1 := strings.ContainsRune(out, 'm') == c.r.hasFlag(FlagM)
-		ok2 := strings.ContainsRune(out, 'x') == c.r.hasFlag(FlagX)
-		ok3 := strings.ContainsRune(out, 'e') == c.r.E
-		return ok1 && ok2 && ok3
+	ok1 := strings.ContainsRune(out, 'm') == c.r.hasFlag(FlagM)
+	ok2 := strings.ContainsRune(out, 'x') == c.r.hasFlag(FlagX)
+	ok3 := strings.ContainsRune(out, 'e') == c.r.E
 
-	}
-	return false
+	return ok1 && ok2 && ok3
 }
 
 func setState(c *CPU, s debugger.CPUState) {

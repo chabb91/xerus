@@ -53,12 +53,17 @@ func (c *CPU) stepCycle() bool {
 
 // mapAddress combines the Program Bank and Program Counter into a 24-bit address.
 func (c *CPU) mapPCAddress() uint32 {
-	return (uint32(c.r.PB) << 16) | uint32(c.r.PC)
+	return c.mapAddressToBank(c.r.PB, c.r.PC)
 }
 
 // mapDataAddress combines the Data Bank and a 16-bit address into a 24-bit address.
 func (c *CPU) mapDataAddress(addr uint16) uint32 {
-	return (uint32(c.r.DB) << 16) | uint32(addr)
+	return c.mapAddressToBank(c.r.DB, addr)
+}
+
+// maps a 2 byte address to a 8 bit bank returning a 24 bit full memory address
+func (c *CPU) mapAddressToBank(bank byte, addr uint16) uint32 {
+	return (uint32(bank) << 16) | uint32(addr)
 }
 
 // fetchByte maps PC to 24 bit then goes and reads a byte from memory

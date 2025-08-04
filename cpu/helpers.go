@@ -24,6 +24,16 @@ func getLowByte(fullValue uint16) byte {
 	return byte(0x00FF & fullValue)
 }
 
+// masks CD of ABCD returning AB00
+func maskLowByte(fullValue uint16) uint16 {
+	return 0xFF00 & fullValue
+}
+
+// masks AB of ABCD returning 00CD
+func maskHighByte(fullValue uint16) uint16 {
+	return 0x00FF & fullValue
+}
+
 func isPageBoundaryCrossed(addr1, addr2 uint16) bool {
 	return (addr1 & 0xFF00) != (addr2 & 0xFF00)
 }

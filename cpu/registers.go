@@ -47,7 +47,7 @@ func (r *registers) GetStackAddr() uint32 {
 func (r *registers) GetStack() uint16 {
 	if r.E {
 		// Emulation mode: $01SS
-		return 0x0100 | (r.S & 0x00FF)
+		return 0x0100 | maskHighByte(r.S)
 	}
 	// Native mode: $SSSS
 	return r.S
@@ -55,7 +55,7 @@ func (r *registers) GetStack() uint16 {
 
 func (r *registers) SetStack(val uint16) {
 	if r.E {
-		r.S = 0x0100 | (val & 0x00FF)
+		r.S = 0x0100 | maskHighByte(val)
 	} else {
 		r.S = val
 	}
@@ -65,7 +65,22 @@ func (r *registers) EmulationON() {
 	if !r.E {
 		r.E = true
 		r.P |= 0x30
-		r.S = 0x0100 | (r.S & 0x00FF)
+		r.S = 0x0100 | maskHighByte(r.S)
 	}
+}
 
+func (r *registers) GetX() uint16 {
+	if r.E || r.hasFlag(FlagX) {
+		return maskHighByte(r.X)
+	} else {
+		return r.X
+	}
+}
+
+func (r *registers) SetX(val uint16) {
+	if r.E || r.hasFlag(FlagX) {
+		r.X = maskHighByte(val)
+	} else {
+		r.X = val
+	}
 }
