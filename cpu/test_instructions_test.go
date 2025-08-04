@@ -31,7 +31,7 @@ func Test4C(t *testing.T) {
 			i++
 			if ret {
 				if len(tc.Cycles) != i {
-					t.Errorf("CYCLE COUNT MISMATCH: %v, %s[%v]", tc.Name, "cycle", i)
+					t.Errorf("CYCLE COUNT MISMATCH: %v, %v(expected), %v(emulated)", tc.Name, len(tc.Cycles), i)
 				}
 				break
 			}
@@ -44,10 +44,26 @@ func Test4C(t *testing.T) {
 }
 
 func compareCycle(c *CPU, ref []any) bool {
-	addr := uint32(ref[0].(float64))
-	val := byte(ref[1].(float64))
-	out := ref[2].(string)
-	if c.bus.ReadByte(addr) == val {
+	if len(ref) < 3 {
+		return false
+	}
+
+	addr, ok := ref[0].(float64)
+	if !ok {
+		return false
+	}
+
+	val, ok := ref[1].(float64)
+	if !ok {
+		return false
+	}
+
+	out, ok := ref[2].(string)
+	if !ok {
+		return false
+	}
+
+	if c.bus.ReadByte(uint32(addr)) == byte(val) {
 		ok1 := strings.ContainsRune(out, 'm') == c.r.hasFlag(FlagM)
 		ok2 := strings.ContainsRune(out, 'x') == c.r.hasFlag(FlagX)
 		ok3 := strings.ContainsRune(out, 'e') == c.r.E
