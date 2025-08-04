@@ -15,9 +15,10 @@ func Test4C(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	ram := memory.NewTestBus()
+	cpu := NewCPU(ram)
+
 	for _, tc := range tests {
-		ram := memory.NewTestBus()
-		cpu := NewCPU(ram)
 		cpu.Reset()
 		setState(cpu, tc.Initial)
 		i := 0
