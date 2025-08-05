@@ -17,6 +17,7 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x7C] = &I7C{}
 	ret[0xDC] = &IDC{}
 	ret[0x20] = &I20{}
+	ret[0x22] = &I22{}
 
 	return ret
 }
@@ -217,7 +218,7 @@ type I20 struct {
 }
 
 // Step runs one cycle of the JMP instruction
-//MLB active TODO
+// MLB active TODO
 func (i *I20) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
@@ -242,5 +243,52 @@ func (i *I20) Step(cpu *CPU) bool {
 }
 
 func (i *I20) Reset() {
+	i.state = 0
+}
+
+// I22 represents the CALL nnnnnn instruction
+type I22 struct {
+	state    int
+	lowByte  byte
+	highByte byte
+	pbByte   byte
+	address  uint16
+}
+
+// Step runs one cycle of the JMP instruction
+// the emulation test case for this so 22.e.json seems to not wrap the stack pointer
+// it also has a faulty test case on top of that. maybe im wrong but additional debug needed later TODO
+// and im not even sure this is cycle accurate.
+func (i *I22) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.lowByte = cpu.fetchByte()
+		i.state++
+	case 1:
+		i.highByte = cpu.fetchByte()
+		i.address = createWord(i.highByte, i.lowByte)
+		i.state++
+	case 2:
+		i.highByte, i.lowByte = splitWord(cpu.r.PC)
+		cpu.PushByte(cpu.r.PB)
+		i.state++
+	case 3:
+		i.state++
+	case 4:
+		i.pbByte = cpu.fetchByte()
+		cpu.r.PC = i.address
+		cpu.r.PB = i.pbByte
+		i.state++
+	case 5:
+		cpu.PushByte(i.highByte)
+		i.state++
+	case 6:
+		cpu.PushByte(i.lowByte)
+		return true
+	}
+	return false
+}
+
+func (i *I22) Reset() {
 	i.state = 0
 }

@@ -10,7 +10,7 @@ import (
 var cause string
 
 func Test4C(t *testing.T) {
-	tests, err := debugger.LoadTests("../testdata/20.e.json")
+	tests, err := debugger.LoadTests("../testdata/22.n.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,12 +23,12 @@ func Test4C(t *testing.T) {
 		setState(cpu, tc.Initial)
 		i := 0
 		for {
+			ret := cpu.stepCycle()
 			if i < len(tc.Cycles) {
 				if !compareCycle(cpu, tc.Cycles[i]) {
 					t.Errorf("INACCURATE CYCLE: %v, %s[%v]", tc.Name, "cycle", i)
 				}
 			}
-			ret := cpu.stepCycle()
 			i++
 			if ret {
 				if len(tc.Cycles) != i {
@@ -40,14 +40,12 @@ func Test4C(t *testing.T) {
 
 		if !compareState(cpu, tc.Final) {
 			t.Errorf("FAIL: %v, %s", tc.Name, cause)
-			/*
-				t.Errorf("Expected: %v", tc.Final.RAM)
-				for _, v := range tc.Final.RAM {
-					if cpu.bus.ReadByte(v.Address) != v.Data {
-						t.Error(cpu.bus.ReadByte(v.Address))
-					}
+			t.Errorf("Expected: %v", tc.Final.RAM)
+			for _, v := range tc.Final.RAM {
+				if cpu.bus.ReadByte(v.Address) != v.Data {
+					t.Error(v.Address, " ", cpu.bus.ReadByte(v.Address))
 				}
-			*/
+			}
 
 		}
 	}
