@@ -16,6 +16,7 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x6C] = &I6C{}
 	ret[0x7C] = &I7C{}
 	ret[0xDC] = &IDC{}
+	ret[0xFC] = &IFC{}
 	ret[0x20] = &I20{}
 	ret[0x22] = &I22{}
 
@@ -290,5 +291,51 @@ func (i *I22) Step(cpu *CPU) bool {
 }
 
 func (i *I22) Reset() {
+	i.state = 0
+}
+
+// IFC represents the CALL [nnnn + X] instruction
+type IFC struct {
+	state int
+
+	lowByte  byte
+	highByte byte
+
+	lowByteS byte
+
+	pointerAddress uint16
+}
+
+func (i *IFC) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.lowByte = cpu.fetchByte()
+		i.state++
+	case 1:
+		i.highByte, i.lowByteS = splitWord(cpu.r.PC)
+		cpu.PushByte(i.highByte)
+		i.state++
+	case 2:
+		cpu.PushByte(i.lowByteS)
+		i.state++
+	case 3:
+		i.highByte = cpu.fetchByte()
+		i.pointerAddress = createWord(i.highByte, i.lowByte)
+		i.state++
+	case 4:
+		i.pointerAddress += cpu.r.GetX()
+		i.state++
+	case 5:
+		i.lowByte = cpu.bus.ReadByte(cpu.mapAddressToBank(cpu.r.PB, i.pointerAddress))
+		i.state++
+	case 6:
+		i.highByte = cpu.bus.ReadByte(cpu.mapAddressToBank(cpu.r.PB, i.pointerAddress+1))
+		cpu.r.PC = createWord(i.highByte, i.lowByte)
+		return true
+	}
+	return false
+}
+
+func (i *IFC) Reset() {
 	i.state = 0
 }
