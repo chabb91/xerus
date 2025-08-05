@@ -20,6 +20,8 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x20] = &I20{}
 	ret[0x22] = &I22{}
 
+	ret[0x40] = &I40{}
+
 	return ret
 }
 
@@ -337,5 +339,47 @@ func (i *IFC) Step(cpu *CPU) bool {
 }
 
 func (i *IFC) Reset() {
+	i.state = 0
+}
+
+// I40 represents the RTI or return from interrupt instruction
+type I40 struct {
+	state int
+
+	lowByte  byte
+	highByte byte
+}
+
+func (i *I40) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.state++
+	case 1:
+		i.state++
+	case 2:
+		i.lowByte = cpu.PopByte()
+		if cpu.r.E {
+			i.lowByte |= 0x30 //m and x flags are always 1 in emulation mode
+		}
+		cpu.r.P = i.lowByte
+		i.state++
+	case 3:
+		i.lowByte = cpu.PopByte()
+		i.state++
+	case 4:
+		i.highByte = cpu.PopByte()
+		cpu.r.PC = createWord(i.highByte, i.lowByte)
+		if cpu.r.E {
+			return true
+		}
+		i.state++
+	case 5:
+		cpu.r.PB = cpu.PopByte()
+		return true
+	}
+	return false
+}
+
+func (i *I40) Reset() {
 	i.state = 0
 }

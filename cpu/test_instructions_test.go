@@ -10,7 +10,7 @@ import (
 var cause string
 
 func Test4C(t *testing.T) {
-	tests, err := debugger.LoadTests("../testdata/fc.e.json")
+	tests, err := debugger.LoadTests("../testdata/40.n.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,11 +125,11 @@ func compareState(c *CPU, s debugger.CPUState) bool {
 		cause = "P"
 		return false
 	}
-	if c.r.X != s.X {
+	if c.r.GetX() != s.X {
 		cause = "X"
 		return false
 	}
-	if c.r.Y != s.Y {
+	if c.r.GetY() != s.Y {
 		cause = "Y"
 		return false
 	}
