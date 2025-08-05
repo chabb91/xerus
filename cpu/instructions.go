@@ -22,6 +22,7 @@ func NewInstructionMap() map[byte]Instruction {
 
 	ret[0x40] = &I40{}
 	ret[0x6B] = &I6B{}
+	ret[0x60] = &I60{}
 
 	return ret
 }
@@ -414,5 +415,36 @@ func (i *I6B) Step(cpu *CPU) bool {
 }
 
 func (i *I6B) Reset() {
+	i.state = 0
+}
+
+// I60 represents the RTS or return from subroutine instruction
+type I60 struct {
+	state int
+
+	lowByte  byte
+	highByte byte
+}
+
+func (i *I60) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.state++
+	case 1:
+		i.state++
+	case 2:
+		i.lowByte = cpu.PopByte()
+		i.state++
+	case 3:
+		i.highByte = cpu.PopByte()
+		i.state++
+	case 4:
+		cpu.r.PC = createWord(i.highByte, i.lowByte) + 1
+		return true
+	}
+	return false
+}
+
+func (i *I60) Reset() {
 	i.state = 0
 }
