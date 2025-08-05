@@ -24,6 +24,8 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x6B] = &I6B{}
 	ret[0x60] = &I60{}
 
+	ret[0x80] = &I80{}
+
 	return ret
 }
 
@@ -446,5 +448,36 @@ func (i *I60) Step(cpu *CPU) bool {
 }
 
 func (i *I60) Reset() {
+	i.state = 0
+}
+
+// I80 represents the BRA or branch always instruction
+type I80 struct {
+	state int
+
+	pcTmp    uint16
+	offset   int8
+}
+
+func (i *I80) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.offset = int8(cpu.fetchByte())
+		i.state++
+	case 1:
+		i.pcTmp = cpu.r.PC
+		cpu.r.PC += uint16(i.offset)
+		if cpu.r.E && isPageBoundaryCrossed(i.pcTmp, cpu.r.PC) {
+			i.state++
+		} else {
+			return true
+		}
+	case 2:
+		return true
+	}
+	return false
+}
+
+func (i *I80) Reset() {
 	i.state = 0
 }
