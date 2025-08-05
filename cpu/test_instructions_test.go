@@ -10,7 +10,7 @@ import (
 var cause string
 
 func Test4C(t *testing.T) {
-	tests, err := debugger.LoadTests("../testdata/80.e.json")
+	tests, err := debugger.LoadTests("../testdata/82.e.json")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -25,6 +25,7 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x60] = &I60{}
 
 	ret[0x80] = &I80{}
+	ret[0x82] = &I82{}
 
 	return ret
 }
@@ -455,8 +456,8 @@ func (i *I60) Reset() {
 type I80 struct {
 	state int
 
-	pcTmp    uint16
-	offset   int8
+	pcTmp  uint16
+	offset int8
 }
 
 func (i *I80) Step(cpu *CPU) bool {
@@ -479,5 +480,34 @@ func (i *I80) Step(cpu *CPU) bool {
 }
 
 func (i *I80) Reset() {
+	i.state = 0
+}
+
+// I82 represents the BRL or branch always long instruction
+type I82 struct {
+	state int
+
+	offset  int16
+	offsetL byte
+	offsetH byte
+}
+
+func (i *I82) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.offsetL = cpu.fetchByte()
+		i.state++
+	case 1:
+		i.offsetH = cpu.fetchByte()
+		i.state++
+	case 2:
+		i.offset = int16(createWord(i.offsetH, i.offsetL))
+		cpu.r.PC += uint16(i.offset)
+		return true
+	}
+	return false
+}
+
+func (i *I82) Reset() {
 	i.state = 0
 }
