@@ -24,11 +24,26 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x6B] = &I6B{}
 	ret[0x60] = &I60{}
 
-	ret[0x80] = &I80{}
 	ret[0x82] = &I82{}
 
-	ret[0x10] = &I10{}
-	ret[0x30] = &I30{}
+	// I80 represents the BRA or branch always instruction
+	ret[0x80] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return true }}
+	// I10 represents the BPL or branch if positive instruction
+	ret[0x10] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return !cpu.r.hasFlag(FlagN) }}
+	// I30 represents the BMI or branch if not positive instruction
+	ret[0x30] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return cpu.r.hasFlag(FlagN) }}
+	// I90 represents the BCC or branch if no carry
+	ret[0x90] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return !cpu.r.hasFlag(FlagC) }}
+	// IB0 represents the BCS or branch if carry instruction
+	ret[0xB0] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return cpu.r.hasFlag(FlagC) }}
+	// IF0 represents the BEQ or branch if zero instruction
+	ret[0xF0] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return cpu.r.hasFlag(FlagZ) }}
+	// ID0 represents the BNE or branch if not zero instruction
+	ret[0xD0] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return !cpu.r.hasFlag(FlagZ) }}
+	// I50 represents the BVC or branch if not overflow instruction
+	ret[0x50] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return !cpu.r.hasFlag(FlagV) }}
+	// I70 represents the BVS or branch if overflow instruction
+	ret[0x70] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return cpu.r.hasFlag(FlagV) }}
 
 	return ret
 }
@@ -455,37 +470,6 @@ func (i *I60) Reset() {
 	i.state = 0
 }
 
-// I80 represents the BRA or branch always instruction
-type I80 struct {
-	state int
-
-	pcTmp  uint16
-	offset int8
-}
-
-func (i *I80) Step(cpu *CPU) bool {
-	switch i.state {
-	case 0:
-		i.offset = int8(cpu.fetchByte())
-		i.state++
-	case 1:
-		i.pcTmp = cpu.r.PC
-		cpu.r.PC += uint16(i.offset)
-		if cpu.r.E && isPageBoundaryCrossed(i.pcTmp, cpu.r.PC) {
-			i.state++
-		} else {
-			return true
-		}
-	case 2:
-		return true
-	}
-	return false
-}
-
-func (i *I80) Reset() {
-	i.state = 0
-}
-
 // I82 represents the BRL or branch always long instruction
 type I82 struct {
 	state int
@@ -515,19 +499,22 @@ func (i *I82) Reset() {
 	i.state = 0
 }
 
-// I10 represents the BPL or branch if positive instruction
-type I10 struct {
+// all one bit branch instructions
+// BCC BCS BEQ BMI BNE BPL BRA BVC BVS
+type OneBitBranch struct {
 	state int
 
 	pcTmp  uint16
 	offset int8
+
+	shouldBranch func(cpu *CPU) bool
 }
 
-func (i *I10) Step(cpu *CPU) bool {
+func (i *OneBitBranch) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.offset = int8(cpu.fetchByte())
-		if cpu.r.hasFlag(FlagN) {
+		if !i.shouldBranch(cpu) {
 			return true
 		}
 		i.state++
@@ -545,40 +532,6 @@ func (i *I10) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *I10) Reset() {
-	i.state = 0
-}
-
-// I30 represents the BMI or branch if not positive instruction
-type I30 struct {
-	state int
-
-	pcTmp  uint16
-	offset int8
-}
-
-func (i *I30) Step(cpu *CPU) bool {
-	switch i.state {
-	case 0:
-		i.offset = int8(cpu.fetchByte())
-		if !cpu.r.hasFlag(FlagN) {
-			return true
-		}
-		i.state++
-	case 1:
-		i.pcTmp = cpu.r.PC
-		cpu.r.PC += uint16(i.offset)
-		if cpu.r.E && isPageBoundaryCrossed(i.pcTmp, cpu.r.PC) {
-			i.state++
-		} else {
-			return true
-		}
-	case 2:
-		return true
-	}
-	return false
-}
-
-func (i *I30) Reset() {
+func (i *OneBitBranch) Reset() {
 	i.state = 0
 }
