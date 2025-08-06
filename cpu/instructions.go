@@ -27,6 +27,8 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x80] = &I80{}
 	ret[0x82] = &I82{}
 
+	ret[0x10] = &I10{}
+
 	return ret
 }
 
@@ -509,5 +511,39 @@ func (i *I82) Step(cpu *CPU) bool {
 }
 
 func (i *I82) Reset() {
+	i.state = 0
+}
+
+// I10 represents the BPL or branch if positive instruction
+type I10 struct {
+	state int
+
+	pcTmp  uint16
+	offset int8
+}
+
+func (i *I10) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.offset = int8(cpu.fetchByte())
+		if cpu.r.hasFlag(FlagN) {
+			return true
+		}
+		i.state++
+	case 1:
+		i.pcTmp = cpu.r.PC
+		cpu.r.PC += uint16(i.offset)
+		if cpu.r.E && isPageBoundaryCrossed(i.pcTmp, cpu.r.PC) {
+			i.state++
+		} else {
+			return true
+		}
+	case 2:
+		return true
+	}
+	return false
+}
+
+func (i *I10) Reset() {
 	i.state = 0
 }
