@@ -49,7 +49,7 @@ func (c *CPU) IRQ() {
 	c.PushWord(c.r.PC)
 
 	if c.r.E {
-		c.PushByte(c.r.P | FlagX)
+		c.PushByte(c.r.P & ^FlagX)
 	} else {
 		c.PushByte(c.r.P)
 	}
