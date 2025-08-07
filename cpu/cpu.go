@@ -1,6 +1,8 @@
 package cpu
 
-import "SNES_emulator/memory"
+import (
+	"SNES_emulator/memory"
+)
 
 type CPU struct {
 	r *registers
@@ -21,6 +23,7 @@ func NewCPU(bus memory.Bus) *CPU {
 	return cpu
 }
 
+// the 4 hardware interrupts
 func (c *CPU) Reset() {
 	// set emulation flag
 	c.r.E = true
@@ -37,6 +40,30 @@ func (c *CPU) Reset() {
 
 	// read the 16-bit Reset Vector from the bus
 	c.r.PC = createWord(c.bus.ReadByte(0x00FFFD), c.bus.ReadByte(0x00FFFC))
+}
+
+func (c *CPU) IRQ() {
+	if !c.r.E {
+		c.PushByte(c.r.PB)
+	}
+	c.PushWord(c.r.PC)
+
+	if c.r.E {
+		c.PushByte(c.r.P | FlagX)
+	} else {
+		c.PushByte(c.r.P)
+	}
+
+	c.r.PB = 0x00
+
+	if c.r.E {
+		c.r.PC = createWord(c.bus.ReadByte(0x00FFFF), c.bus.ReadByte(0x00FFFE))
+	} else {
+		c.r.PC = createWord(c.bus.ReadByte(0x00FFEF), c.bus.ReadByte(0x00FFEE))
+	}
+
+	c.r.setFlag(FlagD, true)
+	c.r.setFlag(FlagI, false)
 }
 
 func (c *CPU) stepCycle() bool {
