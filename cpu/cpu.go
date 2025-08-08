@@ -39,7 +39,6 @@ func NewCPU(bus memory.Bus) *CPU {
 	return cpu
 }
 
-// the 4 hardware interrupts
 func (c *CPU) Reset() {
 	// set emulation flag
 	c.r.E = true
@@ -137,6 +136,7 @@ func (c *CPU) stepCycle() bool {
 			c.currentInstruction.Reset(c)
 			c.IrqSignal = false
 			//irq should be cleared from the source that called it i just dont have one yet
+			//If /IRQ is kept LOW then same (old) interrupt is executed again as soon as setting I=0. If /NMI is kept LOW then no further NMIs can be executed.
 			//TODO
 			return false
 		}

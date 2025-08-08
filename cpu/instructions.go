@@ -60,6 +60,21 @@ func NewInstructionMap() map[byte]Instruction {
 	// I02 represents the COP (software interrupt) instruction
 	ret[0x02] = &softwareInterrupt{eAddress: 0x00FFF4, nAddress: 0x00FFE4}
 
+	ret[0x18] = &CDIVflagSetter{changeFlag: func(cpu *CPU) { cpu.r.setFlag(FlagC, true) }}
+	ret[0xD8] = &CDIVflagSetter{changeFlag: func(cpu *CPU) { cpu.r.setFlag(FlagD, true) }}
+	ret[0x58] = &CDIVflagSetter{changeFlag: func(cpu *CPU) { cpu.r.setFlag(FlagI, true) }}
+	ret[0xB8] = &CDIVflagSetter{changeFlag: func(cpu *CPU) { cpu.r.setFlag(FlagV, true) }}
+	ret[0x38] = &CDIVflagSetter{changeFlag: func(cpu *CPU) { cpu.r.setFlag(FlagC, false) }}
+	ret[0xF8] = &CDIVflagSetter{changeFlag: func(cpu *CPU) { cpu.r.setFlag(FlagD, false) }}
+	ret[0x78] = &CDIVflagSetter{changeFlag: func(cpu *CPU) { cpu.r.setFlag(FlagI, false) }}
+
+	//rep
+	ret[0xC2] = &RepSep{reset: true}
+	//sep
+	ret[0xE2] = &RepSep{reset: false}
+
+	ret[0xFB] = &IFB{}
+
 	return ret
 }
 
@@ -789,5 +804,83 @@ func (i *ResetSequence) Step(cpu *CPU) bool {
 }
 
 func (i *ResetSequence) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+// CLC CLD CLI CLV SEC SED SEI
+type CDIVflagSetter struct {
+	state int
+
+	changeFlag func(cpu *CPU)
+}
+
+func (i *CDIVflagSetter) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.changeFlag(cpu)
+		return true
+	}
+	return false
+}
+
+func (i *CDIVflagSetter) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+// REP SEP
+type RepSep struct {
+	state int
+
+	reset   bool
+	operand byte
+}
+
+func (i *RepSep) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.operand = cpu.fetchByte()
+		i.state++
+	case 1:
+		if i.reset {
+			cpu.r.P &= ^i.operand
+		} else {
+			cpu.r.P |= i.operand
+		}
+		if cpu.r.E {
+			cpu.r.P |= 0x30
+		}
+		return true
+	}
+	return false
+}
+
+func (i *RepSep) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+// the XCE or eXchange Carry and Emulation instruction
+// the only instruction that can swap modes
+type IFB struct {
+	state int
+}
+
+func (i *IFB) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		tmp := cpu.r.hasFlag(FlagC)
+		cpu.r.setFlag(FlagC, !cpu.r.E)
+		cpu.r.E = tmp
+		if tmp {
+			cpu.r.P |= 0x30
+			cpu.r.X = maskHighByte(cpu.r.X)
+			cpu.r.Y = maskHighByte(cpu.r.Y)
+			cpu.r.S = 0x0100 | maskHighByte(cpu.r.S)
+		}
+		return true
+	}
+	return false
+}
+
+func (i *IFB) Reset(cpu *CPU) {
 	i.state = 0
 }

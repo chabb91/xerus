@@ -52,3 +52,19 @@ func splitWord(word uint16) (high, low byte) {
 
 	return high, low
 }
+
+func boolToFlag(b bool) byte {
+	if b {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+func flagToBool(b byte) bool {
+	if b == 1 {
+		return true
+	} else {
+		return false
+	}
+}
