@@ -5,7 +5,17 @@ type Instruction interface {
 	// Step performs one cycle of the instruction's execution.
 	// It returns true if the instruction is complete, false otherwise.
 	Step(cpu *CPU) bool
-	Reset()
+	Reset(cpu *CPU)
+}
+
+func NewHWInterruptMap() map[int]Instruction {
+	ret := make(map[int]Instruction)
+	ret[irqId] = &NmiIrqSequence{eAddress: 0x00FFFE, nAddress: 0x00FFEE}
+	ret[nmiId] = &NmiIrqSequence{eAddress: 0x00FFFA, nAddress: 0x00FFEA}
+	ret[abortId] = &AbortSequence{eAddress: 0x00FFF8, nAddress: 0x00FFE8}
+	ret[resetId] = &ResetSequence{eAddress: 0x00FFFC}
+
+	return ret
 }
 
 func NewInstructionMap() map[byte]Instruction {
@@ -45,6 +55,11 @@ func NewInstructionMap() map[byte]Instruction {
 	// I70 represents the BVS or branch if overflow instruction
 	ret[0x70] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return cpu.r.hasFlag(FlagV) }}
 
+	// I00 represents the BRK or break (software interrupt) instruction
+	ret[0x00] = &softwareInterrupt{eAddress: 0x00FFFE, nAddress: 0x00FFE6}
+	// I02 represents the COP (software interrupt) instruction
+	ret[0x02] = &softwareInterrupt{eAddress: 0x00FFF4, nAddress: 0x00FFE4}
+
 	return ret
 }
 
@@ -71,7 +86,7 @@ func (i *I4C) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *I4C) Reset() {
+func (i *I4C) Reset(cpu *CPU) {
 	i.state = 0
 }
 
@@ -103,7 +118,7 @@ func (i *I5C) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *I5C) Reset() {
+func (i *I5C) Reset(cpu *CPU) {
 	i.state = 0
 }
 
@@ -151,7 +166,7 @@ func (i *I6C) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *I6C) Reset() {
+func (i *I6C) Reset(cpu *CPU) {
 	i.state = 0
 }
 
@@ -189,7 +204,7 @@ func (i *I7C) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *I7C) Reset() {
+func (i *I7C) Reset(cpu *CPU) {
 	i.state = 0
 }
 
@@ -229,7 +244,7 @@ func (i *IDC) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *IDC) Reset() {
+func (i *IDC) Reset(cpu *CPU) {
 	i.state = 0
 }
 
@@ -268,7 +283,7 @@ func (i *I20) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *I20) Reset() {
+func (i *I20) Reset(cpu *CPU) {
 	i.state = 0
 }
 
@@ -315,7 +330,7 @@ func (i *I22) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *I22) Reset() {
+func (i *I22) Reset(cpu *CPU) {
 	i.state = 0
 }
 
@@ -361,7 +376,7 @@ func (i *IFC) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *IFC) Reset() {
+func (i *IFC) Reset(cpu *CPU) {
 	i.state = 0
 }
 
@@ -403,7 +418,7 @@ func (i *I40) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *I40) Reset() {
+func (i *I40) Reset(cpu *CPU) {
 	i.state = 0
 }
 
@@ -435,7 +450,7 @@ func (i *I6B) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *I6B) Reset() {
+func (i *I6B) Reset(cpu *CPU) {
 	i.state = 0
 }
 
@@ -466,7 +481,7 @@ func (i *I60) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *I60) Reset() {
+func (i *I60) Reset(cpu *CPU) {
 	i.state = 0
 }
 
@@ -495,7 +510,7 @@ func (i *I82) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *I82) Reset() {
+func (i *I82) Reset(cpu *CPU) {
 	i.state = 0
 }
 
@@ -532,6 +547,247 @@ func (i *OneBitBranch) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *OneBitBranch) Reset() {
+func (i *OneBitBranch) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+type softwareInterrupt struct {
+	state int
+
+	lowByte  byte
+	highByte byte
+
+	eAddress uint32
+	nAddress uint32
+
+	address uint32
+}
+
+func (i *softwareInterrupt) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		//discard the next byte and increase PC
+		cpu.fetchByte()
+		i.state++
+		if cpu.r.E {
+			i.state++
+		}
+	case 1:
+		cpu.PushByte(cpu.r.PB)
+		i.state++
+	case 2:
+		i.highByte, i.lowByte = splitWord(cpu.r.PC)
+		cpu.PushByte(i.highByte)
+		i.state++
+	case 3:
+		cpu.PushByte(i.lowByte)
+		i.state++
+	case 4:
+		if cpu.r.E {
+			cpu.PushByte(cpu.r.P | FlagX)
+		} else {
+			cpu.PushByte(cpu.r.P)
+		}
+		i.state++
+	case 5:
+		if cpu.r.E {
+			i.address = i.eAddress
+		} else {
+			i.address = i.nAddress
+		}
+
+		i.lowByte = cpu.bus.ReadByte(i.address)
+		i.state++
+	case 6:
+		i.highByte = cpu.bus.ReadByte(i.address + 1)
+
+		cpu.r.PB = 0x00
+		cpu.r.PC = createWord(i.highByte, i.lowByte)
+
+		cpu.r.setFlag(FlagD, true)
+		cpu.r.setFlag(FlagI, false)
+		return true
+	}
+	return false
+}
+
+func (i *softwareInterrupt) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+// has to be called before the next opcode is fetched to have accurate PC
+type NmiIrqSequence struct {
+	state int
+
+	lowByte  byte
+	highByte byte
+
+	eAddress uint32
+	nAddress uint32
+
+	address uint32
+}
+
+func (i *NmiIrqSequence) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		cpu.PushByte(cpu.r.PB)
+		i.state++
+	case 1:
+		i.highByte, i.lowByte = splitWord(cpu.r.PC)
+		cpu.PushByte(i.highByte)
+		i.state++
+	case 2:
+		cpu.PushByte(i.lowByte)
+		i.state++
+	case 3:
+		if cpu.r.E {
+			cpu.PushByte(cpu.r.P & ^FlagX)
+		} else {
+			cpu.PushByte(cpu.r.P)
+		}
+		i.state++
+	case 4:
+		if cpu.r.E {
+			i.address = i.eAddress
+		} else {
+			i.address = i.nAddress
+		}
+
+		i.lowByte = cpu.bus.ReadByte(i.address)
+		i.state++
+	case 5:
+		i.highByte = cpu.bus.ReadByte(i.address + 1)
+
+		cpu.r.PB = 0x00
+		cpu.r.PC = createWord(i.highByte, i.lowByte)
+
+		cpu.r.setFlag(FlagD, true)
+		cpu.r.setFlag(FlagI, false)
+		return true
+	}
+	return false
+}
+
+func (i *NmiIrqSequence) Reset(cpu *CPU) {
+	if cpu.r.E {
+		i.state = 1
+	} else {
+		i.state = 0
+	}
+}
+
+type AbortSequence struct {
+	state int
+
+	lowByte  byte
+	highByte byte
+
+	eAddress uint32
+	nAddress uint32
+
+	address uint32
+
+	PC uint16
+}
+
+func (i *AbortSequence) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		cpu.PushByte(cpu.r.PB)
+		i.state++
+	case 1:
+		i.highByte, i.lowByte = splitWord(i.PC)
+		cpu.PushByte(i.highByte)
+		i.state++
+	case 2:
+		cpu.PushByte(i.lowByte)
+		i.state++
+	case 3:
+		cpu.PushByte(cpu.r.P)
+		i.state++
+	case 4:
+		if cpu.r.E {
+			i.address = i.eAddress
+		} else {
+			i.address = i.nAddress
+		}
+
+		i.lowByte = cpu.bus.ReadByte(i.address)
+		i.state++
+	case 5:
+		i.highByte = cpu.bus.ReadByte(i.address + 1)
+
+		cpu.r.PB = 0x00
+		cpu.r.PC = createWord(i.highByte, i.lowByte)
+
+		cpu.r.setFlag(FlagD, true)
+		cpu.r.setFlag(FlagI, false)
+		return true
+	}
+	return false
+}
+
+func (i *AbortSequence) Reset(cpu *CPU) {
+	if cpu.currentInstruction != nil {
+		i.PC = cpu.r.instrPC
+	} else {
+		i.PC = cpu.r.PC
+	}
+
+	if cpu.r.E {
+		i.state = 1
+	} else {
+		i.state = 0
+	}
+}
+
+type ResetSequence struct {
+	state int
+
+	lowByte  byte
+	highByte byte
+
+	eAddress uint32
+
+	PC uint16
+}
+
+// TODO unsure if this is correct or not but i heard reset takes 6-9 instructions and this with the signal catch is 8
+func (i *ResetSequence) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.state++
+	case 1:
+		i.state++
+	case 2:
+		i.state++
+	case 3:
+		i.state++
+	case 4:
+		i.state++
+	case 5:
+		i.lowByte = cpu.bus.ReadByte(i.eAddress)
+	case 6:
+		i.highByte = cpu.bus.ReadByte(i.eAddress + 1)
+
+		cpu.r.E = true
+
+		cpu.r.PB = 0x00
+		cpu.r.DB = 0x00
+		cpu.r.D = 0x0000
+
+		cpu.r.S = 0x01FF
+
+		// set M X and I to 1
+		cpu.r.P = 0x34
+
+		cpu.r.PC = createWord(i.highByte, i.lowByte)
+		return true
+	}
+	return false
+}
+
+func (i *ResetSequence) Reset(cpu *CPU) {
 	i.state = 0
 }

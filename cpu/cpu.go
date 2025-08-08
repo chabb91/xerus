@@ -4,19 +4,35 @@ import (
 	"SNES_emulator/memory"
 )
 
+const (
+	irqId = iota
+	nmiId
+	abortId
+	resetId
+)
+
 type CPU struct {
 	r *registers
 
 	instructions       map[byte]Instruction
 	currentInstruction Instruction
 
+	hwInterrupts map[int]Instruction
+
 	bus memory.Bus
+
+	//placeholder. TODO make it into a channel or something nice
+	abortSignal bool
+	resetSignal bool
+	NmiSignal   bool
+	IrqSignal   bool
 }
 
 func NewCPU(bus memory.Bus) *CPU {
 	cpu := &CPU{
 		bus:                bus,
 		r:                  &registers{},
+		hwInterrupts:       NewHWInterruptMap(),
 		instructions:       NewInstructionMap(),
 		currentInstruction: nil,
 	}
@@ -66,11 +82,69 @@ func (c *CPU) IRQ() {
 	c.r.setFlag(FlagI, false)
 }
 
+// ABORT and Reset can happen mid instruction but IRQ and NMI cant
+func (c *CPU) ABORT(PC uint16) {
+	if !c.r.E {
+		c.PushByte(c.r.PB)
+	}
+	c.PushWord(PC)
+	c.PushByte(c.r.P)
+
+	c.r.PB = 0x00
+
+	if c.r.E {
+		c.r.PC = createWord(c.bus.ReadByte(0x00FFF9), c.bus.ReadByte(0x00FFF8))
+	} else {
+		c.r.PC = createWord(c.bus.ReadByte(0x00FFE9), c.bus.ReadByte(0x00FFE8))
+	}
+
+	c.r.setFlag(FlagD, true)
+	c.r.setFlag(FlagI, false)
+}
+
+// TODO these signals should all be channels in the future
 func (c *CPU) stepCycle() bool {
+	if c.resetSignal {
+		c.currentInstruction = c.hwInterrupts[resetId]
+		c.currentInstruction.Reset(c)
+		c.resetSignal = false
+
+		return false
+	}
+	if c.abortSignal {
+		abort := c.hwInterrupts[abortId]
+		//reset before assigning it to CPU to not break things.
+		//this is a footgun so it should be addressed but this is the only place where its relevant
+		//so ill just write this comment instead
+		abort.Reset(c)
+		c.currentInstruction = abort
+		c.abortSignal = false
+
+		return false
+	}
+
 	if c.currentInstruction == nil {
+		if c.NmiSignal {
+			c.currentInstruction = c.hwInterrupts[nmiId]
+			c.currentInstruction.Reset(c)
+			c.NmiSignal = false
+			//nmi should be cleared from the source that called it i just dont have one yet
+			//TODO
+			return false
+		}
+		if c.IrqSignal && !c.r.hasFlag(FlagI) {
+			c.currentInstruction = c.hwInterrupts[irqId]
+			c.currentInstruction.Reset(c)
+			c.IrqSignal = false
+			//irq should be cleared from the source that called it i just dont have one yet
+			//TODO
+			return false
+		}
+
+		c.r.instrPC = c.r.PC
 		opcode := c.fetchByte()
 		c.currentInstruction = c.instructions[opcode]
-		c.currentInstruction.Reset()
+		c.currentInstruction.Reset(c)
 	} else if c.currentInstruction.Step(c) {
 		c.currentInstruction = nil
 		return true
@@ -106,12 +180,14 @@ func (c *CPU) fetchByte() byte {
 func (cpu *CPU) PushByte(val byte) {
 	addr := cpu.r.GetStackAddr()
 	cpu.bus.WriteByte(addr, val)
-	cpu.r.S--
+	//cpu.r.S--
+	cpu.r.SetStack(cpu.r.S - 1)
 }
 
 // PopByte pops one byte from the stack and updates SP.
 func (cpu *CPU) PopByte() byte {
-	cpu.r.S++
+	//cpu.r.S++
+	cpu.r.SetStack(cpu.r.S + 1)
 	addr := cpu.r.GetStackAddr()
 	return cpu.bus.ReadByte(addr)
 }

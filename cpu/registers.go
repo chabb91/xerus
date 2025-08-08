@@ -24,6 +24,10 @@ type registers struct {
 
 	//its the emulation flag. bit cringe for it to be grouped with the registers but it makes the code cleaner
 	E bool
+
+	//a backup PC that always points to the currently executing instruction.
+	//needed for the ABORT signal
+	instrPC uint16
 }
 
 func (c *registers) setFlag(flag byte, reset bool) {
