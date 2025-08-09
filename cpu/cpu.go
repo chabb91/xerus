@@ -48,6 +48,7 @@ func NewCPU(bus memory.Bus) *CPU {
 }
 
 func (c *CPU) Reset() {
+	c.executionState = normalState
 	// set emulation flag
 	c.r.E = true
 

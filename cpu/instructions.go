@@ -75,6 +75,12 @@ func NewInstructionMap() map[byte]Instruction {
 
 	ret[0xFB] = &IFB{}
 
+	//STP/WAI
+	ret[0xDB] = &StpWai{executionState: stopState}
+	ret[0xCB] = &StpWai{executionState: waitState}
+
+	ret[0xEB] = &IEB{}
+
 	return ret
 }
 
@@ -882,5 +888,50 @@ func (i *IFB) Step(cpu *CPU) bool {
 }
 
 func (i *IFB) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+type StpWai struct {
+	state int
+
+	executionState int
+}
+
+func (i *StpWai) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.state++
+	case 1:
+		cpu.executionState = i.executionState
+		return true
+	}
+	return false
+}
+
+func (i *StpWai) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+type IEB struct {
+	state int
+
+	lowByte, highByte byte
+}
+
+func (i *IEB) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.highByte, i.lowByte = splitWord(cpu.r.A)
+		i.state++
+	case 1:
+		cpu.r.A = (createWord(i.lowByte, i.highByte))
+		cpu.r.setFlag(FlagN, i.highByte&(1<<7) == 0)
+		cpu.r.setFlag(FlagZ, i.highByte != 0)
+		return true
+	}
+	return false
+}
+
+func (i *IEB) Reset(cpu *CPU) {
 	i.state = 0
 }
