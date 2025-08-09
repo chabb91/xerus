@@ -11,6 +11,12 @@ const (
 	resetId
 )
 
+const (
+	normalState = iota
+	waitState
+	stopState
+)
+
 type CPU struct {
 	r *registers
 
@@ -26,6 +32,8 @@ type CPU struct {
 	resetSignal bool
 	NmiSignal   bool
 	IrqSignal   bool
+
+	executionState int
 }
 
 func NewCPU(bus memory.Bus) *CPU {
@@ -107,9 +115,15 @@ func (c *CPU) stepCycle() bool {
 		c.currentInstruction = c.hwInterrupts[resetId]
 		c.currentInstruction.Reset(c)
 		c.resetSignal = false
+		c.executionState = normalState
 
 		return false
 	}
+
+	if c.executionState == stopState {
+		return false
+	}
+
 	if c.abortSignal {
 		abort := c.hwInterrupts[abortId]
 		//reset before assigning it to CPU to not break things.
@@ -118,6 +132,7 @@ func (c *CPU) stepCycle() bool {
 		abort.Reset(c)
 		c.currentInstruction = abort
 		c.abortSignal = false
+		c.executionState = normalState
 
 		return false
 	}
@@ -127,17 +142,31 @@ func (c *CPU) stepCycle() bool {
 			c.currentInstruction = c.hwInterrupts[nmiId]
 			c.currentInstruction.Reset(c)
 			c.NmiSignal = false
+			c.executionState = normalState
 			//nmi should be cleared from the source that called it i just dont have one yet
 			//TODO
 			return false
 		}
-		if c.IrqSignal && !c.r.hasFlag(FlagI) {
-			c.currentInstruction = c.hwInterrupts[irqId]
-			c.currentInstruction.Reset(c)
-			c.IrqSignal = false
-			//irq should be cleared from the source that called it i just dont have one yet
-			//If /IRQ is kept LOW then same (old) interrupt is executed again as soon as setting I=0. If /NMI is kept LOW then no further NMIs can be executed.
-			//TODO
+		if c.IrqSignal {
+			c.executionState = normalState
+			if !c.r.hasFlag(FlagI) {
+				c.currentInstruction = c.hwInterrupts[irqId]
+				c.currentInstruction.Reset(c)
+				c.IrqSignal = false
+				//irq should be cleared from the source that called it i just dont have one yet
+				//If /IRQ is kept LOW then same (old) interrupt is executed again as soon as setting I=0. If /NMI is kept LOW then no further NMIs can be executed.
+				//TODO
+				return false
+			} else if c.executionState == waitState {
+				//irq should be cleared from the source that called it i just dont have one yet
+				//If /IRQ is kept LOW then same (old) interrupt is executed again as soon as setting I=0. If /NMI is kept LOW then no further NMIs can be executed.
+				//TODO
+				c.IrqSignal = false
+			}
+		}
+
+		//stopped/waiting
+		if c.executionState != normalState {
 			return false
 		}
 
