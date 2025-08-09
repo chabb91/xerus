@@ -111,70 +111,98 @@ func (c *CPU) ABORT(PC uint16) {
 
 // TODO these signals should all be channels in the future
 func (c *CPU) stepCycle() bool {
-	if c.resetSignal {
-		c.currentInstruction = c.hwInterrupts[resetId]
-		c.currentInstruction.Reset(c)
-		c.resetSignal = false
-		c.executionState = normalState
-
+	if c.handleReset() {
 		return false
 	}
-
 	if c.executionState == stopState {
 		return false
 	}
-
-	if c.abortSignal {
-		abort := c.hwInterrupts[abortId]
-		//reset before assigning it to CPU to not break things.
-		//this is a footgun so it should be addressed but this is the only place where its relevant
-		//so ill just write this comment instead
-		abort.Reset(c)
-		c.currentInstruction = abort
-		c.abortSignal = false
-		c.executionState = normalState
-
+	if c.handleAbort() {
 		return false
 	}
+	if c.handleNMI() {
+		return false
+	}
+	if c.handleIRQ() {
+		return false
+	}
+	if c.executionState != normalState {
+		return false // stopped or waiting
+	}
+	return c.executeNextInstruction()
+}
+func (c *CPU) handleReset() bool {
+	if !c.resetSignal {
+		return false
+	}
+	c.currentInstruction = c.hwInterrupts[resetId]
+	c.currentInstruction.Reset(c)
+	c.resetSignal = false
+	c.executionState = normalState
+	return true
+}
 
+func (c *CPU) handleAbort() bool {
+	if !c.abortSignal {
+		return false
+	}
+	abort := c.hwInterrupts[abortId]
+	//reset before assigning it to CPU to not break things.
+	//this is a footgun so it should be addressed but this is the only place where its relevant
+	//so ill just write this comment instead
+	abort.Reset(c)
+	c.currentInstruction = abort
+	c.abortSignal = false
+	c.executionState = normalState
+	return true
+}
+
+func (c *CPU) handleNMI() bool {
+	if !c.NmiSignal || c.currentInstruction != nil {
+		return false
+	}
+	c.currentInstruction = c.hwInterrupts[nmiId]
+	c.currentInstruction.Reset(c)
+	c.NmiSignal = false
+	c.executionState = normalState
+	//nmi should be cleared from the source that called it i just dont have one yet
+	//TODO
+	return true
+}
+
+func (c *CPU) handleIRQ() bool {
+	if !c.IrqSignal || c.currentInstruction != nil {
+		return false
+	}
+	if !c.r.hasFlag(FlagI) {
+		c.currentInstruction = c.hwInterrupts[irqId]
+		c.currentInstruction.Reset(c)
+		c.IrqSignal = false
+		//irq should be cleared from the source that called it i just dont have one yet
+		//If /IRQ is kept LOW then same (old) interrupt is executed again as soon as setting I=0. If /NMI is kept LOW then no further NMIs can be executed.
+		//TODO
+		c.executionState = normalState
+		return true
+	}
+	if c.executionState == waitState {
+		c.IrqSignal = false
+		//irq should be cleared from the source that called it i just dont have one yet
+		//If /IRQ is kept LOW then same (old) interrupt is executed again as soon as setting I=0. If /NMI is kept LOW then no further NMIs can be executed.
+		//TODO
+		c.executionState = normalState
+	}
+	return false
+}
+
+func (c *CPU) executeNextInstruction() bool {
 	if c.currentInstruction == nil {
-		if c.NmiSignal {
-			c.currentInstruction = c.hwInterrupts[nmiId]
-			c.currentInstruction.Reset(c)
-			c.NmiSignal = false
-			c.executionState = normalState
-			//nmi should be cleared from the source that called it i just dont have one yet
-			//TODO
-			return false
-		}
-		if c.IrqSignal {
-			c.executionState = normalState
-			if !c.r.hasFlag(FlagI) {
-				c.currentInstruction = c.hwInterrupts[irqId]
-				c.currentInstruction.Reset(c)
-				c.IrqSignal = false
-				//irq should be cleared from the source that called it i just dont have one yet
-				//If /IRQ is kept LOW then same (old) interrupt is executed again as soon as setting I=0. If /NMI is kept LOW then no further NMIs can be executed.
-				//TODO
-				return false
-			} else if c.executionState == waitState {
-				//irq should be cleared from the source that called it i just dont have one yet
-				//If /IRQ is kept LOW then same (old) interrupt is executed again as soon as setting I=0. If /NMI is kept LOW then no further NMIs can be executed.
-				//TODO
-				c.IrqSignal = false
-			}
-		}
-
-		//stopped/waiting
-		if c.executionState != normalState {
-			return false
-		}
-
 		c.r.instrPC = c.r.PC
 		opcode := c.fetchByte()
 		c.currentInstruction = c.instructions[opcode]
 		c.currentInstruction.Reset(c)
-	} else if c.currentInstruction.Step(c) {
+		return false
+	}
+	if c.currentInstruction.Step(c) {
 		c.currentInstruction = nil
 		return true
 	}
