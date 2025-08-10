@@ -81,6 +81,10 @@ func NewInstructionMap() map[byte]Instruction {
 
 	ret[0xEB] = &IEB{}
 
+	//the NOP instructions
+	ret[0xEA] = &IEA{}
+	ret[0x42] = &I42{}
+
 	return ret
 }
 
@@ -933,5 +937,41 @@ func (i *IEB) Step(cpu *CPU) bool {
 }
 
 func (i *IEB) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+type IEA struct {
+	state int
+}
+
+// the NOP instruction
+func (i *IEA) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		return true
+	}
+	return false
+}
+
+func (i *IEA) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+// the WDM or otherwise known as the 2 byte NOP
+type I42 struct {
+	state int
+}
+
+// the NOP instruction
+func (i *I42) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		cpu.fetchByte()
+		return true
+	}
+	return false
+}
+
+func (i *I42) Reset(cpu *CPU) {
 	i.state = 0
 }
