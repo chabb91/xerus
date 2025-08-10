@@ -940,11 +940,11 @@ func (i *IEB) Reset(cpu *CPU) {
 	i.state = 0
 }
 
+// the NOP instruction
 type IEA struct {
 	state int
 }
 
-// the NOP instruction
 func (i *IEA) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
@@ -962,7 +962,6 @@ type I42 struct {
 	state int
 }
 
-// the NOP instruction
 func (i *I42) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
