@@ -85,6 +85,11 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0xEA] = &IEA{}
 	ret[0x42] = &I42{}
 
+	ret[0x0A] = &ShiftAccumulator{shiftFunc: asl}
+	ret[0x4A] = &ShiftAccumulator{shiftFunc: lsr}
+	ret[0x6A] = &ShiftAccumulator{shiftFunc: ror}
+	ret[0x2A] = &ShiftAccumulator{shiftFunc: rol}
+
 	return ret
 }
 

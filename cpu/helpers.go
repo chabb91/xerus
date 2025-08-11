@@ -3,15 +3,15 @@ package cpu
 // SetLowByte takes a 16-bit value and an 8-bit value,
 // and returns a new 16-bit value with the low byte updated.
 // The high byte of the original value is preserved.
-func SetLowByte(original uint16, newLowByte byte) uint16 {
-	return (original & 0xFF00) | uint16(newLowByte)
+func SetLowByte(original *uint16, newLowByte byte) {
+	*original = *original&0xFF00 | uint16(newLowByte)
 }
 
 // SetHighByte takes a 16-bit value and an 8-bit value,
 // and returns a new 16-bit value with the high byte updated.
 // The low byte of the original value is preserved.
-func SetHighByte(original uint16, newHighByte byte) uint16 {
-	return (original & 0x00FF) | (uint16(newHighByte) << 8)
+func SetHighByte(original *uint16, newHighByte byte) {
+	*original = *original&0x00FF | (uint16(newHighByte) << 8)
 }
 
 // high byte=AB of ABCD
