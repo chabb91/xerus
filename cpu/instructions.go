@@ -90,6 +90,16 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x6A] = &ShiftAccumulator{shiftFunc: ror}
 	ret[0x2A] = &ShiftAccumulator{shiftFunc: rol}
 
+	ret[0x46] = &ShiftZeroPage{shiftFunc: lsr, dirX: false}
+	ret[0x06] = &ShiftZeroPage{shiftFunc: asl, dirX: false}
+	ret[0x26] = &ShiftZeroPage{shiftFunc: rol, dirX: false}
+	ret[0x66] = &ShiftZeroPage{shiftFunc: ror, dirX: false}
+
+	ret[0x56] = &ShiftZeroPage{shiftFunc: lsr, dirX: true}
+	ret[0x36] = &ShiftZeroPage{shiftFunc: rol, dirX: true}
+	ret[0x16] = &ShiftZeroPage{shiftFunc: asl, dirX: true}
+	ret[0x76] = &ShiftZeroPage{shiftFunc: ror, dirX: true}
+
 	return ret
 }
 

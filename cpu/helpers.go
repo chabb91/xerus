@@ -53,6 +53,16 @@ func splitWord(word uint16) (high, low byte) {
 	return high, low
 }
 
+func addByteToWordWithWrap(word uint16, b byte) uint16 {
+	b += getLowByte(word)
+	SetLowByte(&word, b)
+	return word
+}
+
+func addWordToWordWithWrap(target uint16, source uint16) uint16 {
+	return maskHighByte(target+source) + maskLowByte(target)
+}
+
 func boolToFlag(b bool) byte {
 	if b {
 		return 1

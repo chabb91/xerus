@@ -12,7 +12,7 @@ var cause string
 var cycleCause string
 
 func Test4C(t *testing.T) {
-	tests, err := debugger.LoadTests("../testdata/0a.n.json")
+	tests, err := debugger.LoadTests("../testdata/66.e.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func compareCycle(c *CPU, ref []any) bool {
 		val = byte(floatVal)
 
 		if c.bus.ReadByte(uint32(addr)) != val {
-			cycleCause = "bad memory"
+			cycleCause = fmt.Sprintf("bad memory: address: %v, got: %v, expected %v", uint32(addr), c.bus.ReadByte(uint32(addr)), val)
 			return false
 		}
 	}
