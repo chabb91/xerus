@@ -89,7 +89,7 @@ func (i *ShiftAccumulator) Reset(cpu *CPU) {
 type ShiftZeroPage struct {
 	state int
 
-	lowByte, higByte byte
+	lowByte, highByte byte
 
 	shiftFunc ShiftFunc
 	dirX      bool
@@ -147,7 +147,7 @@ func (i *ShiftZeroPage) Step(cpu *CPU) bool {
 		i.state++
 	case 4:
 		if !cpu.r.hasFlag(FlagM) {
-			i.higByte = cpu.bus.ReadByte(i.address + 1)
+			i.highByte = cpu.bus.ReadByte(i.address + 1)
 		}
 		i.state++
 	case 5:
@@ -155,7 +155,7 @@ func (i *ShiftZeroPage) Step(cpu *CPU) bool {
 			i.result, i.c, i.z, i.n = i.shiftFunc(uint16(i.lowByte), 8, cpu.r.hasFlag(FlagC))
 			i.state++
 		} else {
-			i.result, i.c, i.z, i.n = i.shiftFunc(createWord(i.higByte, i.lowByte), 16, cpu.r.hasFlag(FlagC))
+			i.result, i.c, i.z, i.n = i.shiftFunc(createWord(i.highByte, i.lowByte), 16, cpu.r.hasFlag(FlagC))
 		}
 		i.state++
 	case 6:
@@ -177,67 +177,69 @@ func (i *ShiftZeroPage) Reset(cpu *CPU) {
 	i.state = 0
 }
 
-type ShiftZeroPageX struct {
-	state int
-
-	shiftFunc ShiftFunc
-}
-
-func (i *ShiftZeroPageX) Step(cpu *CPU) bool {
-	switch i.state {
-	case 0:
-		//TODO check this in Reset(), dont think its possible for the value of the M flag to change between these 2 cycles
-		//but cant test it now so ill just keep it like this
-		width := 16
-		if cpu.r.hasFlag(FlagM) {
-			width = 8
-		}
-		result, c, z, n := i.shiftFunc(cpu.r.A, width, cpu.r.hasFlag(FlagC))
-
-		if cpu.r.hasFlag(FlagM) {
-			SetLowByte(&cpu.r.A, byte(result))
-		} else {
-			cpu.r.A = result
-		}
-
-		cpu.r.setFlag(FlagC, c)
-		cpu.r.setFlag(FlagN, n)
-		cpu.r.setFlag(FlagZ, z)
-		return true
-	}
-	return false
-}
-
-func (i *ShiftZeroPageX) Reset(cpu *CPU) {
-	i.state = 0
-}
-
 type ShiftAbsolute struct {
 	state int
 
 	shiftFunc ShiftFunc
+
+	lowByte, highByte byte
+
+	dirX bool
+	addr uint16
+
+	c, z, n bool
+	result  uint16
+	address uint32
 }
 
 func (i *ShiftAbsolute) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		//TODO check this in Reset(), dont think its possible for the value of the M flag to change between these 2 cycles
-		//but cant test it now so ill just keep it like this
-		width := 16
-		if cpu.r.hasFlag(FlagM) {
-			width = 8
-		}
-		result, c, z, n := i.shiftFunc(cpu.r.A, width, cpu.r.hasFlag(FlagC))
-
-		if cpu.r.hasFlag(FlagM) {
-			SetLowByte(&cpu.r.A, byte(result))
+		i.lowByte = cpu.fetchByte()
+		i.state++
+	case 1:
+		i.highByte = cpu.fetchByte()
+		i.addr = createWord(i.highByte, i.lowByte)
+		i.address = cpu.mapDataAddress(i.addr)
+		if i.dirX {
+			i.state = 2 // go to indexed adjustment
 		} else {
-			cpu.r.A = result
+			i.state = 3 // skip directly to address calculation
 		}
-
-		cpu.r.setFlag(FlagC, c)
-		cpu.r.setFlag(FlagN, n)
-		cpu.r.setFlag(FlagZ, z)
+	case 2:
+		i.address = (i.address + uint32(cpu.r.GetX())) & (1<<24 - 1)
+		i.state++
+	case 3:
+		//i.address = uint32(cpu.r.DB)<<16 + uint32(i.addr) + uint32(cpu.r.X)
+		//i.address = (cpu.mapDataAddress(i.addr) + uint32(cpu.r.GetX())) & (1<<24 - 1)
+		i.lowByte = cpu.bus.ReadByte(i.address)
+		if cpu.r.hasFlag(FlagM) {
+			i.state++
+		}
+		i.state++
+	case 4:
+		if !cpu.r.hasFlag(FlagM) {
+			i.highByte = cpu.bus.ReadByte(i.address + 1)
+		}
+		i.state++
+	case 5:
+		if cpu.r.hasFlag(FlagM) {
+			i.result, i.c, i.z, i.n = i.shiftFunc(uint16(i.lowByte), 8, cpu.r.hasFlag(FlagC))
+			i.state++
+		} else {
+			i.result, i.c, i.z, i.n = i.shiftFunc(createWord(i.highByte, i.lowByte), 16, cpu.r.hasFlag(FlagC))
+		}
+		i.state++
+	case 6:
+		if !cpu.r.hasFlag(FlagM) {
+			cpu.bus.WriteByte(i.address+1, getHighByte(i.result))
+		}
+		i.state++
+	case 7:
+		cpu.bus.WriteByte(i.address, getLowByte(i.result))
+		cpu.r.setFlag(FlagC, i.c)
+		cpu.r.setFlag(FlagN, i.n)
+		cpu.r.setFlag(FlagZ, i.z)
 		return true
 	}
 	return false
@@ -245,39 +247,5 @@ func (i *ShiftAbsolute) Step(cpu *CPU) bool {
 
 func (i *ShiftAbsolute) Reset(cpu *CPU) {
 	i.state = 0
-}
-
-type ShiftAbsoluteX struct {
-	state int
-
-	shiftFunc ShiftFunc
-}
-
-func (i *ShiftAbsoluteX) Step(cpu *CPU) bool {
-	switch i.state {
-	case 0:
-		//TODO check this in Reset(), dont think its possible for the value of the M flag to change between these 2 cycles
-		//but cant test it now so ill just keep it like this
-		width := 16
-		if cpu.r.hasFlag(FlagM) {
-			width = 8
-		}
-		result, c, z, n := i.shiftFunc(cpu.r.A, width, cpu.r.hasFlag(FlagC))
-
-		if cpu.r.hasFlag(FlagM) {
-			SetLowByte(&cpu.r.A, byte(result))
-		} else {
-			cpu.r.A = result
-		}
-
-		cpu.r.setFlag(FlagC, c)
-		cpu.r.setFlag(FlagN, n)
-		cpu.r.setFlag(FlagZ, z)
-		return true
-	}
-	return false
-}
-
-func (i *ShiftAbsoluteX) Reset(cpu *CPU) {
-	i.state = 0
+	i.addr = 0
 }
