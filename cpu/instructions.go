@@ -244,10 +244,10 @@ func (i *I7C) Step(cpu *CPU) bool {
 		i.pointerAddress += cpu.r.GetX()
 		i.state++
 	case 3:
-		i.lowByte = cpu.bus.ReadByte(cpu.mapAddressToBank(cpu.r.PB, i.pointerAddress))
+		i.lowByte = cpu.bus.ReadByte(mapOffsetToBank(cpu.r.PB, i.pointerAddress))
 		i.state++
 	case 4:
-		i.highByte = cpu.bus.ReadByte(cpu.mapAddressToBank(cpu.r.PB, i.pointerAddress+1))
+		i.highByte = cpu.bus.ReadByte(mapOffsetToBank(cpu.r.PB, i.pointerAddress+1))
 		cpu.r.PC = createWord(i.highByte, i.lowByte)
 		return true
 	}
@@ -416,10 +416,10 @@ func (i *IFC) Step(cpu *CPU) bool {
 		i.pointerAddress += cpu.r.GetX()
 		i.state++
 	case 5:
-		i.lowByte = cpu.bus.ReadByte(cpu.mapAddressToBank(cpu.r.PB, i.pointerAddress))
+		i.lowByte = cpu.bus.ReadByte(mapOffsetToBank(cpu.r.PB, i.pointerAddress))
 		i.state++
 	case 6:
-		i.highByte = cpu.bus.ReadByte(cpu.mapAddressToBank(cpu.r.PB, i.pointerAddress+1))
+		i.highByte = cpu.bus.ReadByte(mapOffsetToBank(cpu.r.PB, i.pointerAddress+1))
 		cpu.r.PC = createWord(i.highByte, i.lowByte)
 		return true
 	}
@@ -539,7 +539,6 @@ func (i *I60) Reset(cpu *CPU) {
 type I82 struct {
 	state int
 
-	offset  int16
 	offsetL byte
 	offsetH byte
 }
@@ -553,8 +552,7 @@ func (i *I82) Step(cpu *CPU) bool {
 		i.offsetH = cpu.fetchByte()
 		i.state++
 	case 2:
-		i.offset = int16(createWord(i.offsetH, i.offsetL))
-		cpu.r.PC += uint16(i.offset)
+		rel16(cpu, i.offsetH, i.offsetL)
 		return true
 	}
 	return false
@@ -570,7 +568,7 @@ type OneBitBranch struct {
 	state int
 
 	pcTmp  uint16
-	offset int8
+	offset uint8
 
 	shouldBranch func(cpu *CPU) bool
 }
@@ -578,14 +576,14 @@ type OneBitBranch struct {
 func (i *OneBitBranch) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		i.offset = int8(cpu.fetchByte())
+		i.offset = cpu.fetchByte()
 		if !i.shouldBranch(cpu) {
 			return true
 		}
 		i.state++
 	case 1:
 		i.pcTmp = cpu.r.PC
-		cpu.r.PC += uint16(i.offset)
+		rel8(cpu, i.offset)
 		if cpu.r.E && isPageBoundaryCrossed(i.pcTmp, cpu.r.PC) {
 			i.state++
 		} else {

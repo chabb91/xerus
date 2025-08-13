@@ -44,6 +44,12 @@ func createWord(high, low byte) uint16 {
 	return (uint16(high) << 8) | uint16(low)
 }
 
+// Merges three bytes into a single uint32 representing a full 24 bit address.
+// bank:hi:lo is returned
+func createAddress(low, high, bank byte) uint32 {
+	return uint32(low) | uint32(high)<<8 | uint32(bank)<<16
+}
+
 // splits a word into two bytes
 // hi,lo is returned
 func splitWord(word uint16) (high, low byte) {

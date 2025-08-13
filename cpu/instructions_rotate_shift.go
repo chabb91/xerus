@@ -135,9 +135,9 @@ func (i *ShiftZeroPage) Step(cpu *CPU) bool {
 		//jesus christ whats wrong with the test wrapping. this is some horrible edge case
 		//TODO double todo giga investigate later
 		if getLowByte(cpu.r.D) == 0 && i.dirX && cpu.r.E {
-			i.address = cpu.mapAddressToBank(0x00, addWordToWordWithWrap(cpu.r.D, i.addr))
+			i.address = mapOffsetToBank(0x00, addWordToWordWithWrap(cpu.r.D, i.addr))
 		} else {
-			i.address = cpu.mapAddressToBank(0x00, cpu.r.D+i.addr)
+			i.address = mapOffsetToBank(0x00, cpu.r.D+i.addr)
 		}
 
 		i.lowByte = cpu.bus.ReadByte(i.address)
