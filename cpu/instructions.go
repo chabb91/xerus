@@ -85,30 +85,31 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0xEA] = &IEA{}
 	ret[0x42] = &I42{}
 
-	ret[0x0A] = &ShiftAccumulator{shiftFunc: asl}
-	ret[0x4A] = &ShiftAccumulator{shiftFunc: lsr}
-	ret[0x6A] = &ShiftAccumulator{shiftFunc: ror}
-	ret[0x2A] = &ShiftAccumulator{shiftFunc: rol}
+	//the shift and rotate instructions
+	ret[0x0A] = &Accumulator{instructionFunc: asl2}
+	ret[0x4A] = &Accumulator{instructionFunc: lsr2}
+	ret[0x6A] = &Accumulator{instructionFunc: ror2}
+	ret[0x2A] = &Accumulator{instructionFunc: rol2}
 
-	ret[0x46] = &ShiftDirectPage{shiftFunc: lsr, dirX: false}
-	ret[0x06] = &ShiftDirectPage{shiftFunc: asl, dirX: false}
-	ret[0x26] = &ShiftDirectPage{shiftFunc: rol, dirX: false}
-	ret[0x66] = &ShiftDirectPage{shiftFunc: ror, dirX: false}
+	ret[0x46] = &DirDirXRW{instructionFunc: lsr2, dirX: false}
+	ret[0x06] = &DirDirXRW{instructionFunc: asl2, dirX: false}
+	ret[0x26] = &DirDirXRW{instructionFunc: rol2, dirX: false}
+	ret[0x66] = &DirDirXRW{instructionFunc: ror2, dirX: false}
 
-	ret[0x56] = &ShiftDirectPage{shiftFunc: lsr, dirX: true}
-	ret[0x36] = &ShiftDirectPage{shiftFunc: rol, dirX: true}
-	ret[0x16] = &ShiftDirectPage{shiftFunc: asl, dirX: true}
-	ret[0x76] = &ShiftDirectPage{shiftFunc: ror, dirX: true}
+	ret[0x56] = &DirDirXRW{instructionFunc: lsr2, dirX: true}
+	ret[0x36] = &DirDirXRW{instructionFunc: rol2, dirX: true}
+	ret[0x16] = &DirDirXRW{instructionFunc: asl2, dirX: true}
+	ret[0x76] = &DirDirXRW{instructionFunc: ror2, dirX: true}
 
-	ret[0x6E] = &ShiftAbsolute{shiftFunc: ror, dirX: false}
-	ret[0x2E] = &ShiftAbsolute{shiftFunc: rol, dirX: false}
-	ret[0x0E] = &ShiftAbsolute{shiftFunc: asl, dirX: false}
-	ret[0x4E] = &ShiftAbsolute{shiftFunc: lsr, dirX: false}
+	ret[0x6E] = &AbsAbsXRW{instructionFunc: ror2, absX: false}
+	ret[0x2E] = &AbsAbsXRW{instructionFunc: rol2, absX: false}
+	ret[0x0E] = &AbsAbsXRW{instructionFunc: asl2, absX: false}
+	ret[0x4E] = &AbsAbsXRW{instructionFunc: lsr2, absX: false}
 
-	ret[0x1E] = &ShiftAbsolute{shiftFunc: asl, dirX: true}
-	ret[0x5E] = &ShiftAbsolute{shiftFunc: lsr, dirX: true}
-	ret[0x3E] = &ShiftAbsolute{shiftFunc: rol, dirX: true}
-	ret[0x7E] = &ShiftAbsolute{shiftFunc: ror, dirX: true}
+	ret[0x1E] = &AbsAbsXRW{instructionFunc: asl2, absX: true}
+	ret[0x5E] = &AbsAbsXRW{instructionFunc: lsr2, absX: true}
+	ret[0x3E] = &AbsAbsXRW{instructionFunc: rol2, absX: true}
+	ret[0x7E] = &AbsAbsXRW{instructionFunc: ror2, absX: true}
 
 	return ret
 }

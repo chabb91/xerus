@@ -47,17 +47,15 @@ func directPageY(cpu *CPU, op byte, register uint16) (addressLo, addressHi uint3
 	return directPageLogic(cpu, op, register, false)
 }
 
-// Absolute: [DBR: op1|op2]
-func abs(cpu *CPU, lo, hi byte) uint32 {
-	return mapOffsetToBank(cpu.r.DB, createWord(lo, hi))
+func absoluteXY(bank, high, low byte, register uint16) (addressLo, addressHi uint32) {
+	addressLo = mask24(mapOffsetToBank(bank, createWord(high, low)) + uint32(register))
+	addressHi = mask24(addressLo + 1)
+	return addressLo, addressHi
 }
 
-// Absolute,X / Absolute,Y: 16-bit wrap, bank=DBR
-func absx(cpu *CPU, lo, hi byte, X uint16) uint32 {
-	return mapOffsetToBank(cpu.r.DB, createWord(lo, hi)+X)
-}
-func absy(cpu *CPU, lo, hi byte, Y uint16) uint32 {
-	return mapOffsetToBank(cpu.r.DB, createWord(lo, hi)+Y)
+// Absolute: [DBR: op1|op2]
+func absolute(bank, high, low byte) (uint32, uint32) {
+	return absoluteXY(bank, high, low, 0)
 }
 
 // Absolute long: [ba:hi:lo]
