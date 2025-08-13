@@ -9,7 +9,7 @@ func mapOffsetToBank(bank byte, addr uint16) uint32 {
 }
 
 // Relative 8-bit: target PC = (PC + int8(op1))
-// rel8 is tied to is PB and can never cross it.
+// rel8 is tied to is PB and can never cross it. however it can cross pages
 func rel8(cpu *CPU, disp byte) {
 	cpu.r.PC += uint16(int8(disp))
 }
@@ -20,21 +20,31 @@ func rel16(cpu *CPU, high, low byte) {
 	cpu.r.PC += uint16(int16(createWord(high, low)))
 }
 
-// [D + op1] (16-bit offset = D + op1, bank=0x00), DP wrap only applies to pointer modes.
-// For *direct data* (not indirect), you form a 16-bit offset: (D + op1) & 0xFFFF. Bank=0.
-func dp(cpu *CPU, op1 byte) uint32 {
-	off := uint16(cpu.r.D) + uint16(op1)
-	return mapOffsetToBank(0x00, off)
+// Most likely the proper addressing logic for the Direct Page mode.
+// One main functions and 3 wrappers for convenience
+func directPageLogic(cpu *CPU, op byte, register uint16, isPEI bool) (addressLo, addressHi uint32) {
+	var offset uint16
+	if cpu.isW() && cpu.r.E && !isPEI {
+		offset = createWord(getHighByte(cpu.r.D), getLowByte(uint16(op)+register))
+	} else {
+		offset = cpu.r.D + uint16(op) + register
+	}
+	addressLo = mapOffsetToBank(0x00, offset)
+	addressHi = mapOffsetToBank(0x00, offset+1)
+
+	return addressLo, addressHi
 }
 
-// DP,X and DP,Y (index width per X flag, but end result is 16-bit wrap; bank=0)
-func dpx(cpu *CPU, op1 byte, X uint16) uint32 {
-	off := uint16(cpu.r.D) + uint16(op1) + X
-	return mapOffsetToBank(0x00, off)
+func directPage(cpu *CPU, op byte, isPEI bool) (addressLo, addressHi uint32) {
+	return directPageLogic(cpu, op, 0, isPEI)
 }
-func dpy(cpu *CPU, op1 byte, Y uint16) uint32 {
-	off := uint16(cpu.r.D) + uint16(op1) + Y
-	return mapOffsetToBank(0x00, off)
+
+func directPageX(cpu *CPU, op byte, register uint16) (addressLo, addressHi uint32) {
+	return directPageLogic(cpu, op, register, false)
+}
+
+func directPageY(cpu *CPU, op byte, register uint16) (addressLo, addressHi uint32) {
+	return directPageLogic(cpu, op, register, false)
 }
 
 // Absolute: [DBR: op1|op2]

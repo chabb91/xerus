@@ -86,28 +86,25 @@ func (i *ShiftAccumulator) Reset(cpu *CPU) {
 	i.state = 0
 }
 
-type ShiftZeroPage struct {
+type ShiftDirectPage struct {
 	state int
 
 	lowByte, highByte byte
 
 	shiftFunc ShiftFunc
 	dirX      bool
-	addr      uint16
+	registerX uint16
 
-	c, z, n bool
-	result  uint16
-	address uint32
+	c, z, n              bool
+	result               uint16
+	addressLo, addressHi uint32
 }
 
-// TODO the high byte SHOULD always be the same in address. the low byte should wrap without carry
-// but that fails the only test suite i have. so i cant let it wrap.
-// i get the feeling this will fail later
-func (i *ShiftZeroPage) Step(cpu *CPU) bool {
+func (i *ShiftDirectPage) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.lowByte = cpu.fetchByte()
-		if getLowByte(cpu.r.D) == 0 {
+		if cpu.isW() {
 			i.state++
 			if !i.dirX {
 				i.state++
@@ -121,59 +118,50 @@ func (i *ShiftZeroPage) Step(cpu *CPU) bool {
 		}
 	case 2:
 		if i.dirX {
-			i.addr = cpu.r.GetX()
+			i.registerX = cpu.r.GetX()
 		}
 		i.state++
 	case 3:
 		if i.dirX {
-			i.addr += uint16(i.lowByte)
+			i.addressLo, i.addressHi = directPageX(cpu, i.lowByte, i.registerX)
 		} else {
-			i.addr = uint16(i.lowByte)
+			i.addressLo, i.addressHi = directPage(cpu, i.lowByte, false)
 		}
-		//TODO wrap here
-		//something like add lowbyte of D to lowbyte of addr
-		//jesus christ whats wrong with the test wrapping. this is some horrible edge case
-		//TODO double todo giga investigate later
-		if getLowByte(cpu.r.D) == 0 && i.dirX && cpu.r.E {
-			i.address = mapOffsetToBank(0x00, addWordToWordWithWrap(cpu.r.D, i.addr))
-		} else {
-			i.address = mapOffsetToBank(0x00, cpu.r.D+i.addr)
-		}
-
-		i.lowByte = cpu.bus.ReadByte(i.address)
+		i.lowByte = cpu.bus.ReadByte(i.addressLo)
 		if cpu.r.hasFlag(FlagM) {
-			i.state++
+			i.state = 5
+		} else {
+			i.state = 4
 		}
-		i.state++
 	case 4:
 		if !cpu.r.hasFlag(FlagM) {
-			i.highByte = cpu.bus.ReadByte(i.address + 1)
+			i.highByte = cpu.bus.ReadByte(i.addressHi)
 		}
 		i.state++
 	case 5:
 		if cpu.r.hasFlag(FlagM) {
 			i.result, i.c, i.z, i.n = i.shiftFunc(uint16(i.lowByte), 8, cpu.r.hasFlag(FlagC))
-			i.state++
+			i.state = 7
 		} else {
 			i.result, i.c, i.z, i.n = i.shiftFunc(createWord(i.highByte, i.lowByte), 16, cpu.r.hasFlag(FlagC))
+			i.state = 6
 		}
-		i.state++
-	case 6:
-		if !cpu.r.hasFlag(FlagM) {
-			cpu.bus.WriteByte(i.address+1, getHighByte(i.result))
-		}
-		i.state++
-	case 7:
-		cpu.bus.WriteByte(i.address, getLowByte(i.result))
 		cpu.r.setFlag(FlagC, i.c)
 		cpu.r.setFlag(FlagN, i.n)
 		cpu.r.setFlag(FlagZ, i.z)
+	case 6:
+		if !cpu.r.hasFlag(FlagM) {
+			cpu.bus.WriteByte(i.addressHi, getHighByte(i.result))
+		}
+		i.state++
+	case 7:
+		cpu.bus.WriteByte(i.addressLo, getLowByte(i.result))
 		return true
 	}
 	return false
 }
 
-func (i *ShiftZeroPage) Reset(cpu *CPU) {
+func (i *ShiftDirectPage) Reset(cpu *CPU) {
 	i.state = 0
 }
 

@@ -65,8 +65,10 @@ func addByteToWordWithWrap(word uint16, b byte) uint16 {
 	return word
 }
 
-func addWordToWordWithWrap(target uint16, source uint16) uint16 {
-	return maskHighByte(target+source) + maskLowByte(target)
+// check if the low byte of the D register is 0
+// needed for cycle calculations and for a legacy edge case in direct page addressing
+func (cpu *CPU) isW() bool {
+	return getLowByte(cpu.r.D) == 0
 }
 
 func boolToFlag(b bool) byte {
