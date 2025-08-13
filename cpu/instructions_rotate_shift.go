@@ -185,7 +185,6 @@ type ShiftAbsolute struct {
 	lowByte, highByte byte
 
 	dirX bool
-	addr uint16
 
 	c, z, n bool
 	result  uint16
@@ -199,19 +198,17 @@ func (i *ShiftAbsolute) Step(cpu *CPU) bool {
 		i.state++
 	case 1:
 		i.highByte = cpu.fetchByte()
-		i.addr = createWord(i.highByte, i.lowByte)
-		i.address = cpu.mapDataAddress(i.addr)
+		i.address = cpu.mapDataAddress(createWord(i.highByte, i.lowByte))
 		if i.dirX {
-			i.state = 2 // go to indexed adjustment
+			i.state = 2
 		} else {
-			i.state = 3 // skip directly to address calculation
+			i.state = 3
 		}
 	case 2:
+		//TODO create a helper function this is the ABSOLUTE+1 logic
 		i.address = (i.address + uint32(cpu.r.GetX())) & (1<<24 - 1)
 		i.state++
 	case 3:
-		//i.address = uint32(cpu.r.DB)<<16 + uint32(i.addr) + uint32(cpu.r.X)
-		//i.address = (cpu.mapDataAddress(i.addr) + uint32(cpu.r.GetX())) & (1<<24 - 1)
 		i.lowByte = cpu.bus.ReadByte(i.address)
 		if cpu.r.hasFlag(FlagM) {
 			i.state++
@@ -247,5 +244,4 @@ func (i *ShiftAbsolute) Step(cpu *CPU) bool {
 
 func (i *ShiftAbsolute) Reset(cpu *CPU) {
 	i.state = 0
-	i.addr = 0
 }

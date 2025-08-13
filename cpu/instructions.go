@@ -100,8 +100,13 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x16] = &ShiftZeroPage{shiftFunc: asl, dirX: true}
 	ret[0x76] = &ShiftZeroPage{shiftFunc: ror, dirX: true}
 
+	ret[0x6E] = &ShiftAbsolute{shiftFunc: ror, dirX: false}
 	ret[0x2E] = &ShiftAbsolute{shiftFunc: rol, dirX: false}
+	ret[0x0E] = &ShiftAbsolute{shiftFunc: asl, dirX: false}
+	ret[0x4E] = &ShiftAbsolute{shiftFunc: lsr, dirX: false}
 
+	ret[0x1E] = &ShiftAbsolute{shiftFunc: asl, dirX: true}
+	ret[0x5E] = &ShiftAbsolute{shiftFunc: lsr, dirX: true}
 	ret[0x3E] = &ShiftAbsolute{shiftFunc: rol, dirX: true}
 	ret[0x7E] = &ShiftAbsolute{shiftFunc: ror, dirX: true}
 
