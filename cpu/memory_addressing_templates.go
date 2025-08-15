@@ -118,7 +118,7 @@ func (i *DirDirXRW) Step(cpu *CPU) bool {
 		i.state++
 	case 3:
 		if i.dirX {
-			i.addressLo, i.addressHi = directPageX(cpu, i.lowByte, i.register)
+			i.addressLo, i.addressHi = directPageXY(cpu, i.lowByte, i.register)
 		} else {
 			i.addressLo, i.addressHi = directPage(cpu, i.lowByte, false)
 		}

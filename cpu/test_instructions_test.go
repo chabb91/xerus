@@ -12,7 +12,7 @@ var cause string
 var cycleCause string
 
 func Test4C(t *testing.T) {
-	tests, err := debugger.LoadTests("../testdata/04.n.json")
+	tests, err := debugger.LoadTests("../testdata/97.e.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,6 +53,7 @@ func Test4C(t *testing.T) {
 
 		if !compareState(cpu, tc.Final) {
 			t.Errorf("FAIL: %v, %s", tc.Name, cause)
+			t.Errorf("%v, %v, %v", cpu.instructions[0x97].(*Umbrella).addressLo, cpu.instructions[0x97].(*Umbrella).addressHi, cpu.instructions[0x97].(*Umbrella).addressBank)
 			if cause == "Memory Address" {
 				t.Errorf("Expected: %v", tc.Final.RAM)
 				for _, v := range tc.Final.RAM {

@@ -99,7 +99,8 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x56] = &DirDirXRW{instructionFunc: lsr, dirX: true}
 	ret[0x36] = &DirDirXRW{instructionFunc: rol, dirX: true}
 	ret[0x16] = &DirDirXRW{instructionFunc: asl, dirX: true}
-	ret[0x76] = &DirDirXRW{instructionFunc: ror, dirX: true}
+	//ret[0x76] = &DirDirXRW{instructionFunc: ror, dirX: true}
+	ret[0x76] = &Umbrella{instructionFunc: ror, write: true, checkM: true, addressMode: &DirXY{mode: BASE_MODE_X}}
 
 	ret[0x6E] = &AbsAbsXRW{instructionFunc: ror, absX: false}
 	ret[0x2E] = &AbsAbsXRW{instructionFunc: rol, absX: false}
@@ -115,7 +116,10 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x1C] = &AbsAbsXRW{instructionFunc: trb, absX: false}
 	ret[0x0C] = &AbsAbsXRW{instructionFunc: tsb, absX: false}
 	ret[0x14] = &DirDirXRW{instructionFunc: trb, dirX: false}
-	ret[0x04] = &DirDirXRW{instructionFunc: tsb, dirX: false}
+	//ret[0x04] = &DirDirXRW{instructionFunc: tsb, dirX: false}
+	ret[0x04] = &Umbrella{instructionFunc: tsb, write: true, checkM: true, addressMode: &DirXY{isPEI: false, mode: BASE_MODE}}
+
+	ret[0x97] = &Umbrella{instructionFunc: sta, write: true, checkM: true, addressMode: &DirXY{mode: INDIRECT_LONG_INDEXED}}
 
 	return ret
 }
