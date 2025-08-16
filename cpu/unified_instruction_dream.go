@@ -48,8 +48,9 @@ type Umbrella struct {
 	state  int
 	result uint16
 
-	write  bool
-	checkM bool
+	write         bool
+	checkM        bool
+	reverseWrites bool
 
 	combineExecuteAndWrite bool
 
@@ -70,7 +71,7 @@ func (i *Umbrella) Step(cpu *CPU) bool {
 	case EXECUTE:
 		if i.checkM && cpu.r.hasFlag(FlagM) {
 			i.result = i.instructionFunc(uint16(i.lowByte), 8, cpu)
-			if i.combineExecuteAndWrite {
+			if i.write && i.combineExecuteAndWrite {
 				i.WriteLo(cpu)
 				return true
 			} else {
@@ -78,10 +79,18 @@ func (i *Umbrella) Step(cpu *CPU) bool {
 			}
 		} else {
 			i.result = i.instructionFunc(createWord(i.highByte, i.lowByte), 16, cpu)
-			if i.combineExecuteAndWrite {
-				i.WriteLo(cpu)
+			if i.write && i.combineExecuteAndWrite {
+				if i.reverseWrites {
+					i.WriteLo(cpu)
+				} else {
+					i.WriteHi(cpu)
+				}
 			} else {
-				i.state = WRITE_HI
+				if i.reverseWrites {
+					i.state = WRITE_LO
+				} else {
+					i.state = WRITE_HI
+				}
 			}
 		}
 		if !i.write {
@@ -89,12 +98,14 @@ func (i *Umbrella) Step(cpu *CPU) bool {
 		}
 	case WRITE_HI:
 		i.WriteHi(cpu)
-		if i.combineExecuteAndWrite {
+		if i.reverseWrites {
 			return true
 		}
 	case WRITE_LO:
 		i.WriteLo(cpu)
-		return true
+		if !i.reverseWrites || (i.checkM && cpu.r.hasFlag(FlagM)) {
+			return true
+		}
 	}
 
 	return false
@@ -103,7 +114,6 @@ func (i *Umbrella) Step(cpu *CPU) bool {
 func (i *Umbrella) Reset(cpu *CPU) {
 	i.state = FETCH
 	i.addressMode.Reset(cpu)
-	i.combineExecuteAndWrite = false
 }
 
 func (i *Umbrella) WriteHi(cpu *CPU) {
@@ -198,7 +208,6 @@ func (i *DirXY) Step(cpu *CPU, u *Umbrella) bool {
 		u.bankByte = cpu.bus.ReadByte(u.addressBank)
 		u.addressLo = mask24(createAddress(u.lowByte, u.highByte, u.bankByte) + uint32(i.register))
 		u.addressHi = mask24(u.addressLo + 1)
-		u.combineExecuteAndWrite = true
 		return true
 	}
 	return false

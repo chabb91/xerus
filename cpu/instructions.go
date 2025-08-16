@@ -119,7 +119,10 @@ func NewInstructionMap() map[byte]Instruction {
 	//ret[0x04] = &DirDirXRW{instructionFunc: tsb, dirX: false}
 	ret[0x04] = &Umbrella{instructionFunc: tsb, write: true, checkM: true, addressMode: &DirXY{isPEI: false, mode: BASE_MODE}}
 
-	ret[0x97] = &Umbrella{instructionFunc: sta, write: true, checkM: true, addressMode: &DirXY{mode: INDIRECT_LONG_INDEXED}}
+	ret[0x97] = &Umbrella{instructionFunc: sta, write: true, reverseWrites: true, checkM: true, combineExecuteAndWrite: true, addressMode: &DirXY{mode: INDIRECT_LONG_INDEXED}}
+	ret[0x91] = &Umbrella{instructionFunc: sta, write: true, reverseWrites: true, checkM: true, addressMode: &DirXY{mode: INDIRECT_INDEXED}}
+	ret[0x81] = &Umbrella{instructionFunc: sta, write: true, checkM: true, reverseWrites: true, combineExecuteAndWrite: true, addressMode: &DirXY{mode: INDEXED_INDIRECT}}
+	ret[0x87] = &Umbrella{instructionFunc: sta, write: true, reverseWrites: true, checkM: true, combineExecuteAndWrite: true, addressMode: &DirXY{mode: INDIRECT_LONG}}
 
 	return ret
 }

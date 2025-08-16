@@ -24,6 +24,9 @@ func rel16(cpu *CPU, high, low byte) {
 // One main functions and 3 wrappers for convenience
 func directPageLogic(cpu *CPU, op byte, register uint16, isPEI bool) (addressLo, addressHi, addressBank uint32) {
 	if cpu.isW() && cpu.r.E && !isPEI {
+		//according to my test data even indirect_long is affected by this
+		//however the documentation doesnt mention it so
+		//TODO keep an eye out for this not working right with indirect
 		low := getLowByte(uint16(op) + register)
 		addressLo = mapOffsetToBank(0x00, createWord(getHighByte(cpu.r.D), low))
 		addressHi = mapOffsetToBank(0x00, createWord(getHighByte(cpu.r.D), low+1))
