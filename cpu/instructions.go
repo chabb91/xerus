@@ -124,6 +124,12 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x81] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, reverseWrites: true, combineExecuteAndWrite: true, addressMode: &DirXY{mode: INDEXED_INDIRECT}}
 	ret[0x87] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, reverseWrites: true, checkM: true, combineExecuteAndWrite: true, addressMode: &DirXY{mode: INDIRECT_LONG}}
 	ret[0xB1] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &DirXY{mode: INDIRECT_INDEXED, checkP: true}}
+	ret[0xB7] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &DirXY{mode: INDIRECT_LONG_INDEXED}}
+	ret[0xB5] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &DirXY{mode: BASE_MODE_X}}
+	ret[0xB2] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &DirXY{mode: INDIRECT}}
+	ret[0xA7] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &DirXY{mode: INDIRECT_LONG}}
+	ret[0xA7] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &DirXY{mode: BASE_MODE}}
+	ret[0xA7] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &DirXY{mode: INDEXED_INDIRECT}}
 
 	return ret
 }

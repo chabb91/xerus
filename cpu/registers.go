@@ -97,8 +97,8 @@ func (r *registers) GetA() uint16 {
 }
 
 func (r *registers) SetA(val uint16) uint16 {
-	if r.E || r.hasFlag(FlagM) {
-		r.A |= maskHighByte(val)
+	if r.hasFlag(FlagM) || r.E {
+		SetLowByte(&r.A, getLowByte(val))
 	} else {
 		r.A = val
 	}

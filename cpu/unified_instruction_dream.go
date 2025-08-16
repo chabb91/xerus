@@ -45,11 +45,7 @@ func lda(val uint16, width int, cpu *CPU) (result uint16) {
 	result = val
 	cpu.r.setFlag(FlagN, (1<<(width-1))&result == 0)
 	cpu.r.setFlag(FlagZ, result != 0)
-	if cpu.r.hasFlag(FlagM) {
-		SetLowByte(&cpu.r.A, byte(result))
-	} else {
-		cpu.r.A = result
-	}
+	cpu.r.SetA(result)
 	return result
 }
 
@@ -59,6 +55,7 @@ func lda(val uint16, width int, cpu *CPU) (result uint16) {
 type AccessMicroInstruction interface {
 	Step(cpu *CPU, u *Umbrella) bool
 	Reset(cpu *CPU)
+	isPointer() bool
 }
 
 type Umbrella struct {
@@ -87,7 +84,16 @@ func (i *Umbrella) Step(cpu *CPU) bool {
 			if i.mode != READ_RAM {
 				i.state = EXECUTE
 			} else {
-				i.state = READ_LO
+				if i.addressMode.isPointer() {
+					i.state = READ_LO
+				} else {
+					if i.is8Bit(cpu) {
+						i.instructionFunc(uint16(i.lowByte), 8, cpu)
+					} else {
+						i.result = i.instructionFunc(createWord(i.highByte, i.lowByte), 16, cpu)
+					}
+					return true
+				}
 			}
 		}
 	case READ_LO:
