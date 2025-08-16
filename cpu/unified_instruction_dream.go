@@ -5,15 +5,14 @@ const (
 	FETCH = iota
 	FETCH_OP_1
 	FETCH_OP_2
-	RESOLVE_POINTER
-	RESOLVE_POINTER_HI
-	READ_POINTER_LO
-	READ_POINTER_HI
+	FETCH_OP_3
 	EXECUTE
 	WRITE_HI
 	WRITE_LO
 
-	EXTRA_CYCLE
+	EXTRA_CYCLE_W
+	EXTRA_CYCLE_P
+
 	REGISTER_READ
 
 	READ_LO
@@ -32,8 +31,26 @@ const (
 	INDIRECT_LONG_INDEXED //[],Y
 )
 
+const (
+	NO_IO = iota
+	READ_RAM
+	WRITE_RAM
+)
+
 func sta(_ uint16, _ int, cpu *CPU) (result uint16) {
 	return cpu.r.GetA()
+}
+
+func lda(val uint16, width int, cpu *CPU) (result uint16) {
+	result = val
+	cpu.r.setFlag(FlagN, (1<<(width-1))&result == 0)
+	cpu.r.setFlag(FlagZ, result != 0)
+	if cpu.r.hasFlag(FlagM) {
+		SetLowByte(&cpu.r.A, byte(result))
+	} else {
+		cpu.r.A = result
+	}
+	return result
 }
 
 // represents all memry access modes. it abstracts away from the concrete instruction
@@ -46,10 +63,11 @@ type AccessMicroInstruction interface {
 
 type Umbrella struct {
 	state  int
+	mode   int
 	result uint16
 
-	write         bool
 	checkM        bool
+	checkX        bool
 	reverseWrites bool
 
 	combineExecuteAndWrite bool
@@ -66,35 +84,59 @@ func (i *Umbrella) Step(cpu *CPU) bool {
 	switch i.state {
 	case FETCH:
 		if i.addressMode.Step(cpu, i) {
-			i.state = EXECUTE
-		}
-	case EXECUTE:
-		if i.checkM && cpu.r.hasFlag(FlagM) {
-			i.result = i.instructionFunc(uint16(i.lowByte), 8, cpu)
-			if i.write && i.combineExecuteAndWrite {
-				i.WriteLo(cpu)
-				return true
+			if i.mode != READ_RAM {
+				i.state = EXECUTE
 			} else {
-				i.state = WRITE_LO
+				i.state = READ_LO
+			}
+		}
+	case READ_LO:
+		i.lowByte = cpu.bus.ReadByte(i.addressLo)
+		if i.is8Bit(cpu) {
+			i.instructionFunc(uint16(i.lowByte), 8, cpu)
+			return true
+		} else {
+			i.state = READ_HI
+		}
+	case READ_HI:
+		i.highByte = cpu.bus.ReadByte(i.addressHi)
+		i.result = i.instructionFunc(createWord(i.highByte, i.lowByte), 16, cpu)
+		return true
+	case EXECUTE:
+		if i.is8Bit(cpu) {
+			i.result = i.instructionFunc(uint16(i.lowByte), 8, cpu)
+			if i.mode == WRITE_RAM {
+				if i.combineExecuteAndWrite {
+					i.WriteLo(cpu)
+					return true
+				} else {
+					i.state = WRITE_LO
+				}
+
+			} else {
+				return true
 			}
 		} else {
 			i.result = i.instructionFunc(createWord(i.highByte, i.lowByte), 16, cpu)
-			if i.write && i.combineExecuteAndWrite {
-				if i.reverseWrites {
-					i.WriteLo(cpu)
+			if i.mode == WRITE_RAM {
+				if i.combineExecuteAndWrite {
+					if i.reverseWrites {
+						i.WriteLo(cpu)
+					} else {
+						i.WriteHi(cpu)
+					}
 				} else {
-					i.WriteHi(cpu)
+					if i.reverseWrites {
+						i.state = WRITE_LO
+					} else {
+						i.state = WRITE_HI
+					}
 				}
+
 			} else {
-				if i.reverseWrites {
-					i.state = WRITE_LO
-				} else {
-					i.state = WRITE_HI
-				}
+				return true
 			}
-		}
-		if !i.write {
-			return true
+
 		}
 	case WRITE_HI:
 		i.WriteHi(cpu)
@@ -103,7 +145,7 @@ func (i *Umbrella) Step(cpu *CPU) bool {
 		}
 	case WRITE_LO:
 		i.WriteLo(cpu)
-		if !i.reverseWrites || (i.checkM && cpu.r.hasFlag(FlagM)) {
+		if !i.reverseWrites || i.is8Bit(cpu) {
 			return true
 		}
 	}
@@ -114,6 +156,10 @@ func (i *Umbrella) Step(cpu *CPU) bool {
 func (i *Umbrella) Reset(cpu *CPU) {
 	i.state = FETCH
 	i.addressMode.Reset(cpu)
+}
+
+func (i *Umbrella) is8Bit(cpu *CPU) bool {
+	return (i.checkM && cpu.r.hasFlag(FlagM)) || (i.checkX && cpu.r.hasFlag(FlagX))
 }
 
 func (i *Umbrella) WriteHi(cpu *CPU) {
@@ -128,9 +174,10 @@ func (i *Umbrella) WriteLo(cpu *CPU) {
 
 // the micro instruction for direct/direct, X/ diecct, Y
 type DirXY struct {
-	state int
-	mode  int
-	isPEI bool
+	state  int
+	mode   int
+	isPEI  bool
+	checkP bool
 
 	register uint16
 }
@@ -146,9 +193,9 @@ func (i *DirXY) Step(cpu *CPU, u *Umbrella) bool {
 				i.state = READ_LO
 			}
 		} else {
-			i.state = EXTRA_CYCLE
+			i.state = EXTRA_CYCLE_W
 		}
-	case EXTRA_CYCLE:
+	case EXTRA_CYCLE_W:
 		if i.isXY() {
 			i.state = REGISTER_READ
 		} else {
@@ -165,10 +212,6 @@ func (i *DirXY) Step(cpu *CPU, u *Umbrella) bool {
 			i.state = READ_LO
 			break
 		}
-		if i.mode == INDIRECT_INDEXED || i.mode == INDIRECT_LONG_INDEXED {
-			i.register = cpu.r.GetY()
-			i.state = RESOLVE_POINTER
-		}
 	case READ_LO:
 		if i.isXY() {
 			u.addressLo, u.addressHi = directPageXY(cpu, u.lowByte, i.register)
@@ -182,7 +225,7 @@ func (i *DirXY) Step(cpu *CPU, u *Umbrella) bool {
 
 		u.lowByte = cpu.bus.ReadByte(u.addressLo)
 		//TODO unsure how this will pan out. check later
-		if cpu.r.hasFlag(FlagM) && !i.isPointer() && u.checkM {
+		if u.is8Bit(cpu) && !i.isPointer() {
 			return true
 		} else {
 			i.state = READ_HI
@@ -202,12 +245,27 @@ func (i *DirXY) Step(cpu *CPU, u *Umbrella) bool {
 		} else {
 			u.addressLo = mask24(createAddress(u.lowByte, u.highByte, cpu.r.DB) + uint32(i.register))
 			u.addressHi = mask24(u.addressLo + 1)
+
+			if i.checkP {
+				if cpu.r.hasFlag(FlagX) {
+					if isPageBoundaryCrossed(i.register, i.register+uint16(u.lowByte)) {
+						i.state = EXTRA_CYCLE_P
+						break
+					}
+				} else {
+					//some weird phantom cycle in normal mode
+					i.state = EXTRA_CYCLE_P
+					break
+				}
+			}
 			return true
 		}
 	case READ_BANK:
 		u.bankByte = cpu.bus.ReadByte(u.addressBank)
 		u.addressLo = mask24(createAddress(u.lowByte, u.highByte, u.bankByte) + uint32(i.register))
 		u.addressHi = mask24(u.addressLo + 1)
+		return true
+	case EXTRA_CYCLE_P:
 		return true
 	}
 	return false

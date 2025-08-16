@@ -38,6 +38,10 @@ func isPageBoundaryCrossed(addr1, addr2 uint16) bool {
 	return (addr1 & 0xFF00) != (addr2 & 0xFF00)
 }
 
+func isPageBoundaryCrossed24(addr1, addr2 uint32) bool {
+	return (addr1 & 0xFF00) != (addr2 & 0xFF00)
+}
+
 // Merges two bytes into a single uint16 or word.
 // hi:lo is returned
 func createWord(high, low byte) uint16 {
