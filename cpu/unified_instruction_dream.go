@@ -18,6 +18,9 @@ const (
 	READ_LO
 	READ_HI
 	READ_BANK
+
+	RESOLVE_POINTER_LO
+	RESOLVE_POINTER_HI
 )
 
 const (
@@ -84,30 +87,14 @@ func (i *Umbrella) Step(cpu *CPU) bool {
 			if i.mode != READ_RAM {
 				i.state = EXECUTE
 			} else {
-				if i.addressMode.isPointer() {
-					i.state = READ_LO
+				if i.is8Bit(cpu) {
+					i.instructionFunc(uint16(i.lowByte), 8, cpu)
 				} else {
-					if i.is8Bit(cpu) {
-						i.instructionFunc(uint16(i.lowByte), 8, cpu)
-					} else {
-						i.result = i.instructionFunc(createWord(i.highByte, i.lowByte), 16, cpu)
-					}
-					return true
+					i.result = i.instructionFunc(createWord(i.highByte, i.lowByte), 16, cpu)
 				}
+				return true
 			}
 		}
-	case READ_LO:
-		i.lowByte = cpu.bus.ReadByte(i.addressLo)
-		if i.is8Bit(cpu) {
-			i.instructionFunc(uint16(i.lowByte), 8, cpu)
-			return true
-		} else {
-			i.state = READ_HI
-		}
-	case READ_HI:
-		i.highByte = cpu.bus.ReadByte(i.addressHi)
-		i.result = i.instructionFunc(createWord(i.highByte, i.lowByte), 16, cpu)
-		return true
 	case EXECUTE:
 		if i.is8Bit(cpu) {
 			i.result = i.instructionFunc(uint16(i.lowByte), 8, cpu)
@@ -264,15 +251,37 @@ func (i *DirXY) Step(cpu *CPU, u *Umbrella) bool {
 					break
 				}
 			}
-			return true
+			if u.mode != READ_RAM {
+				return true
+			} else {
+				i.state = RESOLVE_POINTER_LO
+			}
 		}
+	case RESOLVE_POINTER_LO:
+		u.lowByte = cpu.bus.ReadByte(u.addressLo)
+		if u.is8Bit(cpu) {
+			return true
+		} else {
+			i.state = RESOLVE_POINTER_HI
+		}
+	case RESOLVE_POINTER_HI:
+		u.highByte = cpu.bus.ReadByte(u.addressHi)
+		return true
 	case READ_BANK:
 		u.bankByte = cpu.bus.ReadByte(u.addressBank)
 		u.addressLo = mask24(createAddress(u.lowByte, u.highByte, u.bankByte) + uint32(i.register))
 		u.addressHi = mask24(u.addressLo + 1)
-		return true
+		if u.mode != READ_RAM {
+			return true
+		} else {
+			i.state = RESOLVE_POINTER_LO
+		}
 	case EXTRA_CYCLE_P:
-		return true
+		if u.mode != READ_RAM {
+			return true
+		} else {
+			i.state = RESOLVE_POINTER_LO
+		}
 	}
 	return false
 }
