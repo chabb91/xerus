@@ -58,7 +58,6 @@ func lda(val uint16, width int, cpu *CPU) (result uint16) {
 type AccessMicroInstruction interface {
 	Step(cpu *CPU, u *Umbrella) bool
 	Reset(cpu *CPU)
-	isPointer() bool
 }
 
 type Umbrella struct {
@@ -84,7 +83,7 @@ func (i *Umbrella) Step(cpu *CPU) bool {
 	switch i.state {
 	case FETCH:
 		if i.addressMode.Step(cpu, i) {
-			if i.mode != READ_RAM {
+			if i.mode == WRITE_RAM {
 				i.state = EXECUTE
 			} else {
 				if i.is8Bit(cpu) {
@@ -299,5 +298,92 @@ func (i *DirXY) isPointer() bool {
 }
 
 func (i *DirXY) isIndirectLong() bool {
+	return i.mode == INDIRECT_LONG_INDEXED || i.mode == INDIRECT_LONG
+}
+
+// the micro instruction ABSOLUTE and I do mean ALL OF ABSOLUTE
+// I mean every single instruction that has abs in its access mode this will service it.
+// no kap on a stack
+type Absolute struct {
+	state  int
+	mode   int
+	isPEI  bool
+	checkP bool
+	isJMP  bool
+
+	register uint16
+}
+
+func (i *Absolute) Step(cpu *CPU, u *Umbrella) bool {
+	switch i.state {
+	case FETCH_OP_1:
+		u.lowByte = cpu.fetchByte()
+		i.state = FETCH_OP_2
+	case FETCH_OP_2:
+		u.highByte = cpu.fetchByte()
+		if i.isXY() {
+			i.state = REGISTER_READ
+		} else {
+			i.state = READ_LO
+		}
+	case REGISTER_READ:
+		if i.mode == BASE_MODE_Y {
+			i.register = cpu.r.GetY()
+			i.state = READ_LO
+			break
+		}
+		if i.mode == BASE_MODE_X || i.mode == INDEXED_INDIRECT {
+			i.register = cpu.r.GetX()
+			i.state = READ_LO
+			break
+		}
+	case READ_LO:
+		if i.isXY() {
+			u.addressLo, u.addressHi = absoluteXY(cpu.r.DB, u.highByte, u.lowByte, i.register)
+			//????????????????
+		} else if i.isJMP {
+			u.addressLo = createAddress(u.lowByte, u.highByte, cpu.r.PB)
+		} else {
+			u.addressLo, u.addressHi = absolute(cpu.r.DB, u.highByte, u.lowByte)
+		}
+		u.lowByte = cpu.bus.ReadByte(u.addressLo)
+
+		if u.is8Bit(cpu) && !i.isPointer() {
+			return true
+		} else {
+			i.state = READ_HI
+		}
+	case READ_HI:
+		u.highByte = cpu.bus.ReadByte(u.addressHi)
+		if !i.isPointer() {
+			return true
+		}
+		if i.mode == INDIRECT_INDEXED || i.mode == INDIRECT_LONG_INDEXED {
+			i.register = cpu.r.GetY()
+		} else {
+			i.register = 0
+		}
+		if i.isIndirectLong() {
+			i.state = READ_BANK
+		} else {
+		}
+
+	}
+	return false
+}
+
+func (i *Absolute) Reset(cpu *CPU) {
+	i.state = FETCH_OP_1
+}
+
+func (i *Absolute) isXY() bool {
+	return i.mode == BASE_MODE_X || i.mode == BASE_MODE_Y || i.mode == INDEXED_INDIRECT
+}
+
+func (i *Absolute) isPointer() bool {
+	return !(i.mode == BASE_MODE_X || i.mode == BASE_MODE_Y || i.mode == BASE_MODE)
+}
+
+func (i *Absolute) isIndirectLong() bool {
 	return i.mode == INDIRECT_LONG_INDEXED || i.mode == INDIRECT_LONG
 }
