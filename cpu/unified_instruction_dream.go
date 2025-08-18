@@ -443,3 +443,55 @@ func (i *Absolute) isPointer() bool {
 func (i *Absolute) isIndirectLong() bool {
 	return i.mode == INDIRECT_LONG_INDEXED || i.mode == INDIRECT_LONG
 }
+
+// the micro instruction for Long, just the normal one not the one for jump
+// no point in including jump instructions under the umbrella
+type Long struct {
+	state int
+	mode  int
+
+	register uint16
+}
+
+func (i *Long) Step(cpu *CPU, u *Umbrella) bool {
+	switch i.state {
+	case FETCH_OP_1:
+		u.lowByte = cpu.fetchByte()
+		i.state = FETCH_OP_2
+	case FETCH_OP_2:
+		u.highByte = cpu.fetchByte()
+		i.state = FETCH_OP_3
+	case FETCH_OP_3:
+		u.bankByte = cpu.fetchByte()
+
+		if i.mode == BASE_MODE {
+			i.register = 0
+		}
+		if i.mode == BASE_MODE_X {
+			i.register = cpu.r.GetX()
+		}
+		i.state = READ_LO
+	case READ_LO:
+		u.addressLo = mask24(createAddress(u.lowByte, u.highByte, u.bankByte) + uint32(i.register))
+		u.addressHi = mask24(u.addressLo + 1)
+		//long executes the instruction here if we are in write mode
+		if u.executeInFetch && u.mode == WRITE_RAM {
+			return true
+		}
+
+		u.lowByte = cpu.bus.ReadByte(u.addressLo)
+		if u.is8Bit(cpu) {
+			return true
+		} else {
+			i.state = READ_HI
+		}
+	case READ_HI:
+		u.highByte = cpu.bus.ReadByte(u.addressHi)
+		return true
+	}
+	return false
+}
+
+func (i *Long) Reset(cpu *CPU) {
+	i.state = FETCH_OP_1
+}

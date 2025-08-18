@@ -158,33 +158,20 @@ func (i *DirDirXRW) Reset(cpu *CPU) {
 }
 
 type Accumulator struct {
-	state  int
 	result uint16
 
 	instructionFunc instructionFuncWith16BitReturn
 }
 
 func (i *Accumulator) Step(cpu *CPU) bool {
-	switch i.state {
-	case 0:
-		//TODO check this in Reset(), dont think its possible for the value of the M flag to change between these 2 cycles
-		//but cant test it now so ill just keep it like this
-		width := 16
-		if cpu.r.hasFlag(FlagM) {
-			width = 8
-		}
-		i.result = i.instructionFunc(cpu.r.A, width, cpu)
-
-		if cpu.r.hasFlag(FlagM) {
-			SetLowByte(&cpu.r.A, byte(i.result))
-		} else {
-			cpu.r.A = i.result
-		}
-		return true
+	width := 16
+	if cpu.r.hasFlag(FlagM) {
+		width = 8
 	}
-	return false
-}
+	i.result = i.instructionFunc(cpu.r.A, width, cpu)
 
+	cpu.r.SetA(i.result)
+	return true
+}
 func (i *Accumulator) Reset(cpu *CPU) {
-	i.state = 0
 }
