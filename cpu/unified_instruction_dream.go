@@ -57,6 +57,22 @@ func lda(val uint16, width int, cpu *CPU) (result uint16) {
 	return result
 }
 
+func ldx(val uint16, width int, cpu *CPU) (result uint16) {
+	result = val
+	cpu.r.setFlag(FlagN, (1<<(width-1))&result == 0)
+	cpu.r.setFlag(FlagZ, result != 0)
+	cpu.r.SetX(result)
+	return result
+}
+
+func ldy(val uint16, width int, cpu *CPU) (result uint16) {
+	result = val
+	cpu.r.setFlag(FlagN, (1<<(width-1))&result == 0)
+	cpu.r.setFlag(FlagZ, result != 0)
+	cpu.r.SetY(result)
+	return result
+}
+
 // represents all memry access modes. it abstracts away from the concrete instruction
 // and resolves the write addresses and fetches the data so the outer state doesn't have to be aware
 // of how the data is being obtained

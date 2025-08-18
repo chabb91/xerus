@@ -152,6 +152,20 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0xBD] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
 	ret[0xBF] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE_X}}
 
+	//all 5 LDX instructions
+	ret[0xA2] = &Umbrella{instructionFunc: ldx, mode: READ_RAM, checkX: true, addressMode: &Immediate{mode: CHECK_PARENT}}
+	ret[0xA6] = &Umbrella{instructionFunc: ldx, mode: READ_RAM, checkX: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0xAE] = &Umbrella{instructionFunc: ldx, mode: READ_RAM, checkX: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0xB6] = &Umbrella{instructionFunc: ldx, mode: READ_RAM, checkX: true, addressMode: &Direct{mode: BASE_MODE_Y}}
+	ret[0xBE] = &Umbrella{instructionFunc: ldx, mode: READ_RAM, checkX: true, addressMode: &Absolute{mode: BASE_MODE_Y, checkP: true}}
+
+	//all 5 LDY instructions
+	ret[0xA0] = &Umbrella{instructionFunc: ldy, mode: READ_RAM, checkX: true, addressMode: &Immediate{mode: CHECK_PARENT}}
+	ret[0xA4] = &Umbrella{instructionFunc: ldy, mode: READ_RAM, checkX: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0xAC] = &Umbrella{instructionFunc: ldy, mode: READ_RAM, checkX: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0xB4] = &Umbrella{instructionFunc: ldy, mode: READ_RAM, checkX: true, addressMode: &Direct{mode: BASE_MODE_X}}
+	ret[0xBC] = &Umbrella{instructionFunc: ldy, mode: READ_RAM, checkX: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
+
 	return ret
 }
 
