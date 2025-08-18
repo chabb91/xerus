@@ -32,6 +32,11 @@ const (
 	INDEXED_INDIRECT      //(,X)
 	INDIRECT_INDEXED      //(),Y
 	INDIRECT_LONG_INDEXED //[],Y
+
+	//immediate
+	CHECK_PARENT
+	LOCKED_8
+	LOCKED_16
 )
 
 const (
@@ -493,5 +498,33 @@ func (i *Long) Step(cpu *CPU, u *Umbrella) bool {
 }
 
 func (i *Long) Reset(cpu *CPU) {
+	i.state = FETCH_OP_1
+}
+
+type Immediate struct {
+	state int
+	mode  int
+
+	register uint16
+}
+
+func (i *Immediate) Step(cpu *CPU, u *Umbrella) bool {
+	switch i.state {
+	case FETCH_OP_1:
+		u.lowByte = cpu.fetchByte()
+		u.addressLo = mapOffsetToBank(cpu.r.PB, cpu.r.PC)
+		if i.mode == LOCKED_8 || (i.mode == CHECK_PARENT && u.is8Bit(cpu)) {
+			return true
+		}
+		i.state = FETCH_OP_2
+	case FETCH_OP_2:
+		u.highByte = cpu.fetchByte()
+		u.addressHi = mapOffsetToBank(cpu.r.PB, cpu.r.PC)
+		return true
+	}
+	return false
+}
+
+func (i *Immediate) Reset(cpu *CPU) {
 	i.state = FETCH_OP_1
 }
