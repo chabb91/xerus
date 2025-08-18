@@ -528,3 +528,73 @@ func (i *Immediate) Step(cpu *CPU, u *Umbrella) bool {
 func (i *Immediate) Reset(cpu *CPU) {
 	i.state = FETCH_OP_1
 }
+
+type StackS struct {
+	state int
+	mode  int
+
+	register uint16
+}
+
+func (i *StackS) Step(cpu *CPU, u *Umbrella) bool {
+	switch i.state {
+	case FETCH_OP_1:
+		u.lowByte = cpu.fetchByte()
+		i.state = REGISTER_READ
+	case REGISTER_READ:
+		i.register = uint16(u.lowByte) + cpu.r.S
+		i.state = READ_LO
+	case EXTRA_CYCLE_P:
+		//its really just another register read no fancy page trickery but didnt want to create another needless enum for it
+		i.register = cpu.r.GetY()
+		i.state = RESOLVE_POINTER_LO
+	case READ_LO:
+		u.addressLo = mapOffsetToBank(0x00, i.register)
+		u.addressHi = mapOffsetToBank(0x00, i.register+1)
+
+		//StackS executes the instruction here if its not a pointer and we are in write mode
+		if u.executeInFetch && u.mode == WRITE_RAM && !i.isPointer() {
+			return true
+		}
+		u.lowByte = cpu.bus.ReadByte(u.addressLo)
+
+		if !i.isPointer() && u.is8Bit(cpu) {
+			return true
+		} else {
+			i.state = READ_HI
+		}
+	case READ_HI:
+		u.highByte = cpu.bus.ReadByte(u.addressHi)
+		if !i.isPointer() {
+			return true
+		}
+		i.state = EXTRA_CYCLE_P
+	case RESOLVE_POINTER_LO:
+		u.addressLo = mask24(createAddress(u.lowByte, u.highByte, cpu.r.DB) + uint32(i.register))
+		u.addressHi = mask24(u.addressLo + 1)
+
+		if u.mode == WRITE_RAM {
+			return true
+		}
+
+		u.lowByte = cpu.bus.ReadByte(u.addressLo)
+		if u.is8Bit(cpu) {
+			return true
+		} else {
+			i.state = RESOLVE_POINTER_HI
+
+		}
+	case RESOLVE_POINTER_HI:
+		u.highByte = cpu.bus.ReadByte(u.addressHi)
+		return true
+	}
+	return false
+}
+
+func (i *StackS) Reset(cpu *CPU) {
+	i.state = FETCH_OP_1
+}
+
+func (i *StackS) isPointer() bool {
+	return i.mode == INDIRECT_INDEXED
+}
