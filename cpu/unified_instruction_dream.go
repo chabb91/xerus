@@ -172,7 +172,7 @@ func (i *Umbrella) Execute(cpu *CPU) bool {
 }
 
 // the micro instruction for direct/direct, X/ diecct, Y
-type DirXY struct {
+type Direct struct {
 	state  int
 	mode   int
 	isPEI  bool
@@ -181,7 +181,7 @@ type DirXY struct {
 	register uint16
 }
 
-func (i *DirXY) Step(cpu *CPU, u *Umbrella) bool {
+func (i *Direct) Step(cpu *CPU, u *Umbrella) bool {
 	switch i.state {
 	case FETCH_OP_1:
 		u.lowByte = cpu.fetchByte()
@@ -300,19 +300,19 @@ func (i *DirXY) Step(cpu *CPU, u *Umbrella) bool {
 	return false
 }
 
-func (i *DirXY) Reset(cpu *CPU) {
+func (i *Direct) Reset(cpu *CPU) {
 	i.state = FETCH_OP_1
 }
 
-func (i *DirXY) isXY() bool {
+func (i *Direct) isXY() bool {
 	return i.mode == BASE_MODE_X || i.mode == BASE_MODE_Y || i.mode == INDEXED_INDIRECT
 }
 
-func (i *DirXY) isPointer() bool {
+func (i *Direct) isPointer() bool {
 	return !(i.mode == BASE_MODE_X || i.mode == BASE_MODE_Y || i.mode == BASE_MODE)
 }
 
-func (i *DirXY) isIndirectLong() bool {
+func (i *Direct) isIndirectLong() bool {
 	return i.mode == INDIRECT_LONG_INDEXED || i.mode == INDIRECT_LONG
 }
 

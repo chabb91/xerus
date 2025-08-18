@@ -100,7 +100,7 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x36] = &DirDirXRW{instructionFunc: rol, dirX: true}
 	ret[0x16] = &DirDirXRW{instructionFunc: asl, dirX: true}
 	//ret[0x76] = &DirDirXRW{instructionFunc: ror, dirX: true}
-	ret[0x76] = &Umbrella{instructionFunc: ror, mode: WRITE_RAM, checkM: true, addressMode: &DirXY{mode: BASE_MODE_X}}
+	ret[0x76] = &Umbrella{instructionFunc: ror, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
 
 	ret[0x6E] = &AbsAbsXRW{instructionFunc: ror, absX: false}
 	ret[0x2E] = &AbsAbsXRW{instructionFunc: rol, absX: false}
@@ -117,37 +117,37 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x0C] = &AbsAbsXRW{instructionFunc: tsb, absX: false}
 	ret[0x14] = &DirDirXRW{instructionFunc: trb, dirX: false}
 	//ret[0x04] = &DirDirXRW{instructionFunc: tsb, dirX: false}
-	ret[0x04] = &Umbrella{instructionFunc: tsb, mode: WRITE_RAM, checkM: true, addressMode: &DirXY{isPEI: false, mode: BASE_MODE}}
+	ret[0x04] = &Umbrella{instructionFunc: tsb, mode: WRITE_RAM, checkM: true, addressMode: &Direct{isPEI: false, mode: BASE_MODE}}
 
 	//all 14 sta instructions
-	ret[0x81] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, reverseWrites: true, combineExecuteAndWrite: true, addressMode: &DirXY{mode: INDEXED_INDIRECT}}
+	ret[0x81] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, reverseWrites: true, combineExecuteAndWrite: true, addressMode: &Direct{mode: INDEXED_INDIRECT}}
 	ret[0x83] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &StackS{mode: BASE_MODE}}
-	ret[0x85] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &DirXY{mode: BASE_MODE}}
-	ret[0x87] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, reverseWrites: true, checkM: true, combineExecuteAndWrite: true, addressMode: &DirXY{mode: INDIRECT_LONG}}
+	ret[0x85] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0x87] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, reverseWrites: true, checkM: true, combineExecuteAndWrite: true, addressMode: &Direct{mode: INDIRECT_LONG}}
 	ret[0x8D] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Absolute{mode: BASE_MODE}}
 	ret[0x8F] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Long{mode: BASE_MODE}}
-	ret[0x91] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, reverseWrites: true, checkM: true, addressMode: &DirXY{mode: INDIRECT_INDEXED}}
-	ret[0x92] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, reverseWrites: true, checkM: true, combineExecuteAndWrite: true, addressMode: &DirXY{mode: INDIRECT}}
+	ret[0x91] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, reverseWrites: true, checkM: true, addressMode: &Direct{mode: INDIRECT_INDEXED}}
+	ret[0x92] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, reverseWrites: true, checkM: true, combineExecuteAndWrite: true, addressMode: &Direct{mode: INDIRECT}}
 	ret[0x93] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &StackS{mode: INDIRECT_INDEXED}}
-	ret[0x95] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &DirXY{mode: BASE_MODE_X}}
-	ret[0x97] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, reverseWrites: true, checkM: true, combineExecuteAndWrite: true, addressMode: &DirXY{mode: INDIRECT_LONG_INDEXED}}
+	ret[0x95] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE_X}}
+	ret[0x97] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, reverseWrites: true, checkM: true, combineExecuteAndWrite: true, addressMode: &Direct{mode: INDIRECT_LONG_INDEXED}}
 	ret[0x99] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Absolute{mode: BASE_MODE_Y}}
 	ret[0x9D] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Absolute{mode: BASE_MODE_X}}
 	ret[0x9F] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Long{mode: BASE_MODE_X}}
 
 	//all 15 LDA instructions
-	ret[0xA1] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &DirXY{mode: INDEXED_INDIRECT}}
+	ret[0xA1] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDEXED_INDIRECT}}
 	ret[0xA3] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: BASE_MODE}}
-	ret[0xA5] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &DirXY{mode: BASE_MODE}}
-	ret[0xA7] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &DirXY{mode: INDIRECT_LONG}}
+	ret[0xA5] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0xA7] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG}}
 	ret[0xA9] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Immediate{mode: CHECK_PARENT}}
 	ret[0xAD] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
 	ret[0xAF] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE}}
-	ret[0xB1] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &DirXY{mode: INDIRECT_INDEXED, checkP: true}}
-	ret[0xB2] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &DirXY{mode: INDIRECT}}
+	ret[0xB1] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_INDEXED, checkP: true}}
+	ret[0xB2] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT}}
 	ret[0xB3] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: INDIRECT_INDEXED}}
-	ret[0xB5] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &DirXY{mode: BASE_MODE_X}}
-	ret[0xB7] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &DirXY{mode: INDIRECT_LONG_INDEXED}}
+	ret[0xB5] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
+	ret[0xB7] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG_INDEXED}}
 	ret[0xB9] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_Y, checkP: true}}
 	ret[0xBD] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
 	ret[0xBF] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE_X}}
