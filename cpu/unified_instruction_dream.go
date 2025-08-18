@@ -222,6 +222,10 @@ func (i *DirXY) Step(cpu *CPU, u *Umbrella) bool {
 			u.addressLo, u.addressHi, u.addressBank = directPageLong(cpu, u.lowByte)
 		}
 
+		if u.executeInFetch && u.mode == WRITE_RAM && !i.isPointer() {
+			return true
+		}
+
 		u.lowByte = cpu.bus.ReadByte(u.addressLo)
 		//TODO unsure how this will pan out. check later
 		if u.is8Bit(cpu) && !i.isPointer() {
