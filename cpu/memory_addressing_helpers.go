@@ -47,6 +47,22 @@ func directPageXY(cpu *CPU, op byte, register uint16) (addressLo, addressHi uint
 }
 
 func directPageLong(cpu *CPU, op byte) (addressLo, addressHi, addressBank uint32) {
+	/*
+		if cpu.isW() && cpu.r.E {
+			low := op
+			addressLo = mapOffsetToBank(0x00, createWord(getHighByte(cpu.r.D), low))
+			addressHi = mapOffsetToBank(0x00, createWord(getHighByte(cpu.r.D), low+1))
+			addressBank = mapOffsetToBank(0x00, createWord(getHighByte(cpu.r.D), low+2))
+		} else {
+			offset := cpu.r.D + uint16(op)
+			addressLo = mapOffsetToBank(0x00, offset)
+			addressHi = mapOffsetToBank(0x00, offset+1)
+			addressBank = mapOffsetToBank(0x00, offset+2)
+		}
+	*/
+	// TODO: Test data shows inconsistent direct page wrapping behavior:
+	// [dir],Y wraps when DL==0, [dir] doesn't wrap
+	// Need to verify with full program tests before implementing
 	offset := cpu.r.D + uint16(op)
 	addressLo = mapOffsetToBank(0x00, offset)
 	addressHi = mapOffsetToBank(0x00, offset+1)

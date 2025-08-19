@@ -191,7 +191,7 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x21] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDEXED_INDIRECT}}
 	ret[0x23] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: BASE_MODE}}
 	ret[0x25] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0x27] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG}} //e test 1f
+	ret[0x27] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG}}
 	ret[0x29] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Immediate{mode: CHECK_PARENT}}
 	ret[0x2D] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
 	ret[0x2F] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE}}
