@@ -311,7 +311,6 @@ func (i *Direct) isIndirectLong() bool {
 type Absolute struct {
 	state  int
 	mode   int
-	isPEI  bool
 	checkP bool
 
 	//this is intended to differentiate between the normal abs and normal abs JMP

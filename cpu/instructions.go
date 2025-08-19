@@ -91,32 +91,30 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x6A] = &Accumulator{instructionFunc: ror}
 	ret[0x2A] = &Accumulator{instructionFunc: rol}
 
-	ret[0x46] = &DirDirXRW{instructionFunc: lsr, dirX: false}
-	ret[0x06] = &DirDirXRW{instructionFunc: asl, dirX: false}
-	ret[0x26] = &DirDirXRW{instructionFunc: rol, dirX: false}
-	ret[0x66] = &DirDirXRW{instructionFunc: ror, dirX: false}
+	ret[0x46] = &Umbrella{instructionFunc: lsr, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0x26] = &Umbrella{instructionFunc: rol, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0x06] = &Umbrella{instructionFunc: asl, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0x66] = &Umbrella{instructionFunc: ror, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
 
-	ret[0x56] = &DirDirXRW{instructionFunc: lsr, dirX: true}
-	ret[0x36] = &DirDirXRW{instructionFunc: rol, dirX: true}
-	ret[0x16] = &DirDirXRW{instructionFunc: asl, dirX: true}
-	//ret[0x76] = &DirDirXRW{instructionFunc: ror, dirX: true}
+	ret[0x56] = &Umbrella{instructionFunc: lsr, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
+	ret[0x36] = &Umbrella{instructionFunc: rol, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
+	ret[0x16] = &Umbrella{instructionFunc: asl, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
 	ret[0x76] = &Umbrella{instructionFunc: ror, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
 
-	ret[0x6E] = &AbsAbsXRW{instructionFunc: ror, absX: false}
-	ret[0x2E] = &AbsAbsXRW{instructionFunc: rol, absX: false}
-	ret[0x0E] = &AbsAbsXRW{instructionFunc: asl, absX: false}
-	ret[0x4E] = &AbsAbsXRW{instructionFunc: lsr, absX: false}
+	ret[0x4E] = &Umbrella{instructionFunc: lsr, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0x2E] = &Umbrella{instructionFunc: rol, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0x0E] = &Umbrella{instructionFunc: asl, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0x6E] = &Umbrella{instructionFunc: ror, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
 
-	ret[0x1E] = &AbsAbsXRW{instructionFunc: asl, absX: true}
-	ret[0x5E] = &AbsAbsXRW{instructionFunc: lsr, absX: true}
-	ret[0x3E] = &AbsAbsXRW{instructionFunc: rol, absX: true}
-	ret[0x7E] = &AbsAbsXRW{instructionFunc: ror, absX: true}
+	ret[0x5E] = &Umbrella{instructionFunc: lsr, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X}}
+	ret[0x3E] = &Umbrella{instructionFunc: rol, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X}}
+	ret[0x1E] = &Umbrella{instructionFunc: asl, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X}}
+	ret[0x7E] = &Umbrella{instructionFunc: ror, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X}}
 
 	//Test and Set/Test and Reset bits
-	ret[0x1C] = &AbsAbsXRW{instructionFunc: trb, absX: false}
-	ret[0x0C] = &AbsAbsXRW{instructionFunc: tsb, absX: false}
-	ret[0x14] = &DirDirXRW{instructionFunc: trb, dirX: false}
-	//ret[0x04] = &DirDirXRW{instructionFunc: tsb, dirX: false}
+	ret[0x1C] = &Umbrella{instructionFunc: trb, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0x0C] = &Umbrella{instructionFunc: tsb, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0x14] = &Umbrella{instructionFunc: trb, mode: WRITE_RAM, checkM: true, addressMode: &Direct{isPEI: false, mode: BASE_MODE}}
 	ret[0x04] = &Umbrella{instructionFunc: tsb, mode: WRITE_RAM, checkM: true, addressMode: &Direct{isPEI: false, mode: BASE_MODE}}
 
 	//all 14 sta instructions
