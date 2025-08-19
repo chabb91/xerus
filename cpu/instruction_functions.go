@@ -149,3 +149,33 @@ func bit(val uint16, width int, cpu *CPU) (result uint16) {
 
 	return bit_imm(val, width, cpu)
 }
+
+// bitwise AND
+func and(val uint16, width int, cpu *CPU) (result uint16) {
+	result = bit_imm(val, width, cpu)
+
+	cpu.r.setFlag(FlagN, result&(1<<(width-1)) == 0)
+	cpu.r.SetA(result)
+
+	return result
+}
+
+// bitwise Exclusive OR
+func eor(val uint16, width int, cpu *CPU) (result uint16) {
+	result = val ^ cpu.r.GetA()
+
+	cpu.r.setFlag(FlagZ, result != 0)
+	cpu.r.setFlag(FlagN, result&(1<<(width-1)) == 0)
+	cpu.r.SetA(result)
+	return result
+}
+
+// bitwise OR Accumulator
+func ora(val uint16, width int, cpu *CPU) (result uint16) {
+	result = val | cpu.r.GetA()
+
+	cpu.r.setFlag(FlagZ, result != 0)
+	cpu.r.setFlag(FlagN, result&(1<<(width-1)) == 0)
+	cpu.r.SetA(result)
+	return result
+}
