@@ -135,6 +135,22 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x9D] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Absolute{mode: BASE_MODE_X}}
 	ret[0x9F] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Long{mode: BASE_MODE_X}}
 
+	//all 3 stx instructions
+	ret[0x86] = &Umbrella{instructionFunc: stx, mode: WRITE_RAM, checkX: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0x8E] = &Umbrella{instructionFunc: stx, mode: WRITE_RAM, checkX: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0x96] = &Umbrella{instructionFunc: stx, mode: WRITE_RAM, checkX: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE_Y}}
+
+	//all 3 sty instructions
+	ret[0x84] = &Umbrella{instructionFunc: sty, mode: WRITE_RAM, checkX: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0x8C] = &Umbrella{instructionFunc: sty, mode: WRITE_RAM, checkX: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0x94] = &Umbrella{instructionFunc: sty, mode: WRITE_RAM, checkX: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE_X}}
+
+	//all 4 stz instructions
+	ret[0x64] = &Umbrella{instructionFunc: stz, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0x74] = &Umbrella{instructionFunc: stz, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE_X}}
+	ret[0x9C] = &Umbrella{instructionFunc: stz, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0x9E] = &Umbrella{instructionFunc: stz, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Absolute{mode: BASE_MODE_X}}
+
 	//all 15 LDA instructions
 	ret[0xA1] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDEXED_INDIRECT}}
 	ret[0xA3] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: BASE_MODE}}

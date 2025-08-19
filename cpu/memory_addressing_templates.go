@@ -1,7 +1,5 @@
 package cpu
 
-type instructionFuncWith16BitReturn func(val uint16, width int, cpu *CPU) (result uint16)
-
 // this template represents the Abs and AbsX instructions in (8-2*m and 9-2*m)
 // modes respectively
 // set absX true for absX mode
