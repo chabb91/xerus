@@ -533,7 +533,7 @@ func (i *StackS) Step(cpu *CPU, u *Umbrella) bool {
 		u.lowByte = cpu.fetchByte()
 		i.state = REGISTER_READ
 	case REGISTER_READ:
-		i.register = uint16(u.lowByte) + cpu.r.S
+		i.register = uint16(u.lowByte) + cpu.r.GetStack() //cpu.r.S
 		i.state = READ_LO
 	case EXTRA_CYCLE_P:
 		//its really just another register read no fancy page trickery but didnt want to create another needless enum for it
