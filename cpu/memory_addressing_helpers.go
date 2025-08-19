@@ -21,38 +21,37 @@ func rel16(cpu *CPU, high, low byte) {
 }
 
 // Most likely the proper addressing logic for the Direct Page mode.
-// One main functions and 3 wrappers for convenience
-func directPageLogic(cpu *CPU, op byte, register uint16, isPEI bool) (addressLo, addressHi, addressBank uint32) {
+// One main functions and 2 wrappers for convenience
+func directPageLogic(cpu *CPU, op byte, register uint16, isPEI bool) (addressLo, addressHi uint32) {
 	if cpu.isW() && cpu.r.E && !isPEI {
-		//according to my test data even indirect_long is affected by this
-		//however the documentation doesnt mention it so
-		//TODO keep an eye out for this not working right with indirect
 		low := getLowByte(uint16(op) + register)
 		addressLo = mapOffsetToBank(0x00, createWord(getHighByte(cpu.r.D), low))
 		addressHi = mapOffsetToBank(0x00, createWord(getHighByte(cpu.r.D), low+1))
-		addressBank = mapOffsetToBank(0x00, createWord(getHighByte(cpu.r.D), low+2))
 	} else {
 		offset := cpu.r.D + uint16(op) + register
 		addressLo = mapOffsetToBank(0x00, offset)
 		addressHi = mapOffsetToBank(0x00, offset+1)
-		addressBank = mapOffsetToBank(0x00, offset+2)
 	}
 
-	return addressLo, addressHi, addressBank
+	return addressLo, addressHi
 }
 
 func directPage(cpu *CPU, op byte, isPEI bool) (addressLo, addressHi uint32) {
-	addressLo, addressHi, _ = directPageLogic(cpu, op, 0, isPEI)
+	addressLo, addressHi = directPageLogic(cpu, op, 0, isPEI)
 	return addressLo, addressHi
 }
 
 func directPageXY(cpu *CPU, op byte, register uint16) (addressLo, addressHi uint32) {
-	addressLo, addressHi, _ = directPageLogic(cpu, op, register, false)
+	addressLo, addressHi = directPageLogic(cpu, op, register, false)
 	return addressLo, addressHi
 }
 
-func directPageLong(cpu *CPU, op byte) (uint32, uint32, uint32) {
-	return directPageLogic(cpu, op, 0, false)
+func directPageLong(cpu *CPU, op byte) (addressLo, addressHi, addressBank uint32) {
+	offset := cpu.r.D + uint16(op)
+	addressLo = mapOffsetToBank(0x00, offset)
+	addressHi = mapOffsetToBank(0x00, offset+1)
+	addressBank = mapOffsetToBank(0x00, offset+2)
+	return addressLo, addressHi, addressBank
 }
 
 func absoluteXY(bank, high, low byte, register uint16) (addressLo, addressHi uint32) {
