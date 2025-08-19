@@ -180,6 +180,13 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0xB4] = &Umbrella{instructionFunc: ldy, mode: READ_RAM, checkX: true, addressMode: &Direct{mode: BASE_MODE_X}}
 	ret[0xBC] = &Umbrella{instructionFunc: ldy, mode: READ_RAM, checkX: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
 
+	//test BITs
+	ret[0x89] = &Umbrella{instructionFunc: bit_imm, mode: READ_RAM, checkM: true, addressMode: &Immediate{mode: CHECK_PARENT}}
+	ret[0x24] = &Umbrella{instructionFunc: bit, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0x2C] = &Umbrella{instructionFunc: bit, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0x34] = &Umbrella{instructionFunc: bit, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
+	ret[0x3C] = &Umbrella{instructionFunc: bit, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
+
 	return ret
 }
 

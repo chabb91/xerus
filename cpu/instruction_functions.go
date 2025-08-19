@@ -132,3 +132,20 @@ func rol(val uint16, width int, cpu *CPU) uint16 {
 
 	return result
 }
+
+// test BITs
+// the only instruction that behaves differently based on addressing mode
+func bit_imm(val uint16, _ int, cpu *CPU) (result uint16) {
+	result = val & cpu.r.GetA()
+
+	cpu.r.setFlag(FlagZ, result != 0)
+
+	return result
+}
+
+func bit(val uint16, width int, cpu *CPU) (result uint16) {
+	cpu.r.setFlag(FlagN, val&(1<<(width-1)) == 0)
+	cpu.r.setFlag(FlagV, val&(1<<(width-2)) == 0)
+
+	return bit_imm(val, width, cpu)
+}
