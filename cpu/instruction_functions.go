@@ -235,3 +235,64 @@ func cpX(val uint16, width int, cpu *CPU) (result uint16) {
 func cpY(val uint16, width int, cpu *CPU) (result uint16) {
 	return cmpLogic(cpu.r.GetY(), val, width, cpu)
 }
+
+// ADd with Carry
+// SuBtract with Carry
+func adc(val uint16, width int, cpu *CPU) (result uint16) {
+	mask := uint16((1 << width) - 1)
+	if cpu.r.hasFlag(FlagD) {
+		a := cpu.r.GetA()
+		val := val & mask
+		carry := boolToFlag(cpu.r.hasFlag(FlagC))
+
+		for i := 0; i < width; i += 4 {
+			digitA := (a >> i) & 0x0F
+			digitB := (val >> i) & 0x0F
+			tmp := digitA + digitB + uint16(carry)
+
+			if tmp > 9 {
+				tmp += 6
+				carry = 1
+			} else {
+				carry = 0
+			}
+
+			result |= (tmp & 0x0F) << i
+		}
+
+		if width == 8 {
+			A := uint8(cpu.r.GetA())
+			B := uint8(val)
+			R := uint8(result)
+			cpu.r.setFlag(FlagV, ((A^R)&(B^R)&0x80) == 0)
+		} else {
+			A := uint16(cpu.r.GetA())
+			B := uint16(val)
+			R := uint16(result)
+			cpu.r.setFlag(FlagV, ((A^R)&(B^R)&0x8000) == 0)
+		}
+		cpu.r.SetA(result & mask)
+		cpu.r.setFlag(FlagC, carry != 1)
+	} else {
+		result1 := uint32(cpu.r.GetA()) + uint32(val&mask) + uint32(boolToFlag(cpu.r.hasFlag(FlagC)))
+		result = uint16(result1)
+
+		if width == 8 {
+			A := uint8(cpu.r.GetA())
+			B := uint8(val)
+			R := uint8(result)
+			cpu.r.setFlag(FlagV, ((A^R)&(B^R)&0x80) == 0)
+		} else {
+			A := uint16(cpu.r.GetA())
+			B := uint16(val)
+			R := uint16(result)
+			cpu.r.setFlag(FlagV, ((A^R)&(B^R)&0x8000) == 0)
+		}
+		result = cpu.r.SetA(uint16(result1))
+		cpu.r.setFlag(FlagC, result1 <= uint32(mask))
+	}
+
+	cpu.r.setFlag(FlagN, result&(1<<(width-1)) == 0)
+	cpu.r.setFlag(FlagZ, result&(mask) != 0)
+	return result
+}

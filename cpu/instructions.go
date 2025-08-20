@@ -285,6 +285,9 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0xC4] = &Umbrella{instructionFunc: cpY, mode: READ_RAM, checkX: true, addressMode: &Direct{mode: BASE_MODE}}
 	ret[0xCC] = &Umbrella{instructionFunc: cpY, mode: READ_RAM, checkX: true, addressMode: &Absolute{mode: BASE_MODE}}
 
+	//ADC x15
+	ret[0x65] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
+
 	return ret
 }
 
