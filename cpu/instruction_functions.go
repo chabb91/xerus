@@ -211,3 +211,27 @@ func incX(cpu *CPU) {
 func incY(cpu *CPU) {
 	cpu.r.SetY(inc(cpu.r.GetY(), boolToBitCount(cpu.r.hasFlag(FlagX)), cpu))
 }
+
+// CoMPare (to accumulator)
+func cmpLogic(reg, val uint16, width int, cpu *CPU) (result uint16) {
+	result = reg
+	cpu.r.setFlag(FlagC, result < val)
+	result -= val
+	cpu.r.setFlag(FlagN, result&(1<<(width-1)) == 0)
+	cpu.r.setFlag(FlagZ, result&((1<<width)-1) != 0)
+	return result
+}
+
+func cmp(val uint16, width int, cpu *CPU) (result uint16) {
+	return cmpLogic(cpu.r.GetA(), val, width, cpu)
+}
+
+// ComPare to X regiseter
+func cpX(val uint16, width int, cpu *CPU) (result uint16) {
+	return cmpLogic(cpu.r.GetX(), val, width, cpu)
+}
+
+// ComPare to Y regiseter
+func cpY(val uint16, width int, cpu *CPU) (result uint16) {
+	return cmpLogic(cpu.r.GetY(), val, width, cpu)
+}
