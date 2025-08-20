@@ -75,6 +75,15 @@ func (cpu *CPU) isW() bool {
 	return getLowByte(cpu.r.D) == 0
 }
 
+// if M or X flags are 1 and indicating 8 bit mode return the 8 as in how many bits are we working on
+func boolToBitCount(c bool) int {
+	if c {
+		return 8
+	} else {
+		return 16
+	}
+}
+
 func boolToFlag(b bool) byte {
 	if b {
 		return 1

@@ -179,3 +179,35 @@ func ora(val uint16, width int, cpu *CPU) (result uint16) {
 	cpu.r.SetA(result)
 	return result
 }
+
+// DECrement
+func dec(val uint16, width int, cpu *CPU) (result uint16) {
+	result = val - 1
+	cpu.r.setFlag(FlagN, result&(1<<(width-1)) == 0)
+	cpu.r.setFlag(FlagZ, result&((1<<width)-1) != 0)
+	return result
+}
+
+func decX(cpu *CPU) {
+	cpu.r.SetX(dec(cpu.r.GetX(), boolToBitCount(cpu.r.hasFlag(FlagX)), cpu))
+}
+
+func decY(cpu *CPU) {
+	cpu.r.SetY(dec(cpu.r.GetY(), boolToBitCount(cpu.r.hasFlag(FlagX)), cpu))
+}
+
+// INCrement
+func inc(val uint16, width int, cpu *CPU) (result uint16) {
+	result = val + 1
+	cpu.r.setFlag(FlagN, result&(1<<(width-1)) == 0)
+	cpu.r.setFlag(FlagZ, result&((1<<width)-1) != 0)
+	return result
+}
+
+func incX(cpu *CPU) {
+	cpu.r.SetX(inc(cpu.r.GetX(), boolToBitCount(cpu.r.hasFlag(FlagX)), cpu))
+}
+
+func incY(cpu *CPU) {
+	cpu.r.SetY(inc(cpu.r.GetY(), boolToBitCount(cpu.r.hasFlag(FlagX)), cpu))
+}

@@ -238,6 +238,26 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x1D] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
 	ret[0x1F] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE_X}}
 
+	//DECrement
+	ret[0x3A] = &Accumulator{instructionFunc: dec}
+	ret[0xC6] = &Umbrella{instructionFunc: dec, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0xCE] = &Umbrella{instructionFunc: dec, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0xD6] = &Umbrella{instructionFunc: dec, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
+	ret[0xDE] = &Umbrella{instructionFunc: dec, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X}}
+	ret[0xCA] = &TwoCycleImplied{instructionFunc: decX}
+	ret[0x88] = &TwoCycleImplied{instructionFunc: decY}
+
+	//INCrement
+	ret[0x1A] = &Accumulator{instructionFunc: inc}
+	ret[0xE6] = &Umbrella{instructionFunc: inc, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0xEE] = &Umbrella{instructionFunc: inc, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0xF6] = &Umbrella{instructionFunc: inc, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
+	ret[0xFE] = &Umbrella{instructionFunc: inc, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X}}
+	ret[0xE8] = &TwoCycleImplied{instructionFunc: incX}
+	ret[0xC8] = &TwoCycleImplied{instructionFunc: incY}
+
+	//175 instructions above this comment +-1 depending if i can count or not
+
 	return ret
 }
 

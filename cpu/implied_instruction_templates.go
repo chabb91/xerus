@@ -19,3 +19,16 @@ func (i *Accumulator) Step(cpu *CPU) bool {
 }
 func (i *Accumulator) Reset(cpu *CPU) {
 }
+
+// 2 cycle implied struct. there are many instructions that just fetch opcode and execute a function.
+type TwoCycleImplied struct {
+	instructionFunc func(cpu *CPU)
+}
+
+func (i *TwoCycleImplied) Step(cpu *CPU) bool {
+	i.instructionFunc(cpu)
+
+	return true
+}
+func (i *TwoCycleImplied) Reset(cpu *CPU) {
+}
