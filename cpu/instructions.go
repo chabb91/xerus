@@ -286,8 +286,38 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0xCC] = &Umbrella{instructionFunc: cpY, mode: READ_RAM, checkX: true, addressMode: &Absolute{mode: BASE_MODE}}
 
 	//ADC x15
+	ret[0x61] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDEXED_INDIRECT}}
+	ret[0x63] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: BASE_MODE}}
 	ret[0x65] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0x67] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG}}
+	ret[0x69] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Immediate{mode: CHECK_PARENT}}
+	ret[0x6D] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0x6F] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE}}
+	ret[0x71] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_INDEXED, checkP: true}}
+	ret[0x72] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT}}
+	ret[0x73] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: INDIRECT_INDEXED}}
+	ret[0x75] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
+	ret[0x77] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG_INDEXED}}
+	ret[0x79] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_Y, checkP: true}}
+	ret[0x7D] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
+	ret[0x7F] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE_X}}
 
+	//ADC x15
+	ret[0xE1] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDEXED_INDIRECT}}
+	ret[0xE3] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: BASE_MODE}}
+	ret[0xE5] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0xE7] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG}}
+	ret[0xE9] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Immediate{mode: CHECK_PARENT}}
+	ret[0xED] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0xEF] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE}}
+	ret[0xF1] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_INDEXED, checkP: true}}
+	ret[0xF2] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT}}
+	ret[0xF3] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: INDIRECT_INDEXED}}
+	ret[0xF5] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
+	ret[0xF7] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG_INDEXED}}
+	ret[0xF9] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_Y, checkP: true}}
+	ret[0xFD] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
+	ret[0xFF] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE_X}}
 	return ret
 }
 

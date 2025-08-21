@@ -237,62 +237,81 @@ func cpY(val uint16, width int, cpu *CPU) (result uint16) {
 }
 
 // ADd with Carry
-// SuBtract with Carry
 func adc(val uint16, width int, cpu *CPU) (result uint16) {
-	mask := uint16((1 << width) - 1)
+	mask1 := uint16((1 << width) - 1)
+	mask2 := uint16(1 << (width - 1))
+	a := cpu.r.GetA()
+	c := boolToFlag(cpu.r.hasFlag(FlagC))
+
 	if cpu.r.hasFlag(FlagD) {
-		a := cpu.r.GetA()
-		val := val & mask
-		carry := boolToFlag(cpu.r.hasFlag(FlagC))
-
 		for i := 0; i < width; i += 4 {
-			digitA := (a >> i) & 0x0F
-			digitB := (val >> i) & 0x0F
-			tmp := digitA + digitB + uint16(carry)
+			tmp := (a>>i)&0xF + (val>>i)&0xF + uint16(c)
+			result = (result &^ (0xF << i)) | ((tmp & 0xF) << i)
 
-			if tmp > 9 {
-				tmp += 6
-				carry = 1
-			} else {
-				carry = 0
+			if width == i+4 {
+				cpu.r.setFlag(FlagV, ((a^result)&(val^result)&mask2) == 0)
 			}
 
-			result |= (tmp & 0x0F) << i
+			if tmp > 9 {
+				result += 6 << i
+				c = 1
+			} else {
+				c = 0
+			}
 		}
 
-		if width == 8 {
-			A := uint8(cpu.r.GetA())
-			B := uint8(val)
-			R := uint8(result)
-			cpu.r.setFlag(FlagV, ((A^R)&(B^R)&0x80) == 0)
-		} else {
-			A := uint16(cpu.r.GetA())
-			B := uint16(val)
-			R := uint16(result)
-			cpu.r.setFlag(FlagV, ((A^R)&(B^R)&0x8000) == 0)
-		}
-		cpu.r.SetA(result & mask)
-		cpu.r.setFlag(FlagC, carry != 1)
+		result = cpu.r.SetA(result & mask1)
+		cpu.r.setFlag(FlagC, c != 1)
 	} else {
-		result1 := uint32(cpu.r.GetA()) + uint32(val&mask) + uint32(boolToFlag(cpu.r.hasFlag(FlagC)))
-		result = uint16(result1)
+		result32 := uint32(a) + uint32(val&mask1) + uint32(c)
+		result = cpu.r.SetA(uint16(result32))
 
-		if width == 8 {
-			A := uint8(cpu.r.GetA())
-			B := uint8(val)
-			R := uint8(result)
-			cpu.r.setFlag(FlagV, ((A^R)&(B^R)&0x80) == 0)
-		} else {
-			A := uint16(cpu.r.GetA())
-			B := uint16(val)
-			R := uint16(result)
-			cpu.r.setFlag(FlagV, ((A^R)&(B^R)&0x8000) == 0)
-		}
-		result = cpu.r.SetA(uint16(result1))
-		cpu.r.setFlag(FlagC, result1 <= uint32(mask))
+		cpu.r.setFlag(FlagV, ((a^result)&(val^result)&mask2) == 0)
+		cpu.r.setFlag(FlagC, result32 <= uint32(mask1))
 	}
 
-	cpu.r.setFlag(FlagN, result&(1<<(width-1)) == 0)
-	cpu.r.setFlag(FlagZ, result&(mask) != 0)
+	cpu.r.setFlag(FlagN, result&(mask2) == 0)
+	cpu.r.setFlag(FlagZ, result&(mask1) != 0)
+	return result
+}
+
+// SuBtract with Carry
+// carry flag is set on underflow
+// overflow is calculated differently
+func sbc(val uint16, width int, cpu *CPU) (result uint16) {
+	mask1 := uint16((1 << width) - 1)
+	mask2 := uint16(1 << (width - 1))
+	a := cpu.r.GetA()
+	c := boolToFlag(cpu.r.hasFlag(FlagC))
+
+	if cpu.r.hasFlag(FlagD) {
+		for i := 0; i < width; i += 4 {
+			tmp := int16((a>>i)&0xF) - int16((val>>i)&0xF) - 1 + int16(c)
+			result = (result &^ (0xF << i)) | (uint16(tmp&0xF) << i)
+
+			if width == i+4 {
+				cpu.r.setFlag(FlagV, ((a^val)&(a^result)&mask2) == 0)
+			}
+
+			if tmp < 0 {
+				result -= 6 << i
+				c = 0
+			} else {
+				c = 1
+			}
+		}
+
+		result = cpu.r.SetA(result & mask1)
+		cpu.r.setFlag(FlagC, c != 1)
+	} else {
+		result32 := uint32(a) - uint32(val&mask1) - 1 + uint32(c)
+		result = cpu.r.SetA(uint16(result32))
+
+		cpu.r.setFlag(FlagV, ((a^val)&(a^result)&mask2) == 0)
+		cpu.r.setFlag(FlagC, result32 > uint32(mask1))
+	}
+
+	cpu.r.setFlag(FlagN, result&(mask2) == 0)
+	cpu.r.setFlag(FlagZ, result&(mask1) != 0)
 	return result
 }
