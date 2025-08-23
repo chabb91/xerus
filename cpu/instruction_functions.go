@@ -372,3 +372,26 @@ func tyx(cpu *CPU) {
 	cpu.r.SetX(cpu.r.GetY())
 	transferFlagHelper(cpu.r.hasFlag(FlagX), cpu.r.GetX(), cpu)
 }
+
+// Transfer 16-bit Accumulator (C) to Direct register
+func tcd(cpu *CPU) {
+	cpu.r.D = cpu.r.A
+	transferFlagHelper(false, cpu.r.D, cpu)
+}
+
+// Transfer 16-bit Accumulator (C) Stack pointer
+func tcs(cpu *CPU) {
+	cpu.r.SetStack(cpu.r.A)
+}
+
+// Transfer Direct register to 16-bit Accumulator (C)
+func tdc(cpu *CPU) {
+	cpu.r.A = cpu.r.D
+	transferFlagHelper(false, cpu.r.A, cpu)
+}
+
+// Transfer Stack pointer to 16-bit Accumulator (C)
+func tsc(cpu *CPU) {
+	cpu.r.A = cpu.r.GetStack()
+	transferFlagHelper(false, cpu.r.A, cpu)
+}

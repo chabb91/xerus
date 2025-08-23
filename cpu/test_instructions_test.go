@@ -12,7 +12,7 @@ var cause string
 var cycleCause string
 
 func Test4C(t *testing.T) {
-	tests, err := debugger.LoadTests("../testdata/9a.e.json")
+	tests, err := debugger.LoadTests("../testdata/3b.e.json")
 	if err != nil {
 		t.Fatal(err)
 	}

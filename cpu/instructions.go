@@ -319,6 +319,7 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0xFD] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
 	ret[0xFF] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE_X}}
 
+	//transfer to and from direct register/ accumulator
 	ret[0xAA] = &TwoCycleImplied{instructionFunc: tax}
 	ret[0xA8] = &TwoCycleImplied{instructionFunc: tay}
 	ret[0xBA] = &TwoCycleImplied{instructionFunc: tsx}
@@ -327,6 +328,13 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x9B] = &TwoCycleImplied{instructionFunc: txy}
 	ret[0x98] = &TwoCycleImplied{instructionFunc: tya}
 	ret[0xBB] = &TwoCycleImplied{instructionFunc: tyx}
+
+	//transfer to and from C accumulator/ S/D
+	ret[0x5B] = &TwoCycleImplied{instructionFunc: tcd}
+	ret[0x1B] = &TwoCycleImplied{instructionFunc: tcs}
+	ret[0x7B] = &TwoCycleImplied{instructionFunc: tdc}
+	ret[0x3B] = &TwoCycleImplied{instructionFunc: tsc}
+
 	return ret
 }
 
