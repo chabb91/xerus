@@ -226,12 +226,12 @@ func cmp(val uint16, width int, cpu *CPU) (result uint16) {
 	return cmpLogic(cpu.r.GetA(), val, width, cpu)
 }
 
-// ComPare to X regiseter
+// ComPare to X register
 func cpX(val uint16, width int, cpu *CPU) (result uint16) {
 	return cmpLogic(cpu.r.GetX(), val, width, cpu)
 }
 
-// ComPare to Y regiseter
+// ComPare to Y register
 func cpY(val uint16, width int, cpu *CPU) (result uint16) {
 	return cmpLogic(cpu.r.GetY(), val, width, cpu)
 }
@@ -314,4 +314,61 @@ func sbc(val uint16, width int, cpu *CPU) (result uint16) {
 	cpu.r.setFlag(FlagN, result&(mask2) == 0)
 	cpu.r.setFlag(FlagZ, result&(mask1) != 0)
 	return result
+}
+
+func transferFlagHelper(hasFlag bool, register uint16, cpu *CPU) {
+	if hasFlag {
+		cpu.r.setFlag(FlagN, register&0x80 == 0)
+		cpu.r.setFlag(FlagZ, register&0xFF != 0)
+	} else {
+		cpu.r.setFlag(FlagN, register&0x8000 == 0)
+		cpu.r.setFlag(FlagZ, register != 0)
+	}
+}
+
+// Transfer Accumulator to X register
+func tax(cpu *CPU) {
+	cpu.r.SetX(cpu.r.A)
+	transferFlagHelper(cpu.r.hasFlag(FlagX), cpu.r.GetX(), cpu)
+}
+
+// Transfer Accumulator to Y register
+func tay(cpu *CPU) {
+	cpu.r.SetY(cpu.r.A)
+	transferFlagHelper(cpu.r.hasFlag(FlagX), cpu.r.GetY(), cpu)
+}
+
+// Transfer Stack to X register
+func tsx(cpu *CPU) {
+	cpu.r.SetX(cpu.r.GetStack())
+	transferFlagHelper(cpu.r.hasFlag(FlagX), cpu.r.GetX(), cpu)
+}
+
+// Transfer Accumulator to Y register
+func txa(cpu *CPU) {
+	cpu.r.SetA(cpu.r.GetX())
+	transferFlagHelper(cpu.r.hasFlag(FlagM), cpu.r.GetA(), cpu)
+}
+
+// Transfer X register to Stack
+func txs(cpu *CPU) {
+	cpu.r.SetStack(cpu.r.GetX())
+}
+
+// Transfer X register to Y register
+func txy(cpu *CPU) {
+	cpu.r.SetY(cpu.r.GetX())
+	transferFlagHelper(cpu.r.hasFlag(FlagX), cpu.r.GetY(), cpu)
+}
+
+// Transfer Y register to Accumulator
+func tya(cpu *CPU) {
+	cpu.r.SetA(cpu.r.GetY())
+	transferFlagHelper(cpu.r.hasFlag(FlagM), cpu.r.GetA(), cpu)
+}
+
+// Transfer Y register to Accumulator
+func tyx(cpu *CPU) {
+	cpu.r.SetX(cpu.r.GetY())
+	transferFlagHelper(cpu.r.hasFlag(FlagX), cpu.r.GetX(), cpu)
 }

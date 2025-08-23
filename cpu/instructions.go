@@ -318,6 +318,15 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0xF9] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_Y, checkP: true}}
 	ret[0xFD] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
 	ret[0xFF] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE_X}}
+
+	ret[0xAA] = &TwoCycleImplied{instructionFunc: tax}
+	ret[0xA8] = &TwoCycleImplied{instructionFunc: tay}
+	ret[0xBA] = &TwoCycleImplied{instructionFunc: tsx}
+	ret[0x8A] = &TwoCycleImplied{instructionFunc: txa}
+	ret[0x9A] = &TwoCycleImplied{instructionFunc: txs}
+	ret[0x9B] = &TwoCycleImplied{instructionFunc: txy}
+	ret[0x98] = &TwoCycleImplied{instructionFunc: tya}
+	ret[0xBB] = &TwoCycleImplied{instructionFunc: tyx}
 	return ret
 }
 
@@ -1162,7 +1171,7 @@ func (i *IEB) Step(cpu *CPU) bool {
 		i.state++
 	case 1:
 		cpu.r.A = (createWord(i.lowByte, i.highByte))
-		cpu.r.setFlag(FlagN, i.highByte&(1<<7) == 0)
+		cpu.r.setFlag(FlagN, i.highByte&(0x80) == 0)
 		cpu.r.setFlag(FlagZ, i.highByte != 0)
 		return true
 	}
