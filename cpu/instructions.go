@@ -335,6 +335,15 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x7B] = &TwoCycleImplied{instructionFunc: tdc}
 	ret[0x3B] = &TwoCycleImplied{instructionFunc: tsc}
 
+	// stack Push/Pull implied instructions
+	ret[0x2B] = &Ipld{}
+	ret[0x28] = &Iplp{}
+	ret[0xAB] = &Iplb{}
+	ret[0x8B] = &Iphb{}
+	ret[0x4B] = &Iphk{}
+	ret[0x0B] = &Iphd{}
+	ret[0x08] = &Iphp{}
+
 	return ret
 }
 

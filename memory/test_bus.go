@@ -14,15 +14,6 @@ func NewTestBus() *TestBus {
 
 // mapWRAMAddress resolves a WRAM address, handling mirrors.
 func (b *TestBus) mapWRAMAddress(address uint32) uint32 {
-	bank := (address >> 16) & 0xFF
-	addr := address & 0xFFFF
-
-	if bank >= 0x7E && bank <= 0x7F {
-		return addr // This is the canonical WRAM address space
-	}
-	if bank >= 0x00 && bank <= 0x3F && addr <= 0x1FFF {
-		return addr // This is a mirror of WRAM
-	}
 	// Return original address if not WRAM
 	return address
 }

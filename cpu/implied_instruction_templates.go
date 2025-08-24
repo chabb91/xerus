@@ -32,3 +32,168 @@ func (i *TwoCycleImplied) Step(cpu *CPU) bool {
 }
 func (i *TwoCycleImplied) Reset(cpu *CPU) {
 }
+
+// stack Push/Pull implied instructions
+// PulL Direct register
+type Ipld struct {
+	state    int
+	lowByte  byte
+	highByte byte
+}
+
+func (i *Ipld) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.state++
+	case 1:
+		i.state++
+	case 2:
+		i.lowByte = cpu.PopByte()
+		i.state++
+	case 3:
+		i.highByte = cpu.PopByte()
+		cpu.r.D = createWord(i.highByte, i.lowByte)
+		cpu.r.setFlag(FlagN, cpu.r.D&0x8000 == 0)
+		cpu.r.setFlag(FlagZ, cpu.r.D != 0)
+		return true
+	}
+	return false
+}
+
+func (i *Ipld) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+// PulL Processor status register
+type Iplp struct {
+	state int
+}
+
+func (i *Iplp) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.state++
+	case 1:
+		i.state++
+	case 2:
+		cpu.r.P = cpu.PopByte()
+		if cpu.r.E {
+			cpu.r.P |= 0x30
+		}
+		return true
+	}
+	return false
+}
+
+func (i *Iplp) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+// PulL data Bank register
+type Iplb struct {
+	state int
+}
+
+func (i *Iplb) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.state++
+	case 1:
+		i.state++
+	case 2:
+		cpu.r.DB = cpu.PopByte()
+		cpu.r.setFlag(FlagN, cpu.r.DB&0x80 == 0)
+		cpu.r.setFlag(FlagZ, cpu.r.DB != 0)
+		return true
+	}
+	return false
+}
+
+func (i *Iplb) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+// PusH data Bank register
+type Iphb struct {
+	state int
+}
+
+func (i *Iphb) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.state++
+	case 1:
+		cpu.PushByte(cpu.r.DB)
+		return true
+	}
+	return false
+}
+
+func (i *Iphb) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+// PusH Direct register
+type Iphd struct {
+	state             int
+	lowByte, highByte byte
+}
+
+func (i *Iphd) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.state++
+	case 1:
+		i.highByte, i.lowByte = splitWord(cpu.r.D)
+		cpu.PushByte(i.highByte)
+		i.state++
+	case 2:
+		cpu.PushByte(i.lowByte)
+		return true
+	}
+	return false
+}
+
+func (i *Iphd) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+// PusH K(PB) register
+type Iphk struct {
+	state int
+}
+
+func (i *Iphk) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.state++
+	case 1:
+		cpu.PushByte(cpu.r.PB)
+		return true
+	}
+	return false
+}
+
+func (i *Iphk) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+// PusH Processor status register
+type Iphp struct {
+	state int
+}
+
+func (i *Iphp) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.state++
+	case 1:
+		cpu.PushByte(cpu.r.P)
+		return true
+	}
+	return false
+}
+
+func (i *Iphp) Reset(cpu *CPU) {
+	i.state = 0
+}

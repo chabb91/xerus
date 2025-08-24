@@ -12,7 +12,7 @@ var cause string
 var cycleCause string
 
 func Test4C(t *testing.T) {
-	tests, err := debugger.LoadTests("../testdata/3b.e.json")
+	tests, err := debugger.LoadTests("../testdata/08.e.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,6 +67,9 @@ func Test4C(t *testing.T) {
 			}
 			if cause == "A" {
 				t.Errorf("Expected: %v, Got: %v", tc.Final.A, cpu.r.A)
+			}
+			if cause == "D" {
+				t.Errorf("Expected: %v, Got: %v", tc.Final.D, cpu.r.D)
 			}
 
 		}
