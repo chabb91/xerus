@@ -326,6 +326,16 @@ func transferFlagHelper(hasFlag bool, register uint16, cpu *CPU) {
 	}
 }
 
+// the "logic" for pei and pea. its a bit slow because umbrella creates a word for no reason that gets split right after.
+func peAI(val uint16, _ int, _ *CPU) uint16 {
+	return val
+}
+
+// Push Effective Relative address
+func per(val uint16, _ int, cpu *CPU) uint16 {
+	return cpu.r.PC + uint16(int16(val))
+}
+
 // Transfer Accumulator to X register
 func tax(cpu *CPU) {
 	cpu.r.SetX(cpu.r.A)

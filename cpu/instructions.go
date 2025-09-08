@@ -352,6 +352,11 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0xFA] = &PullAXY{flag: FlagX, register: func(val uint16, cpu *CPU) uint16 { return cpu.r.SetX(val) }}
 	ret[0x7A] = &PullAXY{flag: FlagX, register: func(val uint16, cpu *CPU) uint16 { return cpu.r.SetY(val) }}
 
+	//PEA/PEI/PER
+	ret[0xF4] = &Umbrella{instructionFunc: peAI, mode: WRITE_RAM, combineExecuteAndWrite: true, stackWrite: true, addressMode: &Immediate{mode: LOCKED_16}}
+	ret[0xD4] = &Umbrella{instructionFunc: peAI, mode: WRITE_RAM, combineExecuteAndWrite: true, stackWrite: true, addressMode: &Direct{mode: BASE_MODE, isPEI: true}}
+	ret[0x62] = &Umbrella{instructionFunc: per, mode: WRITE_RAM, stackWrite: true, addressMode: &Immediate{mode: LOCKED_16}}
+
 	return ret
 }
 

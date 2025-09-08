@@ -64,6 +64,7 @@ type Umbrella struct {
 
 	combineExecuteAndWrite bool
 	executeInFetch         bool
+	stackWrite           bool
 
 	addressHi, addressLo, addressBank uint32
 	lowByte, highByte, bankByte       byte
@@ -112,12 +113,20 @@ func (i *Umbrella) is8Bit(cpu *CPU) bool {
 }
 
 func (i *Umbrella) WriteHi(cpu *CPU) {
-	cpu.bus.WriteByte(i.addressHi, getHighByte(i.result))
+	if i.stackWrite {
+		cpu.PushByte(getHighByte(i.result))
+	} else {
+		cpu.bus.WriteByte(i.addressHi, getHighByte(i.result))
+	}
 	i.state = WRITE_LO
 }
 
 func (i *Umbrella) WriteLo(cpu *CPU) {
-	cpu.bus.WriteByte(i.addressLo, getLowByte(i.result))
+	if i.stackWrite {
+		cpu.PushByte(getLowByte(i.result))
+	} else {
+		cpu.bus.WriteByte(i.addressLo, getLowByte(i.result))
+	}
 	i.state = WRITE_HI
 }
 
