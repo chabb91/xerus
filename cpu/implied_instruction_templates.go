@@ -197,3 +197,72 @@ func (i *Iphp) Step(cpu *CPU) bool {
 func (i *Iphp) Reset(cpu *CPU) {
 	i.state = 0
 }
+
+// PusH Accumulator/X register/ Y register
+type PushAXY struct {
+	flag     byte
+	register func(*CPU) uint16
+
+	state int
+}
+
+func (i *PushAXY) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.state++
+		if cpu.r.hasFlag(i.flag) {
+			i.state++
+		}
+	case 1:
+		cpu.PushByte(getHighByte(i.register(cpu)))
+		i.state++
+	case 2:
+		cpu.PushByte(getLowByte(i.register(cpu)))
+		return true
+	}
+	return false
+}
+
+func (i *PushAXY) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+// PulL Accumulator/X register/ Y register
+type PullAXY struct {
+	flag     byte
+	register func(uint16, *CPU) uint16
+
+	state int
+
+	lowByte byte
+	address uint16
+}
+
+func (i *PullAXY) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.state++
+	case 1:
+		i.state++
+	case 2:
+		i.lowByte = cpu.PopByte()
+		if cpu.r.hasFlag(i.flag) {
+			cpu.r.setFlag(FlagN, i.lowByte&0x80 == 0)
+			cpu.r.setFlag(FlagZ, i.lowByte != 0)
+			i.register(uint16(i.lowByte), cpu)
+			return true
+		}
+		i.state++
+	case 3:
+		i.address = createWord(cpu.PopByte(), i.lowByte)
+		cpu.r.setFlag(FlagN, i.address&0x8000 == 0)
+		cpu.r.setFlag(FlagZ, i.address != 0)
+		i.register(i.address, cpu)
+		return true
+	}
+	return false
+}
+
+func (i *PullAXY) Reset(cpu *CPU) {
+	i.state = 0
+}

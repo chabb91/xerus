@@ -81,12 +81,13 @@ func (r *registers) GetX() uint16 {
 	}
 }
 
-func (r *registers) SetX(val uint16) {
+func (r *registers) SetX(val uint16) uint16 {
 	if r.E || r.hasFlag(FlagX) {
 		r.X = maskHighByte(val)
 	} else {
 		r.X = val
 	}
+	return r.X
 }
 func (r *registers) GetA() uint16 {
 	if r.E || r.hasFlag(FlagM) {
@@ -112,10 +113,11 @@ func (r *registers) GetY() uint16 {
 	}
 }
 
-func (r *registers) SetY(val uint16) {
+func (r *registers) SetY(val uint16) uint16 {
 	if r.E || r.hasFlag(FlagX) {
 		r.Y = maskHighByte(val)
 	} else {
 		r.Y = val
 	}
+	return r.Y
 }

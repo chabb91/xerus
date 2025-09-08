@@ -344,6 +344,14 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x0B] = &Iphd{}
 	ret[0x08] = &Iphp{}
 
+	ret[0x48] = &PushAXY{flag: FlagM, register: func(cpu *CPU) uint16 { return cpu.r.A }}
+	ret[0xDA] = &PushAXY{flag: FlagX, register: func(cpu *CPU) uint16 { return cpu.r.GetX() }}
+	ret[0x5A] = &PushAXY{flag: FlagX, register: func(cpu *CPU) uint16 { return cpu.r.GetY() }}
+
+	ret[0x68] = &PullAXY{flag: FlagM, register: func(val uint16, cpu *CPU) uint16 { return cpu.r.SetA(val) }}
+	ret[0xFA] = &PullAXY{flag: FlagX, register: func(val uint16, cpu *CPU) uint16 { return cpu.r.SetX(val) }}
+	ret[0x7A] = &PullAXY{flag: FlagX, register: func(val uint16, cpu *CPU) uint16 { return cpu.r.SetY(val) }}
+
 	return ret
 }
 
