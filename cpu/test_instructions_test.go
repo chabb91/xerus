@@ -12,7 +12,7 @@ var cause string
 var cycleCause string
 
 func Test4C(t *testing.T) {
-	tests, err := debugger.LoadTests("../testdata/44.n.json")
+	tests, err := debugger.LoadTests("../testdata/54.e.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,6 +21,7 @@ func Test4C(t *testing.T) {
 	cpu := NewCPU(ram)
 
 	var waistp bool = false
+	var srcdest bool = false
 
 	for _, tc := range tests {
 		cpu.Reset()
@@ -40,6 +41,23 @@ func Test4C(t *testing.T) {
 				}
 			}
 			i++
+			if !srcdest {
+				_, ok := cpu.currentInstruction.(*SrcDest)
+				if ok {
+					srcdest = true
+				}
+			} else {
+				if (i == 100) || (ret && (cpu.r.A == 0xFFFF)) {
+					cpu.currentInstruction = nil
+					if len(tc.Cycles) != i {
+						t.Errorf("CYCLE COUNT MISMATCH: %v, %v(expected), %v(emulated)", tc.Name, len(tc.Cycles), i)
+					}
+					break
+				} else {
+					continue
+				}
+			}
+
 			if ret && waistp {
 				continue
 			} else if waistp && cpu.executionState != normalState || ret {

@@ -198,8 +198,7 @@ func (c *CPU) handleIRQ() bool {
 func (c *CPU) executeNextInstruction() bool {
 	if c.currentInstruction == nil {
 		c.r.instrPC = c.r.PC
-		opcode := c.fetchByte()
-		c.currentInstruction = c.instructions[opcode]
+		c.currentInstruction = c.instructions[c.fetchByte()]
 		c.currentInstruction.Reset(c)
 		return false
 	}
