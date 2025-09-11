@@ -357,6 +357,10 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0xD4] = &Umbrella{instructionFunc: peAI, mode: WRITE_RAM, combineExecuteAndWrite: true, stackWrite: true, addressMode: &Direct{mode: BASE_MODE, isPEI: true}}
 	ret[0x62] = &Umbrella{instructionFunc: per, mode: WRITE_RAM, stackWrite: true, addressMode: &Immediate{mode: LOCKED_16}}
 
+	//MVN/MVP
+	ret[0x44] = &SrcDest{isPositive: true}
+	ret[0x54] = &SrcDest{isPositive: false}
+
 	return ret
 }
 

@@ -30,6 +30,7 @@ func (i *TwoCycleImplied) Step(cpu *CPU) bool {
 
 	return true
 }
+
 func (i *TwoCycleImplied) Reset(cpu *CPU) {
 }
 
@@ -264,5 +265,53 @@ func (i *PullAXY) Step(cpu *CPU) bool {
 }
 
 func (i *PullAXY) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+// src,dest template for MVN/MVP
+type SrcDest struct {
+	state int
+
+	isPositive bool
+
+	srcAddr, destAddr uint32
+	srcVal            byte
+}
+
+func (i *SrcDest) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		cpu.r.DB = cpu.fetchByte()
+		i.destAddr = mapOffsetToBank(cpu.r.DB, cpu.r.GetY())
+		i.state++
+	case 1:
+		i.srcAddr = mapOffsetToBank(cpu.fetchByte(), cpu.r.GetX())
+		i.state++
+	case 2:
+		i.srcVal = cpu.bus.ReadByte(i.srcAddr)
+		i.state++
+	case 3:
+		cpu.bus.WriteByte(i.destAddr, i.srcVal)
+		i.state++
+	case 4:
+		i.state++
+	case 5:
+		cpu.r.A--
+		if i.isPositive {
+			cpu.r.SetX(cpu.r.GetX() - 1)
+			cpu.r.SetY(cpu.r.GetY() - 1)
+		} else {
+			cpu.r.SetX(cpu.r.GetX() + 1)
+			cpu.r.SetY(cpu.r.GetY() + 1)
+		}
+		if cpu.r.A != 0xFFFF {
+			cpu.r.PC -= 3
+		}
+		return true
+	}
+	return false
+}
+
+func (i *SrcDest) Reset(cpu *CPU) {
 	i.state = 0
 }
