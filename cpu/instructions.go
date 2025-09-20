@@ -26,13 +26,13 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x6C] = &I6C{}
 	ret[0x7C] = &I7C{}
 	ret[0xDC] = &IDC{}
-	ret[0xFC] = &IFC{}
+	ret[0xFC] = &JSR_AbsIndexedIndirect{}
 	ret[0x20] = &I20{}
 	ret[0x22] = &I22{}
 
-	ret[0x40] = &I40{}
-	ret[0x6B] = &I6B{}
-	ret[0x60] = &I60{}
+	ret[0x40] = &RTI{}
+	ret[0x6B] = &RtsRtl{long: true}
+	ret[0x60] = &RtsRtl{long: false}
 
 	ret[0x82] = &BRL{}
 
@@ -627,8 +627,8 @@ func (i *I22) Reset(cpu *CPU) {
 	i.state = 0
 }
 
-// IFC represents the CALL [nnnn + X] instruction
-type IFC struct {
+// Jump to SubRoutine with absolute(indexed indirect) addressing
+type JSR_AbsIndexedIndirect struct {
 	state int
 
 	lowByte  byte
@@ -639,7 +639,7 @@ type IFC struct {
 	pointerAddress uint16
 }
 
-func (i *IFC) Step(cpu *CPU) bool {
+func (i *JSR_AbsIndexedIndirect) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.lowByte = cpu.fetchByte()
@@ -669,19 +669,19 @@ func (i *IFC) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *IFC) Reset(cpu *CPU) {
+func (i *JSR_AbsIndexedIndirect) Reset(cpu *CPU) {
 	i.state = 0
 }
 
-// I40 represents the RTI or return from interrupt instruction
-type I40 struct {
+// return from interrupt instruction
+type RTI struct {
 	state int
 
 	lowByte  byte
 	highByte byte
 }
 
-func (i *I40) Step(cpu *CPU) bool {
+func (i *RTI) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.state++
@@ -711,19 +711,23 @@ func (i *I40) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *I40) Reset(cpu *CPU) {
+func (i *RTI) Reset(cpu *CPU) {
 	i.state = 0
 }
 
-// I6B represents the RTL or return from subroutine long instruction
-type I6B struct {
+// return from subroutine long instruction
+// return from subroutine instruction
+type RtsRtl struct {
 	state int
+
+	long bool
 
 	lowByte  byte
 	highByte byte
 }
 
-func (i *I6B) Step(cpu *CPU) bool {
+// TODO test data is trying to read form page 2 again in emulation mode beware
+func (i *RtsRtl) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.state++
@@ -737,44 +741,15 @@ func (i *I6B) Step(cpu *CPU) bool {
 		cpu.r.PC = createWord(i.highByte, i.lowByte) + 1
 		i.state++
 	case 4:
-		cpu.r.PB = cpu.PopByte()
+		if i.long {
+			cpu.r.PB = cpu.PopByte()
+		}
 		return true
 	}
 	return false
 }
 
-func (i *I6B) Reset(cpu *CPU) {
-	i.state = 0
-}
-
-// I60 represents the RTS or return from subroutine instruction
-type I60 struct {
-	state int
-
-	lowByte  byte
-	highByte byte
-}
-
-func (i *I60) Step(cpu *CPU) bool {
-	switch i.state {
-	case 0:
-		i.state++
-	case 1:
-		i.state++
-	case 2:
-		i.lowByte = cpu.PopByte()
-		i.state++
-	case 3:
-		i.highByte = cpu.PopByte()
-		i.state++
-	case 4:
-		cpu.r.PC = createWord(i.highByte, i.lowByte) + 1
-		return true
-	}
-	return false
-}
-
-func (i *I60) Reset(cpu *CPU) {
+func (i *RtsRtl) Reset(cpu *CPU) {
 	i.state = 0
 }
 
