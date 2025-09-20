@@ -60,13 +60,14 @@ func NewInstructionMap() map[byte]Instruction {
 	// I02 represents the COP (software interrupt) instruction
 	ret[0x02] = &softwareInterrupt{eAddress: 0x00FFF4, nAddress: 0x00FFE4}
 
-	ret[0x18] = &CDIVflagSetter{changeFlag: func(cpu *CPU) { cpu.r.setFlag(FlagC, true) }}
-	ret[0xD8] = &CDIVflagSetter{changeFlag: func(cpu *CPU) { cpu.r.setFlag(FlagD, true) }}
-	ret[0x58] = &CDIVflagSetter{changeFlag: func(cpu *CPU) { cpu.r.setFlag(FlagI, true) }}
-	ret[0xB8] = &CDIVflagSetter{changeFlag: func(cpu *CPU) { cpu.r.setFlag(FlagV, true) }}
-	ret[0x38] = &CDIVflagSetter{changeFlag: func(cpu *CPU) { cpu.r.setFlag(FlagC, false) }}
-	ret[0xF8] = &CDIVflagSetter{changeFlag: func(cpu *CPU) { cpu.r.setFlag(FlagD, false) }}
-	ret[0x78] = &CDIVflagSetter{changeFlag: func(cpu *CPU) { cpu.r.setFlag(FlagI, false) }}
+	// CLC CLD CLI CLV SEC SED SEI
+	ret[0x18] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagC, true) }}
+	ret[0xD8] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagD, true) }}
+	ret[0x58] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagI, true) }}
+	ret[0xB8] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagV, true) }}
+	ret[0x38] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagC, false) }}
+	ret[0xF8] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagD, false) }}
+	ret[0x78] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagI, false) }}
 
 	//rep
 	ret[0xC2] = &RepSep{reset: true}
@@ -1090,26 +1091,6 @@ func (i *ResetSequence) Step(cpu *CPU) bool {
 }
 
 func (i *ResetSequence) Reset(cpu *CPU) {
-	i.state = 0
-}
-
-// CLC CLD CLI CLV SEC SED SEI
-type CDIVflagSetter struct {
-	state int
-
-	changeFlag func(cpu *CPU)
-}
-
-func (i *CDIVflagSetter) Step(cpu *CPU) bool {
-	switch i.state {
-	case 0:
-		i.changeFlag(cpu)
-		return true
-	}
-	return false
-}
-
-func (i *CDIVflagSetter) Reset(cpu *CPU) {
 	i.state = 0
 }
 
