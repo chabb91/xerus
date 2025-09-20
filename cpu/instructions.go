@@ -60,10 +60,8 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0xF8] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagD, false) }}
 	ret[0x78] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagI, false) }}
 
-	//rep
-	ret[0xC2] = &RepSep{reset: true}
-	//sep
-	ret[0xE2] = &RepSep{reset: false}
+	ret[0xC2] = &RepSep{reset: true}  //rep
+	ret[0xE2] = &RepSep{reset: false} //sep
 
 	ret[0xFB] = &TwoCycleImplied{instructionFunc: xce}
 
