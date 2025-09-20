@@ -73,13 +73,13 @@ func NewInstructionMap() map[byte]Instruction {
 	//sep
 	ret[0xE2] = &RepSep{reset: false}
 
-	ret[0xFB] = &IFB{}
+	ret[0xFB] = &TwoCycleImplied{instructionFunc: xce}
 
 	//STP/WAI
 	ret[0xDB] = &StpWai{executionState: stopState}
 	ret[0xCB] = &StpWai{executionState: waitState}
 
-	ret[0xEB] = &IEB{}
+	ret[0xEB] = &XBA{}
 
 	//WDM/NOP instructions
 	ret[0xEA] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) {}}
@@ -1144,33 +1144,6 @@ func (i *RepSep) Reset(cpu *CPU) {
 	i.state = 0
 }
 
-// the XCE or eXchange Carry and Emulation instruction
-// the only instruction that can swap modes
-type IFB struct {
-	state int
-}
-
-func (i *IFB) Step(cpu *CPU) bool {
-	switch i.state {
-	case 0:
-		tmp := cpu.r.hasFlag(FlagC)
-		cpu.r.setFlag(FlagC, !cpu.r.E)
-		cpu.r.E = tmp
-		if tmp {
-			cpu.r.P |= 0x30
-			cpu.r.X = maskHighByte(cpu.r.X)
-			cpu.r.Y = maskHighByte(cpu.r.Y)
-			cpu.r.S = 0x0100 | maskHighByte(cpu.r.S)
-		}
-		return true
-	}
-	return false
-}
-
-func (i *IFB) Reset(cpu *CPU) {
-	i.state = 0
-}
-
 type StpWai struct {
 	state int
 
@@ -1192,13 +1165,13 @@ func (i *StpWai) Reset(cpu *CPU) {
 	i.state = 0
 }
 
-type IEB struct {
+type XBA struct {
 	state int
 
 	lowByte, highByte byte
 }
 
-func (i *IEB) Step(cpu *CPU) bool {
+func (i *XBA) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.highByte, i.lowByte = splitWord(cpu.r.A)
@@ -1212,6 +1185,6 @@ func (i *IEB) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *IEB) Reset(cpu *CPU) {
+func (i *XBA) Reset(cpu *CPU) {
 	i.state = 0
 }

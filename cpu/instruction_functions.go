@@ -405,3 +405,18 @@ func tsc(cpu *CPU) {
 	cpu.r.A = cpu.r.GetStack()
 	transferFlagHelper(false, cpu.r.A, cpu)
 }
+
+// the XCE or eXchange Carry and Emulation instruction
+// the only instruction that can swap modes
+func xce(cpu *CPU) {
+	tmp := cpu.r.hasFlag(FlagC)
+	cpu.r.setFlag(FlagC, !cpu.r.E)
+	cpu.r.E = tmp
+
+	if cpu.r.E {
+		cpu.r.P |= 0x30
+		cpu.r.X = maskHighByte(cpu.r.X)
+		cpu.r.Y = maskHighByte(cpu.r.Y)
+		cpu.r.S = 0x0100 | maskHighByte(cpu.r.S)
+	}
+}
