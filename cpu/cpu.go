@@ -209,20 +209,10 @@ func (c *CPU) executeNextInstruction() bool {
 	return false
 }
 
-// mapAddress combines the Program Bank and Program Counter into a 24-bit address.
-func (c *CPU) mapPCAddress() uint32 {
-	return mapOffsetToBank(c.r.PB, c.r.PC)
-}
-
-// mapDataAddress combines the Data Bank and a 16-bit address into a 24-bit address.
-func (c *CPU) mapDataAddress(addr uint16) uint32 {
-	return mapOffsetToBank(c.r.DB, addr)
-}
-
 // fetchByte maps PC to 24 bit then goes and reads a byte from memory
 // then increases PC by 1
 func (c *CPU) fetchByte() byte {
-	ret := c.bus.ReadByte(c.mapPCAddress())
+	ret := c.bus.ReadByte(mapOffsetToBank(c.r.PB, c.r.PC))
 	c.r.PC++
 
 	return ret
