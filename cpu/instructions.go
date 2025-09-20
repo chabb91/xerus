@@ -795,7 +795,7 @@ func (i *BRL) Step(cpu *CPU) bool {
 		i.offsetH = cpu.fetchByte()
 		i.state++
 	case 2:
-		rel16(cpu, i.offsetH, i.offsetL)
+		cpu.r.PC += rel16(createWord(i.offsetH, i.offsetL))
 		return true
 	}
 	return false

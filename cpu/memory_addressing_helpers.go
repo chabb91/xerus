@@ -16,8 +16,8 @@ func rel8(cpu *CPU, disp byte) {
 
 // Relative 16-bit (BRL): 16-bit signed displacement
 // wraps at bank boundary so it jumps anywhere in the current PB
-func rel16(cpu *CPU, high, low byte) {
-	cpu.r.PC += uint16(int16(createWord(high, low)))
+func rel16(val uint16) uint16 {
+	return uint16(int16(val))
 }
 
 // Most likely the proper addressing logic for the Direct Page mode.

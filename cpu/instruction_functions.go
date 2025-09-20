@@ -333,7 +333,7 @@ func peAI(val uint16, _ int, _ *CPU) uint16 {
 
 // Push Effective Relative address
 func per(val uint16, _ int, cpu *CPU) uint16 {
-	return cpu.r.PC + uint16(int16(val))
+	return cpu.r.PC + rel16(val)
 }
 
 // Transfer Accumulator to X register
