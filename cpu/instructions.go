@@ -34,26 +34,17 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0x6B] = &I6B{}
 	ret[0x60] = &I60{}
 
-	ret[0x82] = &I82{}
+	ret[0x82] = &BRL{}
 
-	// I80 represents the BRA or branch always instruction
-	ret[0x80] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return true }}
-	// I10 represents the BPL or branch if positive instruction
-	ret[0x10] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return !cpu.r.hasFlag(FlagN) }}
-	// I30 represents the BMI or branch if not positive instruction
-	ret[0x30] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return cpu.r.hasFlag(FlagN) }}
-	// I90 represents the BCC or branch if no carry
-	ret[0x90] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return !cpu.r.hasFlag(FlagC) }}
-	// IB0 represents the BCS or branch if carry instruction
-	ret[0xB0] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return cpu.r.hasFlag(FlagC) }}
-	// IF0 represents the BEQ or branch if zero instruction
-	ret[0xF0] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return cpu.r.hasFlag(FlagZ) }}
-	// ID0 represents the BNE or branch if not zero instruction
-	ret[0xD0] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return !cpu.r.hasFlag(FlagZ) }}
-	// I50 represents the BVC or branch if not overflow instruction
-	ret[0x50] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return !cpu.r.hasFlag(FlagV) }}
-	// I70 represents the BVS or branch if overflow instruction
-	ret[0x70] = &OneBitBranch{shouldBranch: func(cpu *CPU) bool { return cpu.r.hasFlag(FlagV) }}
+	ret[0x80] = &OneByteBranch{shouldBranch: func(cpu *CPU) bool { return true }}                  //BRA or branch always
+	ret[0x10] = &OneByteBranch{shouldBranch: func(cpu *CPU) bool { return !cpu.r.hasFlag(FlagN) }} //BPL or branch if positive
+	ret[0x30] = &OneByteBranch{shouldBranch: func(cpu *CPU) bool { return cpu.r.hasFlag(FlagN) }}  //BMI or branch if not positive
+	ret[0x90] = &OneByteBranch{shouldBranch: func(cpu *CPU) bool { return !cpu.r.hasFlag(FlagC) }} //BCC or branch if no carry
+	ret[0xB0] = &OneByteBranch{shouldBranch: func(cpu *CPU) bool { return cpu.r.hasFlag(FlagC) }}  //BCS or branch if carry
+	ret[0xF0] = &OneByteBranch{shouldBranch: func(cpu *CPU) bool { return cpu.r.hasFlag(FlagZ) }}  //BEQ or branch if zero
+	ret[0xD0] = &OneByteBranch{shouldBranch: func(cpu *CPU) bool { return !cpu.r.hasFlag(FlagZ) }} //BNE or branch if not zero
+	ret[0x50] = &OneByteBranch{shouldBranch: func(cpu *CPU) bool { return !cpu.r.hasFlag(FlagV) }} //BVC or branch if not overflow
+	ret[0x70] = &OneByteBranch{shouldBranch: func(cpu *CPU) bool { return cpu.r.hasFlag(FlagV) }}  //BVS or branch if overflow
 
 	// I00 represents the BRK or break (software interrupt) instruction
 	ret[0x00] = &softwareInterrupt{eAddress: 0x00FFFE, nAddress: 0x00FFE6}
@@ -256,8 +247,6 @@ func NewInstructionMap() map[byte]Instruction {
 	ret[0xFE] = &Umbrella{instructionFunc: inc, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X}}
 	ret[0xE8] = &TwoCycleImplied{instructionFunc: incX}
 	ret[0xC8] = &TwoCycleImplied{instructionFunc: incY}
-
-	//175 instructions above this comment +-1 depending if i can count or not
 
 	//CoMPare all 15
 	ret[0xC1] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDEXED_INDIRECT}}
@@ -789,15 +778,15 @@ func (i *I60) Reset(cpu *CPU) {
 	i.state = 0
 }
 
-// I82 represents the BRL or branch always long instruction
-type I82 struct {
+// BRL represents the BRL or branch always long instruction
+type BRL struct {
 	state int
 
 	offsetL byte
 	offsetH byte
 }
 
-func (i *I82) Step(cpu *CPU) bool {
+func (i *BRL) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.offsetL = cpu.fetchByte()
@@ -812,13 +801,13 @@ func (i *I82) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *I82) Reset(cpu *CPU) {
+func (i *BRL) Reset(cpu *CPU) {
 	i.state = 0
 }
 
 // all one bit branch instructions
 // BCC BCS BEQ BMI BNE BPL BRA BVC BVS
-type OneBitBranch struct {
+type OneByteBranch struct {
 	state int
 
 	pcTmp  uint16
@@ -827,7 +816,7 @@ type OneBitBranch struct {
 	shouldBranch func(cpu *CPU) bool
 }
 
-func (i *OneBitBranch) Step(cpu *CPU) bool {
+func (i *OneByteBranch) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.offset = cpu.fetchByte()
@@ -849,7 +838,7 @@ func (i *OneBitBranch) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *OneBitBranch) Reset(cpu *CPU) {
+func (i *OneByteBranch) Reset(cpu *CPU) {
 	i.state = 0
 }
 
