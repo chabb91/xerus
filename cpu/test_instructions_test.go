@@ -24,7 +24,7 @@ func Test4C(t *testing.T) {
 	var srcdest bool = false
 
 	for _, tc := range tests {
-		cpu.Reset()
+		cpu.executionState = normalState
 		setState(cpu, tc.Initial)
 		i := 0
 		for {
