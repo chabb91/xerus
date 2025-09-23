@@ -32,8 +32,9 @@ func (lr loRom) mapToCartridge(bank byte, offset uint16, hasSram bool) (int, int
 		}
 	} else {
 		if hasSram {
-			//TODO make this bool into a struct that holds the size of the SRAM with other parameters
-			//so we know the size of the thing and then make this into a nil check if there is no SRAM present
+			if bank <= 0x7D && bank >= 0x70 {
+				return int(bank-0x70)*0x8000 + int(offset), sramAddress
+			}
 		} else {
 			if bank <= 0x7D && bank >= 0x40 {
 				return int(bank)*0x8000 + int(offset), romAddress
