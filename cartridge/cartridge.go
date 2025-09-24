@@ -1,6 +1,7 @@
 package cartridge
 
 import (
+	"errors"
 	"os"
 )
 
@@ -40,37 +41,37 @@ func NewCartridge(romData []byte, mapper romMapper) *Cartridge {
 	return cart
 }
 
-func (cart Cartridge) ReadByte(bank byte, offset uint16) (value byte, ok bool) {
+func (cart Cartridge) ReadByte(bank byte, offset uint16) (byte, error) {
 	index, addressType := cart.Mapper.mapToCartridge(bank, offset, cart.HasSram())
 
 	switch addressType {
 	case romAddress:
-		return cart.romData[index%len(cart.romData)], true
+		return cart.romData[index%len(cart.romData)], nil
 	case sramAddress:
 		if cart.HasSram() {
-			return cart.sramData[index%len(cart.romData)], true
+			return cart.sramData[index%len(cart.romData)], nil
 		} else {
-			return 0, false
+			return 0, errors.New("Trying to read SRAM but the cartridge doesnt have one")
 		}
 	default:
 		//unmappedAddress
-		return 0, false
+		return 0, errors.New("Trying to read unmapped address space.")
 	}
 }
 
-func (cart Cartridge) WriteByte(bank byte, offset uint16, value byte) (ok bool) {
+func (cart Cartridge) WriteByte(bank byte, offset uint16, value byte) error {
 	if !cart.HasSram() {
-		return false
+		return errors.New("No SRAM present so writes arent allowed")
 	}
 
 	index, addressType := cart.Mapper.mapToCartridge(bank, offset, true)
 
 	if addressType == sramAddress {
 		cart.sramData[index%len(cart.romData)] = value
-		return true
+		return nil
 	}
 
-	return false
+	return errors.New("Trying to write to read only or unmapped region")
 }
 
 func (cart Cartridge) HasSram() bool {
@@ -79,15 +80,15 @@ func (cart Cartridge) HasSram() bool {
 
 // TODO this always creates a new sram but if theres a battery and there is a SRAM file already it should be loaded instead
 func (cart Cartridge) DetectSram() []byte {
-	romType, ok := cart.ReadByte(0, 0xFFD6)
-	if !ok {
+	romType, err := cart.ReadByte(0, 0xFFD6)
+	if err != nil {
 		return nil
 	}
 
 	switch romType & 0x7 {
 	case 0x1, 0x2, 0x4, 0x5:
-		sizeVal, ok := cart.ReadByte(0, 0xFFD8)
-		if sizeVal == 0 || !ok {
+		sizeVal, err := cart.ReadByte(0, 0xFFD8)
+		if sizeVal == 0 || err != nil {
 			return nil
 		}
 		//return make([]byte, 1<<(10+sizeVal))
