@@ -13,15 +13,19 @@ type Bus interface {
 type RealBus struct {
 	openBus byte
 
+	registers *RegisterSystem
+
 	WRAM      []byte
 	cartridge *cartridge.Cartridge
 }
 
 func NewBus(cartridge *cartridge.Cartridge) *RealBus {
-	return &RealBus{
+	rb := &RealBus{
 		WRAM:      make([]byte, 0x20000), // 128 KB
 		cartridge: cartridge,
 	}
+	SetupRegisterSystem(rb)
+	return rb
 }
 
 func (b *RealBus) ReadByte(address uint32) byte {
@@ -33,7 +37,24 @@ func (b *RealBus) ReadByte(address uint32) byte {
 		return b.openBus
 	}
 
-	value, err := b.cartridge.ReadByte(byte(bank), uint16(addr))
+	if b.registers.IsRegisterAddress(bank, addr) {
+		handler, name, err := b.registers.FindHandler(addr)
+		if err != nil {
+			log.Printf("Warning: No handler for register $%04X (%s)", addr, name)
+			return b.openBus
+		}
+
+		value, err := handler.Read(addr)
+		if err != nil {
+			log.Printf("Warning: Register read error at $%04X (%s): %v", addr, name, err)
+			return b.openBus
+		}
+
+		b.openBus = value
+		return b.openBus
+	}
+
+	value, err := b.cartridge.ReadByte(bank, addr)
 	if err == nil {
 		b.openBus = value
 		return b.openBus
@@ -52,9 +73,23 @@ func (b *RealBus) WriteByte(address uint32, value byte) {
 		return
 	}
 
-	err := b.cartridge.WriteByte(byte(bank), uint16(addr), value)
-	if err == nil {
-		log.Printf("Warning: Write to unmapped or invalid address $%06X", address)
+	if b.registers.IsRegisterAddress(bank, addr) {
+		handler, name, err := b.registers.FindHandler(addr)
+		if err != nil {
+			log.Printf("Warning: No handler for register $%04X (%s)", addr, name)
+			return
+		}
+
+		err = handler.Write(addr, value)
+		if err != nil {
+			log.Printf("Warning: Register write error at $%04X (%s): %v", addr, name, err)
+		}
+		return
+	}
+
+	err := b.cartridge.WriteByte(bank, addr, value)
+	if err != nil {
+		log.Printf("Cartridge: Write to unmapped or invalid address $%06X", address)
 	}
 
 }
