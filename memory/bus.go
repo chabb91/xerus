@@ -1,89 +1,65 @@
 package memory
 
-import "log"
+import (
+	"SNES_emulator/cartridge"
+	"log"
+)
 
 type Bus interface {
 	ReadByte(address uint32) byte
 	WriteByte(address uint32, value byte)
 }
 
-// RealBus represents the system bus, connecting the CPU to memory and peripherals.
-// This is a minimal LoROM implementation with 128KB WRAM.
 type RealBus struct {
-	WRAM []byte // 128 KB of Work RAM
-	ROM  []byte // Cartridge ROM data
+	openBusA, openBusB byte
+
+	WRAM      []byte
+	cartridge *cartridge.Cartridge
 }
 
-// NewBus creates and initializes a new Bus instance.
-// It requires the cartridge's ROM data to be provided.
-func NewRealBus(romData []byte) *RealBus {
+func NewBus(cartridge *cartridge.Cartridge) *RealBus {
 	return &RealBus{
-		WRAM: make([]byte, 0x20000), // 128 KB
-		ROM:  romData,
+		WRAM:      make([]byte, 0x20000), // 128 KB
+		cartridge: cartridge,
 	}
 }
 
-// ReadByte reads a single byte from the 24-bit address space.
-// It handles a minimal address map for WRAM and ROM.
 func (b *RealBus) ReadByte(address uint32) byte {
-	// A simple address decoding for a minimal setup.
-	// This only handles WRAM mirrors and the LoROM bank.
 	bank := (address >> 16) & 0xFF
 	addr := address & 0xFFFF
 
-	// ----------------------
-	// WRAM ($00-3F:0000-1FFF mirrors, $7E-7F:0000-FFFF)
-	// ----------------------
-	if bank >= 0x7E && bank <= 0x7F {
-		// 128KB WRAM is mirrored here
+	if bank == 0x7E || ((bank <= 0x3F || (bank >= 0x80 && bank <= 0xBF)) && addr <= 0x1FFF) {
 		return b.WRAM[addr]
 	}
-	if bank >= 0x00 && bank <= 0x3F && addr >= 0x0000 && addr <= 0x1FFF {
-		// WRAM mirror
-		return b.WRAM[addr]
+	if bank == 0x7F {
+		return b.WRAM[0x10000+addr]
 	}
 
-	// ----------------------
-	// LoROM ROM ($80-FF:8000-FFFF)
-	// ----------------------
-	if bank >= 0x80 && addr >= 0x8000 {
-		// Calculate the offset into the ROM data.
-		// Banks 80-FF map to the ROM.
-		romOffset := (uint32(bank-0x80) * 0x8000) + (addr - 0x8000)
-
-		// Check if the offset is within the bounds of the ROM.
-		if int(romOffset) < len(b.ROM) {
-			return b.ROM[romOffset]
-		}
+	value, err := b.cartridge.ReadByte(byte(bank), uint16(addr))
+	if err == nil {
+		return value
 	}
 
-	// Default to returning 0 for unmapped or invalid addresses.
 	log.Printf("Warning: Read from unmapped address $%06X", address)
-	return 0
+	return b.openBusA
 }
 
-// WriteByte writes a single byte to the 24-bit address space.
-// This minimal implementation only allows writes to WRAM.
 func (b *RealBus) WriteByte(address uint32, value byte) {
 	bank := (address >> 16) & 0xFF
 	addr := address & 0xFFFF
 
-	// ----------------------
-	// WRAM ($00-3F:0000-1FFF mirrors, $7E-7F:0000-FFFF)
-	// ----------------------
-	if bank >= 0x7E && bank <= 0x7F {
-		if int(addr) < len(b.WRAM) {
-			b.WRAM[addr] = value
-		}
+	if bank == 0x7E || ((bank <= 0x3F || (bank >= 0x80 && bank <= 0xBF)) && addr <= 0x1FFF) {
+		b.WRAM[addr] = value
 		return
 	}
-	if bank >= 0x00 && bank <= 0x3F && addr >= 0x0000 && addr <= 0x1FFF {
-		if int(addr) < len(b.WRAM) {
-			b.WRAM[addr] = value
-		}
+	if bank == 0x7F {
+		b.WRAM[0x10000+addr] = value
 		return
 	}
 
-	// For a bare-minimum implementation, we'll ignore writes to unmapped addresses or ROM.
-	log.Printf("Warning: Write to unmapped or invalid address $%06X", address)
+	err := b.cartridge.WriteByte(byte(bank), uint16(addr), value)
+	if err == nil {
+		log.Printf("Warning: Write to unmapped or invalid address $%06X", address)
+	}
+
 }
