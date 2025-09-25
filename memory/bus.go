@@ -11,7 +11,7 @@ type Bus interface {
 }
 
 type RealBus struct {
-	openBusA, openBusB byte
+	openBus byte
 
 	WRAM      []byte
 	cartridge *cartridge.Cartridge
@@ -25,35 +25,30 @@ func NewBus(cartridge *cartridge.Cartridge) *RealBus {
 }
 
 func (b *RealBus) ReadByte(address uint32) byte {
-	bank := (address >> 16) & 0xFF
-	addr := address & 0xFFFF
+	bank, addr := splitAddress24(address)
 
-	if bank == 0x7E || ((bank <= 0x3F || (bank >= 0x80 && bank <= 0xBF)) && addr <= 0x1FFF) {
-		return b.WRAM[addr]
-	}
-	if bank == 0x7F {
-		return b.WRAM[0x10000+addr]
+	index, ok := b.wramIndex(bank, addr)
+	if ok {
+		b.openBus = b.WRAM[index]
+		return b.openBus
 	}
 
 	value, err := b.cartridge.ReadByte(byte(bank), uint16(addr))
 	if err == nil {
-		return value
+		b.openBus = value
+		return b.openBus
 	}
 
 	log.Printf("Warning: Read from unmapped address $%06X", address)
-	return b.openBusA
+	return b.openBus
 }
 
 func (b *RealBus) WriteByte(address uint32, value byte) {
-	bank := (address >> 16) & 0xFF
-	addr := address & 0xFFFF
+	bank, addr := splitAddress24(address)
 
-	if bank == 0x7E || ((bank <= 0x3F || (bank >= 0x80 && bank <= 0xBF)) && addr <= 0x1FFF) {
-		b.WRAM[addr] = value
-		return
-	}
-	if bank == 0x7F {
-		b.WRAM[0x10000+addr] = value
+	index, ok := b.wramIndex(bank, addr)
+	if ok {
+		b.WRAM[index] = value
 		return
 	}
 
@@ -62,4 +57,18 @@ func (b *RealBus) WriteByte(address uint32, value byte) {
 		log.Printf("Warning: Write to unmapped or invalid address $%06X", address)
 	}
 
+}
+
+func splitAddress24(address uint32) (byte, uint16) {
+	return byte((address >> 16) & 0xFF), uint16(address & 0xFFFF)
+}
+
+func (b *RealBus) wramIndex(bank byte, offset uint16) (int, bool) {
+	if bank == 0x7E || ((bank <= 0x3F || (bank >= 0x80 && bank <= 0xBF)) && offset <= 0x1FFF) {
+		return int(offset), true
+	}
+	if bank == 0x7F {
+		return 0x10000 + int(offset), true
+	}
+	return 0, false
 }
