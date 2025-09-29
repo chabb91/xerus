@@ -19,6 +19,11 @@ type DmaChannel struct {
 }
 
 type Dma struct {
+	//both the previous and the current values have to be non zero for DMA to be triggered
+	//update every cpu cycle. this is an easy way to give the cpu an extra cycle of operation
+	MdmaenPrevious, Mdmaen byte
+	Hdmaen                 byte
+
 	Channels [8]DmaChannel
 }
 
