@@ -10,7 +10,7 @@ const (
 
 type direction func(busA uint32, busB byte, bus memory.Bus)
 
-type Transfer func(busA uint32, busB byte, direction direction, bus memory.Bus) (step byte)
+type Transfer func(busA uint32, busB byte, direction direction, bus memory.Bus)
 
 func CpuToIo(busA uint32, busB byte, bus memory.Bus) {
 	bus.WriteByte(0x2100+uint32(busB), bus.ReadByte(busA&0xFFFFFF))
@@ -20,54 +20,50 @@ func IoToCpu(busA uint32, busB byte, bus memory.Bus) {
 	bus.WriteByte(busA&0xFFFFFF, bus.ReadByte(0x2100+uint32(busB)))
 }
 
-func TransferMode0(busA uint32, busB byte, direction direction, bus memory.Bus) (step byte) {
+func TransferMode0(busA uint32, busB byte, direction direction, bus memory.Bus) {
 	direction(busA, busB, bus)
-	return 1
 }
 
-func TransferMode1(busA uint32, busB byte, direction direction, bus memory.Bus) (step byte) {
+func TransferMode1(busA uint32, busB byte, direction direction, bus memory.Bus) {
 	direction(busA, busB, bus)
 	direction(busA+1, busB+1, bus)
-	return 2
 }
 
-func TransferMode2(busA uint32, busB byte, direction direction, bus memory.Bus) (step byte) {
+func TransferMode2(busA uint32, busB byte, direction direction, bus memory.Bus) {
 	direction(busA, busB, bus)
 	direction(busA+1, busB, bus)
-	return 2
 }
 
-func TransferMode3(busA uint32, busB byte, direction direction, bus memory.Bus) (step byte) {
+func TransferMode3(busA uint32, busB byte, direction direction, bus memory.Bus) {
 	direction(busA, busB, bus)
 	direction(busA+1, busB, bus)
 
 	direction(busA+2, busB+1, bus)
 	direction(busA+3, busB+1, bus)
-	return 4
 }
 
-func TransferMode4(busA uint32, busB byte, direction direction, bus memory.Bus) (step byte) {
+func TransferMode4(busA uint32, busB byte, direction direction, bus memory.Bus) {
 	for i := range uint32(4) {
 		direction(busA+i, busB+byte(i), bus)
 	}
-	return 4
 }
 
-func TransferMode5(busA uint32, busB byte, direction direction, bus memory.Bus) (step byte) {
+func TransferMode5(busA uint32, busB byte, direction direction, bus memory.Bus) {
 	direction(busA, busB, bus)
 	direction(busA+1, busB+1, bus)
 
 	direction(busA+2, busB, bus)
 	direction(busA+3, busB+1, bus)
-	return 4
 }
 
 type DmaOperation struct {
 	bus memory.Bus
 
-	direction direction
-	transfer  Transfer
-	step      int
+	direction           direction
+	transfer            Transfer
+	step                int
+	transferUnitSize    uint32
+	masterCyclesPerUnit uint32
 
 	busA uint32
 	busB byte
@@ -79,16 +75,22 @@ func (op *DmaOperation) setup(channel DmaChannel) {
 	switch channel.dmap & 0b111 {
 	case 0:
 		op.transfer = TransferMode0
+		op.transferUnitSize = 1
 	case 1:
 		op.transfer = TransferMode1
+		op.transferUnitSize = 2
 	case 2, 6:
 		op.transfer = TransferMode2
+		op.transferUnitSize = 2
 	case 3, 7:
 		op.transfer = TransferMode3
+		op.transferUnitSize = 4
 	case 4:
 		op.transfer = TransferMode4
+		op.transferUnitSize = 4
 	case 5:
 		op.transfer = TransferMode5
+		op.transferUnitSize = 4
 	}
 
 	switch (channel.dmap & 0b11000) >> 3 {
@@ -111,18 +113,20 @@ func (op *DmaOperation) setup(channel DmaChannel) {
 	op.busB = channel.bbad
 
 	op.size = uint16(channel.dash)<<8 | uint16(channel.dasl)
+
+	op.masterCyclesPerUnit = op.transferUnitSize * 8
 }
 
 func (op *DmaOperation) stepCycle() bool {
 	if op.size > 0 {
-		stepSize := op.transfer(op.busA, op.busB, op.direction, op.bus)
+		op.transfer(op.busA, op.busB, op.direction, op.bus)
 		op.size--
 
 		switch op.step {
 		case decrement:
-			op.busA -= uint32(stepSize)
+			op.busA -= uint32(op.transferUnitSize)
 		case increment:
-			op.busA += uint32(stepSize)
+			op.busA += uint32(op.transferUnitSize)
 		default:
 			//fixed
 		}
