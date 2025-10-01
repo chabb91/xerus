@@ -54,12 +54,8 @@ func (dma *Dma) Step() bool {
 		if dma.currentDmaOp.stepCycle() {
 			dma.currentDmaOp = nil
 			dma.Mdmaen &= ^(1 << dma.currentDmaId)
-
-			if dma.Mdmaen == 0 {
-				return true
-			}
 		}
-		return false
+		return dma.Mdmaen == 0
 	}
 
 	return false
@@ -138,7 +134,7 @@ func getNextActiveChannel(enabledChannels byte) int {
 		return -1
 	}
 
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		if (enabledChannels>>i)&1 == 1 {
 			return i
 		}
