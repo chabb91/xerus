@@ -8,62 +8,73 @@ const (
 	fixed
 )
 
-type direction func(busA uint32, busB byte, bus memory.Bus)
+type direction func(busA uint32, busB byte, validB bool, bus memory.Bus)
 
-type Transfer func(busA uint32, busB byte, direction direction, bus memory.Bus)
-
-func CpuToIo(busA uint32, busB byte, bus memory.Bus) {
-	bus.WriteByte(0x2100+uint32(busB), bus.ReadByte(busA&0xFFFFFF))
+func isValidA(address uint32) bool {
+	//TODO unsure logic is from BSNES
+	//A-bus cannot access the B-bus or CPU I/O registers
+	if (address & 0x40ff00) == 0x2100 {
+		return false //00-3f,80-bf:2100-21ff
+	}
+	if (address & 0x40fe00) == 0x4000 {
+		return false //00-3f,80-bf:4000-41ff
+	}
+	if (address & 0x40ffe0) == 0x4200 {
+		return false //00-3f,80-bf:4200-421f
+	}
+	if (address & 0x40ff80) == 0x4300 {
+		return false //00-3f,80-bf:4300-437f
+	}
+	return true
 }
 
-func IoToCpu(busA uint32, busB byte, bus memory.Bus) {
-	bus.WriteByte(busA&0xFFFFFF, bus.ReadByte(0x2100+uint32(busB)))
-}
-
-func TransferMode0(busA uint32, busB byte, direction direction, bus memory.Bus) {
-	direction(busA, busB, bus)
-}
-
-func TransferMode1(busA uint32, busB byte, direction direction, bus memory.Bus) {
-	direction(busA, busB, bus)
-	direction(busA+1, busB+1, bus)
-}
-
-func TransferMode2(busA uint32, busB byte, direction direction, bus memory.Bus) {
-	direction(busA, busB, bus)
-	direction(busA+1, busB, bus)
-}
-
-func TransferMode3(busA uint32, busB byte, direction direction, bus memory.Bus) {
-	direction(busA, busB, bus)
-	direction(busA+1, busB, bus)
-
-	direction(busA+2, busB+1, bus)
-	direction(busA+3, busB+1, bus)
-}
-
-func TransferMode4(busA uint32, busB byte, direction direction, bus memory.Bus) {
-	for i := range uint32(4) {
-		direction(busA+i, busB+byte(i), bus)
+func CpuToIo(busA uint32, busB byte, validB bool, bus memory.Bus) {
+	if validB {
+		if isValidA(busA & 0xFFFFFF) {
+			bus.WriteByte(0x2100+uint32(busB), bus.ReadByte(busA&0xFFFFFF))
+		} else {
+			bus.WriteByte(0x2100+uint32(busB), 0)
+		}
 	}
 }
 
-func TransferMode5(busA uint32, busB byte, direction direction, bus memory.Bus) {
-	direction(busA, busB, bus)
-	direction(busA+1, busB+1, bus)
+func IoToCpu(busA uint32, busB byte, validB bool, bus memory.Bus) {
+	if isValidA(busA & 0xFFFFFF) {
+		if validB {
+			bus.WriteByte(busA&0xFFFFFF, bus.ReadByte(0x2100+uint32(busB)))
+		} else {
+			bus.WriteByte(busA&0xFFFFFF, 0)
+		}
+	}
+}
 
-	direction(busA+2, busB, bus)
-	direction(busA+3, busB+1, bus)
+// thx byuu
+func transfer(mode byte, index byte, busA uint32, busB byte, direction direction, bus memory.Bus) {
+	switch mode {
+	case 1, 5:
+		busB += (index & 1)
+	case 3, 7:
+		busB += (index & 0b10)
+	case 4:
+		busB += index
+	default:
+		//busB unchanged
+	}
+
+	//transfers from WRAM to WRAM are invalid
+	//TODO unsure logic is from BSNES
+	valid := busB != 0x80 || ((busA&0xfe0000) != 0x7e0000 && (busA&0x40e000) != 0x0000)
+	direction(busA, busB, valid, bus)
 }
 
 type DmaOperation struct {
 	bus memory.Bus
 
-	direction           direction
-	transfer            Transfer
-	step                int
-	transferUnitSize    uint32
-	masterCyclesPerUnit uint32
+	transferMode     byte
+	transferIndex    byte
+	transferUnitSize byte
+	direction        direction
+	step             int
 
 	busA uint32
 	busB byte
@@ -72,24 +83,14 @@ type DmaOperation struct {
 }
 
 func (op *DmaOperation) setup(channel DmaChannel) {
-	switch channel.dmap & 0b111 {
+	op.transferIndex = 0
+	op.transferMode = channel.dmap & 0b111
+	switch op.transferMode {
 	case 0:
-		op.transfer = TransferMode0
 		op.transferUnitSize = 1
-	case 1:
-		op.transfer = TransferMode1
+	case 1, 2, 6:
 		op.transferUnitSize = 2
-	case 2, 6:
-		op.transfer = TransferMode2
-		op.transferUnitSize = 2
-	case 3, 7:
-		op.transfer = TransferMode3
-		op.transferUnitSize = 4
-	case 4:
-		op.transfer = TransferMode4
-		op.transferUnitSize = 4
-	case 5:
-		op.transfer = TransferMode5
+	case 3, 4, 5, 7:
 		op.transferUnitSize = 4
 	}
 
@@ -113,20 +114,23 @@ func (op *DmaOperation) setup(channel DmaChannel) {
 	op.busB = channel.bbad
 
 	op.size = uint16(channel.dash)<<8 | uint16(channel.dasl)
-
-	op.masterCyclesPerUnit = op.transferUnitSize * 8
 }
 
 func (op *DmaOperation) stepCycle() bool {
 	if op.size > 0 {
-		op.transfer(op.busA, op.busB, op.direction, op.bus)
+		transfer(op.transferMode, op.transferIndex, op.busA, op.busB, op.direction, op.bus)
 		op.size--
+		op.transferIndex++
+
+		if op.transferIndex >= op.transferUnitSize {
+			op.transferIndex = 0
+		}
 
 		switch op.step {
 		case decrement:
-			op.busA -= uint32(op.transferUnitSize)
+			op.busA = (op.busA - 1) & 0xFFFFFF
 		case increment:
-			op.busA += uint32(op.transferUnitSize)
+			op.busA = (op.busA + 1) & 0xFFFFFF
 		default:
 			//fixed
 		}
