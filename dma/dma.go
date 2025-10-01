@@ -1,6 +1,7 @@
 package dma
 
 import (
+	"SNES_emulator/memory"
 	"fmt"
 )
 
@@ -24,7 +25,44 @@ type Dma struct {
 	MdmaenPrevious, Mdmaen byte
 	Hdmaen                 byte
 
+	dmaOp        *DmaOperation
+	currentDmaOp *DmaOperation
+
+	currentDmaId int
+
+	hdmaActive bool
+
 	Channels [8]DmaChannel
+}
+
+func NewDma(bus memory.Bus) *Dma {
+	return &Dma{
+		currentDmaOp: nil,
+		dmaOp:        &DmaOperation{bus: bus},
+		Channels:     [8]DmaChannel{}}
+}
+
+func (dma *Dma) Step() bool {
+	//TODO make this intelligent enough to handle HDMA when needed.
+	if dma.Mdmaen != 0 && dma.currentDmaOp == nil {
+		dma.currentDmaOp = dma.dmaOp
+		dma.currentDmaId = getNextActiveChannel(dma.Mdmaen)
+		dma.currentDmaOp.setup(dma.Channels[dma.currentDmaId])
+		return false
+	}
+	if dma.Mdmaen != 0 && dma.currentDmaOp != nil {
+		if dma.currentDmaOp.stepCycle() {
+			dma.currentDmaOp = nil
+			dma.Mdmaen &= ^(1 << dma.currentDmaId)
+
+			if dma.Mdmaen == 0 {
+				return true
+			}
+		}
+		return false
+	}
+
+	return false
 }
 
 func (dma *Dma) Read(addr uint16) (byte, error) {
@@ -93,4 +131,18 @@ func getChannelNum(address uint16) (byte, error) {
 	} else {
 		return 0, fmt.Errorf("undefined DMA channel $%04X", ret)
 	}
+}
+
+func getNextActiveChannel(enabledChannels byte) int {
+	if enabledChannels == 0 {
+		return -1
+	}
+
+	for i := 0; i < 8; i++ {
+		if (enabledChannels>>i)&1 == 1 {
+			return i
+		}
+	}
+
+	return -1
 }
