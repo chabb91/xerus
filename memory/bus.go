@@ -8,6 +8,7 @@ import (
 type Bus interface {
 	ReadByte(address uint32) byte
 	WriteByte(address uint32, value byte)
+	RegisterRange(start, end uint16, handler RegisterHandler, name string)
 }
 
 type RealBus struct {
@@ -106,4 +107,8 @@ func (b *RealBus) wramIndex(bank byte, offset uint16) (int, bool) {
 		return 0x10000 + int(offset), true
 	}
 	return 0, false
+}
+
+func (b *RealBus) RegisterRange(start, end uint16, handler RegisterHandler, name string) {
+	b.registers.RegisterRange(start, end, handler, name)
 }

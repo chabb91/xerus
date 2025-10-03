@@ -36,10 +36,15 @@ type Dma struct {
 }
 
 func NewDma(bus memory.Bus) *Dma {
-	return &Dma{
+
+	dma := &Dma{
 		currentDmaOp: nil,
 		dmaOp:        &DmaOperation{bus: bus},
 		Channels:     [8]DmaChannel{}}
+
+	//TODO this probably isnt the best place to register it
+	bus.RegisterRange(0x4300, 0x437F, dma, "DMA")
+	return dma
 }
 
 func (dma *Dma) Step() bool {
