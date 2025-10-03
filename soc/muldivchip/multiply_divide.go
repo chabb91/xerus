@@ -49,7 +49,7 @@ func (md *MulDiv) StepCycle() {
 	if md.mulDelay > 0 {
 		md.mulDelay--
 		if md.mulDelay == 0 {
-			md.Rdmpyh, md.Rdmpyl = splitWord(uint16(md.Wrmpya * md.wrmpyb))
+			md.Rdmpyh, md.Rdmpyl = splitWord(uint16(md.Wrmpya) * uint16(md.wrmpyb))
 		}
 	}
 }
