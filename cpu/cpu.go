@@ -43,6 +43,8 @@ func NewCPU(bus memory.Bus) *CPU {
 		hwInterrupts:       NewHWInterruptMap(),
 		instructions:       NewInstructionMap(),
 		currentInstruction: nil,
+
+		resetSignal: true,
 	}
 	return cpu
 }

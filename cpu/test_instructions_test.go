@@ -20,6 +20,8 @@ func Test4C(t *testing.T) {
 	ram := memory.NewTestBus()
 	cpu := NewCPU(ram)
 
+	cpu.resetSignal = false
+
 	var waistp bool = false
 	var srcdest bool = false
 
