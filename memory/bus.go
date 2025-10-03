@@ -9,6 +9,10 @@ type Bus interface {
 	ReadByte(address uint32) byte
 	WriteByte(address uint32, value byte)
 	RegisterRange(start, end uint16, handler RegisterHandler, name string)
+	//sets the speed of the rom access.
+	//serves as a temporary overclock for slow roms.
+	//does nothing for fast roms
+	SetMEMSEL(value byte)
 }
 
 type RealBus struct {
@@ -18,6 +22,7 @@ type RealBus struct {
 
 	WRAM      []byte
 	cartridge *cartridge.Cartridge
+	memsel    bool
 }
 
 func NewBus(cartridge *cartridge.Cartridge) *RealBus {
@@ -111,4 +116,8 @@ func (b *RealBus) wramIndex(bank byte, offset uint16) (int, bool) {
 
 func (b *RealBus) RegisterRange(start, end uint16, handler RegisterHandler, name string) {
 	b.registers.RegisterRange(start, end, handler, name)
+}
+
+func (b *RealBus) SetMEMSEL(value byte) {
+	b.memsel = value&1 == 1
 }

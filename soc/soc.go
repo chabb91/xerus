@@ -47,6 +47,8 @@ func (soc *SoC) Write(addr uint16, value byte) error {
 		soc.dma.Mdmaen = value
 	case 0x420C:
 		soc.dma.Hdmaen = value
+	case 0x420D:
+		soc.bus.SetMEMSEL(value)
 	default:
 		return fmt.Errorf("invalid internal CPU register write at $%04X", addr)
 	}

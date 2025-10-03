@@ -37,3 +37,6 @@ func (b *TestBus) WriteByte(address uint32, value byte) {
 
 func (b *TestBus) RegisterRange(start, end uint16, handler RegisterHandler, name string) {
 }
+
+func (b *TestBus) SetMEMSEL(value byte) {
+}
