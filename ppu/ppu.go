@@ -7,9 +7,8 @@ type PPU struct {
 	CGRAM []byte   //Color/Paletter RAM
 	OAM   []byte   //object attribute memory/sprites
 
-	vmadd  uint16
-	vmdata uint16
-	vmain  *VMAIN
+	vmadd uint16
+	vmain *VMAIN
 
 	FBlank, VBlank, HBlank bool
 }
@@ -44,14 +43,14 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.VRAM[remapped_addr] = (ppu.VRAM[remapped_addr] & 0xFF00) | uint16(value)
 
 		if !ppu.vmain.incrementOnHighByte {
-			ppu.vmadd = (ppu.vmadd + ppu.vmain.incrementAmount) & 0x7FFF
+			ppu.vmadd += ppu.vmain.incrementAmount
 		}
 	case 0x2119:
 		remapped_addr := ppu.vmain.remap(ppu.vmadd) & 0x7FFF
 		ppu.VRAM[remapped_addr] = (ppu.VRAM[remapped_addr] & 0x00FF) | (uint16(value) << 8)
 
 		if ppu.vmain.incrementOnHighByte {
-			ppu.vmadd = (ppu.vmadd + ppu.vmain.incrementAmount) & 0x7FFF
+			ppu.vmadd += ppu.vmain.incrementAmount
 		}
 	default:
 		return fmt.Errorf("invalid PPU register write at $%04X", addr)
