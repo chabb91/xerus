@@ -30,20 +30,20 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 	switch addr {
 	case 0x2139:
 		ret := byte(ppu.vmLatchedValue)
-		remapped_addr := ppu.vmain.remap(ppu.vmadd) & 0x7FFF
-		ppu.vmLatchedValue = ppu.VRAM[remapped_addr]
 
 		if !ppu.vmain.incrementOnHighByte {
+			remapped_addr := ppu.vmain.remap(ppu.vmadd) & 0x7FFF
+			ppu.vmLatchedValue = ppu.VRAM[remapped_addr]
 			ppu.vmadd += ppu.vmain.incrementAmount
 		}
 
 		return ret, nil
 	case 0x213A:
 		ret := byte(ppu.vmLatchedValue >> 8)
-		remapped_addr := ppu.vmain.remap(ppu.vmadd) & 0x7FFF
-		ppu.vmLatchedValue = ppu.VRAM[remapped_addr]
 
 		if ppu.vmain.incrementOnHighByte {
+			remapped_addr := ppu.vmain.remap(ppu.vmadd) & 0x7FFF
+			ppu.vmLatchedValue = ppu.VRAM[remapped_addr]
 			ppu.vmadd += ppu.vmain.incrementAmount
 		}
 
