@@ -43,6 +43,10 @@ func (vm *VMAIN) Setup(vmain byte) {
 
 }
 
+func (vm *VMAIN) remapAndMask(value uint16) uint16 {
+	return vm.remap(value) & 0x7FFF
+}
+
 // TODO write a test for these mappers im not made of binary and its hard to tell what all this shifting amounts to
 func vmainRemap00(value uint16) uint16 {
 	return value

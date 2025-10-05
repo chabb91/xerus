@@ -32,8 +32,7 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 		ret := byte(ppu.vmLatchedValue)
 
 		if !ppu.vmain.incrementOnHighByte {
-			remapped_addr := ppu.vmain.remap(ppu.vmadd) & 0x7FFF
-			ppu.vmLatchedValue = ppu.VRAM[remapped_addr]
+			ppu.vmLatchedValue = ppu.VRAM[ppu.vmain.remapAndMask(ppu.vmadd)]
 			ppu.vmadd += ppu.vmain.incrementAmount
 		}
 
@@ -42,8 +41,7 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 		ret := byte(ppu.vmLatchedValue >> 8)
 
 		if ppu.vmain.incrementOnHighByte {
-			remapped_addr := ppu.vmain.remap(ppu.vmadd) & 0x7FFF
-			ppu.vmLatchedValue = ppu.VRAM[remapped_addr]
+			ppu.vmLatchedValue = ppu.VRAM[ppu.vmain.remapAndMask(ppu.vmadd)]
 			ppu.vmadd += ppu.vmain.incrementAmount
 		}
 
@@ -62,14 +60,14 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2117:
 		ppu.vmadd = (ppu.vmadd & 0xFF) | (uint16(value) << 8)
 	case 0x2118:
-		remapped_addr := ppu.vmain.remap(ppu.vmadd) & 0x7FFF
+		remapped_addr := ppu.vmain.remapAndMask(ppu.vmadd)
 		ppu.VRAM[remapped_addr] = (ppu.VRAM[remapped_addr] & 0xFF00) | uint16(value)
 
 		if !ppu.vmain.incrementOnHighByte {
 			ppu.vmadd += ppu.vmain.incrementAmount
 		}
 	case 0x2119:
-		remapped_addr := ppu.vmain.remap(ppu.vmadd) & 0x7FFF
+		remapped_addr := ppu.vmain.remapAndMask(ppu.vmadd)
 		ppu.VRAM[remapped_addr] = (ppu.VRAM[remapped_addr] & 0x00FF) | (uint16(value) << 8)
 
 		if ppu.vmain.incrementOnHighByte {
