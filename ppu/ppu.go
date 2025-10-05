@@ -10,7 +10,7 @@ type PPU struct {
 	vmain *VMAIN
 	vmadd uint16
 
-	//absolute cringe VERY speshul case for VRAM reads
+	//absolute cringe VERY speshul case for VRAM register reads
 	vmLatchedValue uint16
 
 	FBlank, VBlank, HBlank bool
