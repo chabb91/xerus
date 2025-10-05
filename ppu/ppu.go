@@ -7,8 +7,11 @@ type PPU struct {
 	CGRAM []byte   //Color/Paletter RAM
 	OAM   []byte   //object attribute memory/sprites
 
-	vmadd uint16
 	vmain *VMAIN
+	vmadd uint16
+
+	//absolute cringe VERY speshul case for VRAM reads
+	vmLatchedValue uint16
 
 	FBlank, VBlank, HBlank bool
 }
@@ -25,6 +28,26 @@ func NewPPU() *PPU {
 // TODO
 func (ppu *PPU) Read(addr uint16) (byte, error) {
 	switch addr {
+	case 0x2139:
+		ret := byte(ppu.vmLatchedValue)
+		remapped_addr := ppu.vmain.remap(ppu.vmadd) & 0x7FFF
+		ppu.vmLatchedValue = ppu.VRAM[remapped_addr]
+
+		if !ppu.vmain.incrementOnHighByte {
+			ppu.vmadd += ppu.vmain.incrementAmount
+		}
+
+		return ret, nil
+	case 0x213A:
+		ret := byte(ppu.vmLatchedValue >> 8)
+		remapped_addr := ppu.vmain.remap(ppu.vmadd) & 0x7FFF
+		ppu.vmLatchedValue = ppu.VRAM[remapped_addr]
+
+		if ppu.vmain.incrementOnHighByte {
+			ppu.vmadd += ppu.vmain.incrementAmount
+		}
+
+		return ret, nil
 	default:
 		return 0, fmt.Errorf("invalid PPU register read at $%04X", addr)
 	}
