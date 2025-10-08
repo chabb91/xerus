@@ -169,6 +169,7 @@ func (sprite Sprite) GetCgramIndex(localIndex int) int {
 	return int(128 + sprite.paletteNum*16 + byte(localIndex))
 }
 
+// finds the first tile index belonging to this sprite in the VRAM
 func (sprite Sprite) GetVramFirstTileWordIndex() int {
 	if sprite.nameTable == 0 {
 		return int(((uint16(sprite.obsel.nameBase) << 13) + (uint16(sprite.tileIndex) << 4)) & 0x7FFF)
