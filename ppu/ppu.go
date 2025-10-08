@@ -8,6 +8,7 @@ type PPU struct {
 	CGRAM *CGRAMController
 
 	FBlank, VBlank, HBlank bool
+	screenBrightness       byte
 }
 
 func NewPPU() *PPU {
@@ -37,6 +38,10 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 
 func (ppu *PPU) Write(addr uint16, value byte) error {
 	switch addr {
+	case 0x2100:
+		//TODO writing this register the first line of vlblank causes an oam address reset
+		ppu.FBlank = (value>>7)&1 == 1
+		ppu.screenBrightness = value & 0xF
 	case 0x2101:
 		ppu.OAM.obsel.Setup(value)
 	case 0x2102:
