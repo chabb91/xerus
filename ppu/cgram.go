@@ -1,5 +1,6 @@
 package ppu
 
+// Color/Paletter RAM
 type CGRAMController struct {
 	WordIndex   byte
 	byteCounter byte
@@ -20,7 +21,7 @@ func (cgram *CGRAMController) SetAddWord(value byte) {
 	cgram.byteCounter = 0
 }
 
-func (cgram *CGRAMController) WriteOAMData(value byte) {
+func (cgram *CGRAMController) WriteData(value byte) {
 	if cgram.byteCounter&1 == 1 {
 		cgram.CGRAM[cgram.WordIndex] = uint16(value)<<8 | uint16(cgram.LowByteLatch)
 		cgram.WordIndex++
@@ -30,7 +31,7 @@ func (cgram *CGRAMController) WriteOAMData(value byte) {
 	cgram.byteCounter++
 }
 
-func (cgram *CGRAMController) ReadOAMData() byte {
+func (cgram *CGRAMController) ReadData() byte {
 	var ret byte
 
 	if cgram.byteCounter&1 == 1 {
