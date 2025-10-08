@@ -1,60 +1,69 @@
 package ppu
 
 type OAMController struct {
-	OAMByteIndexLatch uint16
-	OAMByteIndex      uint16
+	obsel *OBSEL
 
-	OAMLowByteCache byte
+	ByteIndexLatch uint16
+	ByteIndex      uint16
 
-	OAMLowTable  []byte
-	OAMHighTable []byte
+	LowByteLatch byte
+
+	LowTable  []byte
+	HighTable []byte
 
 	priorityRotation bool
 }
 
+func NewOAM() *OAMController {
+	return &OAMController{
+		obsel:     &OBSEL{},
+		LowTable:  make([]byte, 0x200),
+		HighTable: make([]byte, 0x20)}
+}
+
 func (oam *OAMController) SetAddWordLow(value byte) {
-	oam.OAMByteIndexLatch = (oam.OAMByteIndexLatch & 0x0100) | uint16(value)
-	oam.OAMByteIndexLatch <<= 1
+	oam.ByteIndexLatch = (oam.ByteIndexLatch & 0x0100) | uint16(value)
+	oam.ByteIndexLatch <<= 1
 	oam.InvalidateInternalIndex()
 }
 
 func (oam *OAMController) SetAddWordHigh(value byte) {
-	oam.OAMByteIndexLatch = (oam.OAMByteIndexLatch & 0xFF) | (uint16(value&1) << 8)
-	oam.OAMByteIndexLatch <<= 1
+	oam.ByteIndexLatch = (oam.ByteIndexLatch & 0xFF) | (uint16(value&1) << 8)
+	oam.ByteIndexLatch <<= 1
 	oam.InvalidateInternalIndex()
 	oam.priorityRotation = value&0x80 == 1
 }
 
 func (oam *OAMController) WriteOAMData(value byte) {
-	if !isOAMHighTable(oam.OAMByteIndex) {
-		if oam.OAMByteIndex&1 == 1 {
-			oam.OAMLowTable[wrapOAMLowTableIndex(oam.OAMByteIndex)] = value
-			oam.OAMLowTable[wrapOAMLowTableIndex(oam.OAMByteIndex-1)] = oam.OAMLowByteCache
+	if !isOAMHighTable(oam.ByteIndex) {
+		if oam.ByteIndex&1 == 1 {
+			oam.LowTable[wrapOAMLowTableIndex(oam.ByteIndex)] = value
+			oam.LowTable[wrapOAMLowTableIndex(oam.ByteIndex-1)] = oam.LowByteLatch
 		} else {
-			oam.OAMLowByteCache = value
+			oam.LowByteLatch = value
 		}
 	} else {
-		oam.OAMHighTable[wrapOAMHighTableIndex(oam.OAMByteIndex)] = value
+		oam.HighTable[wrapOAMHighTableIndex(oam.ByteIndex)] = value
 	}
 
-	oam.OAMByteIndex++
+	oam.ByteIndex++
 }
 
 func (oam *OAMController) ReadOAMData() byte {
 	var ret byte
 
-	if !isOAMHighTable(oam.OAMByteIndex) {
-		ret = oam.OAMLowTable[wrapOAMLowTableIndex(oam.OAMByteIndex)]
+	if !isOAMHighTable(oam.ByteIndex) {
+		ret = oam.LowTable[wrapOAMLowTableIndex(oam.ByteIndex)]
 	} else {
-		ret = oam.OAMHighTable[wrapOAMHighTableIndex(oam.OAMByteIndex)]
+		ret = oam.HighTable[wrapOAMHighTableIndex(oam.ByteIndex)]
 	}
 
-	oam.OAMByteIndex++
+	oam.ByteIndex++
 	return ret
 }
 
 func (oam *OAMController) InvalidateInternalIndex() {
-	oam.OAMByteIndex = oam.OAMByteIndexLatch
+	oam.ByteIndex = oam.ByteIndexLatch
 }
 
 func isOAMHighTable(index uint16) bool {
@@ -67,4 +76,54 @@ func wrapOAMHighTableIndex(index uint16) uint16 {
 
 func wrapOAMLowTableIndex(index uint16) uint16 {
 	return index & 0x1FF
+}
+
+type OBSize struct {
+	w, h byte
+}
+
+func (obsize *OBSize) Set(width, height byte) {
+	obsize.w = width
+	obsize.h = height
+}
+
+type OBSEL struct {
+	smallForm, largeForm OBSize
+
+	name, nameBase byte
+}
+
+func (obsel *OBSEL) Setup(value byte) {
+	switch (value >> 5) & 0x7 {
+	case 0:
+		obsel.smallForm.Set(8, 8)
+		obsel.largeForm.Set(16, 16)
+	case 1:
+		obsel.smallForm.Set(8, 8)
+		obsel.largeForm.Set(32, 32)
+	case 2:
+		obsel.smallForm.Set(8, 8)
+		obsel.largeForm.Set(64, 64)
+	case 3:
+		obsel.smallForm.Set(16, 16)
+		obsel.largeForm.Set(32, 32)
+	case 4:
+		obsel.smallForm.Set(16, 16)
+		obsel.largeForm.Set(64, 64)
+	case 5:
+		obsel.smallForm.Set(32, 32)
+		obsel.largeForm.Set(64, 64)
+	case 6:
+		obsel.smallForm.Set(16, 32)
+		obsel.largeForm.Set(32, 64)
+	case 7:
+		obsel.smallForm.Set(16, 32)
+		obsel.largeForm.Set(32, 32)
+	}
+	obsel.name = (value >> 3) & 0x3
+	obsel.nameBase = value & 0x7
+}
+
+type Sprite struct {
+	posX, posY, firstTile byte
 }
