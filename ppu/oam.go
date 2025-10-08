@@ -125,5 +125,43 @@ func (obsel *OBSEL) Setup(value byte) {
 }
 
 type Sprite struct {
-	posX, posY, firstTile byte
+	posX int16
+	posY byte
+
+	tileIndex  byte
+	nameTable  byte
+	paletteNum byte
+	priority   byte
+
+	isFlippedHorizontally, isFlippedVertically bool
+	isLarge                                    bool
+}
+
+func (oam *OAMController) NewSprite(recordId int) *Sprite {
+	recordId %= 128
+	hi := (oam.HighTable[recordId/4] >> (byte(recordId%4) * 2)) & 0x03
+
+	recordId *= 4
+	lo3 := oam.LowTable[recordId+3]
+
+	ret := &Sprite{}
+	ret.posX = signExtend9(uint16(hi&1)<<8 | uint16(oam.LowTable[recordId]))
+	ret.posY = oam.LowTable[recordId+1]
+	ret.tileIndex = oam.LowTable[recordId+2]
+	ret.nameTable = lo3 & 1
+	ret.paletteNum = (lo3 >> 1) & 0x7
+	ret.priority = (lo3 >> 4) & 0x3
+	ret.isFlippedVertically = (lo3>>7)&1 == 1
+	ret.isFlippedHorizontally = (lo3>>6)&1 == 1
+	ret.isLarge = (hi>>1)&1 == 1
+
+	return ret
+}
+
+func signExtend9(v uint16) int16 {
+	v &= 0x1FF
+	if v&0x100 != 0 {
+		return int16(int32(v) - 0x200)
+	}
+	return int16(v)
 }
