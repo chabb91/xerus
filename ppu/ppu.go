@@ -3,9 +3,9 @@ package ppu
 import "fmt"
 
 type PPU struct {
+	OAM   *OAMController
 	VRAM  []uint16 //video RAM
 	CGRAM []byte   //Color/Paletter RAM
-	OAM   []byte   //object attribute memory/sprites
 
 	vmain *VMAIN
 	vmadd uint16
@@ -18,16 +18,19 @@ type PPU struct {
 
 func NewPPU() *PPU {
 	return &PPU{
+		OAM:   NewOAM(),
 		vmain: newVMAIN(),
 		VRAM:  make([]uint16, 0x8000),
 		CGRAM: make([]byte, 0x200),
-		OAM:   make([]byte, 0x220)}
+	}
 }
 
 // Some of these registers can only be read and written to at specific times defined by the blanking periods
 // TODO
 func (ppu *PPU) Read(addr uint16) (byte, error) {
 	switch addr {
+	case 0x2138:
+		return ppu.OAM.ReadOAMData(), nil
 	case 0x2139:
 		ret := byte(ppu.vmLatchedValue)
 
@@ -53,6 +56,14 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 
 func (ppu *PPU) Write(addr uint16, value byte) error {
 	switch addr {
+	case 0x2101:
+		ppu.OAM.obsel.Setup(value)
+	case 0x2102:
+		ppu.OAM.SetAddWordLow(value)
+	case 0x2103:
+		ppu.OAM.SetAddWordHigh(value)
+	case 0x2104:
+		ppu.OAM.WriteOAMData(value)
 	case 0x2115:
 		ppu.vmain.Setup(value)
 	case 0x2116:

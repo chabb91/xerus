@@ -1,5 +1,6 @@
 package ppu
 
+// object attribute memory/sprites
 type OAMController struct {
 	obsel *OBSEL
 
