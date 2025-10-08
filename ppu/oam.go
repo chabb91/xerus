@@ -125,6 +125,9 @@ func (obsel *OBSEL) Setup(value byte) {
 }
 
 type Sprite struct {
+	id    int
+	obsel *OBSEL
+
 	posX int16
 	posY byte
 
@@ -137,14 +140,16 @@ type Sprite struct {
 	isLarge                                    bool
 }
 
-func (oam *OAMController) NewSprite(recordId int) *Sprite {
+func (oam *OAMController) NewSprite(recordId int, obsel *OBSEL) *Sprite {
 	recordId %= 128
+	ret := &Sprite{id: recordId}
+
 	hi := (oam.HighTable[recordId/4] >> (byte(recordId%4) * 2)) & 0x03
 
 	recordId *= 4
 	lo3 := oam.LowTable[recordId+3]
 
-	ret := &Sprite{}
+	ret.obsel = obsel
 	ret.posX = signExtend9(uint16(hi&1)<<8 | uint16(oam.LowTable[recordId]))
 	ret.posY = oam.LowTable[recordId+1]
 	ret.tileIndex = oam.LowTable[recordId+2]
@@ -156,6 +161,20 @@ func (oam *OAMController) NewSprite(recordId int) *Sprite {
 	ret.isLarge = (hi>>1)&1 == 1
 
 	return ret
+}
+
+// converts the local palette index (0-15) to CGRAM index
+func (sprite Sprite) GetCgramIndex(localIndex int) int {
+	localIndex %= 16
+	return int(128 + sprite.paletteNum*16 + byte(localIndex))
+}
+
+func (sprite Sprite) GetVramFirstTileWordIndex() int {
+	if sprite.nameTable == 0 {
+		return int(((uint16(sprite.obsel.nameBase) << 13) + (uint16(sprite.tileIndex) << 4)) & 0x7FFF)
+	} else {
+		return int(((uint16(sprite.obsel.nameBase) << 13) + (uint16(sprite.tileIndex) << 4) + ((uint16(sprite.obsel.name) + 1) << 12)) & 0x7FFF)
+	}
 }
 
 func signExtend9(v uint16) int16 {
