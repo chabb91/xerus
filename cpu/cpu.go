@@ -50,7 +50,7 @@ func NewCPU(bus memory.Bus) *CPU {
 }
 
 // TODO these signals should all be channels in the future
-func (c *CPU) stepCycle() bool {
+func (c *CPU) StepCycle() bool {
 	if c.handleReset() {
 		return false
 	}

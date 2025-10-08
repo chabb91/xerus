@@ -1,31 +1,53 @@
 package soc
 
 import (
+	"SNES_emulator/cartridge"
 	"SNES_emulator/cpu"
 	"SNES_emulator/dma"
 	"SNES_emulator/memory"
+	"SNES_emulator/ppu"
 	"SNES_emulator/soc/muldivchip"
 	"fmt"
 )
 
 type SoC struct {
-	mulDiv muldivchip.MulDiv
-	dma    dma.Dma
-	cpu    cpu.CPU
+	MulDiv *muldivchip.MulDiv
+	Dma    *dma.Dma
+	Cpu    *cpu.CPU
+	Ppu    *ppu.PPU
 
 	bus memory.Bus
+}
+
+func NewSoC() *SoC {
+	romData, err := cartridge.Load("/home/chabb/Downloads/CPUADC.sfc")
+	if err != nil {
+		panic(err)
+	}
+	bus := memory.NewBus(cartridge.NewCartridge(romData, cartridge.NewLoRom()))
+	soc := &SoC{
+		MulDiv: muldivchip.NewMulDiv(),
+		Dma:    dma.NewDma(bus),
+		Cpu:    cpu.NewCPU(bus),
+		Ppu:    ppu.NewPPU(),
+		bus:    bus,
+	}
+	bus.RegisterRange(0x4200, 0x4217, soc, "internal CPU")
+	bus.RegisterRange(0x2100, 0x213F, soc.Ppu, "PPU")
+
+	return soc
 }
 
 func (soc *SoC) Read(addr uint16) (byte, error) {
 	switch addr {
 	case 0x4214:
-		return soc.mulDiv.Rddivl, nil
+		return soc.MulDiv.Rddivl, nil
 	case 0x4215:
-		return soc.mulDiv.Rddivh, nil
+		return soc.MulDiv.Rddivh, nil
 	case 0x4216:
-		return soc.mulDiv.Rdmpyl, nil
+		return soc.MulDiv.Rdmpyl, nil
 	case 0x4217:
-		return soc.mulDiv.Rdmpyh, nil
+		return soc.MulDiv.Rdmpyh, nil
 	default:
 		return 0, fmt.Errorf("invalid internal CPU register read at $%04X", addr)
 	}
@@ -34,19 +56,19 @@ func (soc *SoC) Read(addr uint16) (byte, error) {
 func (soc *SoC) Write(addr uint16, value byte) error {
 	switch addr {
 	case 0x4202:
-		soc.mulDiv.Wrmpya = value
+		soc.MulDiv.Wrmpya = value
 	case 0x4203:
-		soc.mulDiv.SetMultiplicandB(value)
+		soc.MulDiv.SetMultiplicandB(value)
 	case 0x4204:
-		soc.mulDiv.Wrdivl = value
+		soc.MulDiv.Wrdivl = value
 	case 0x4205:
-		soc.mulDiv.Wrdivh = value
+		soc.MulDiv.Wrdivh = value
 	case 0x4206:
-		soc.mulDiv.SetDivisorB(value)
+		soc.MulDiv.SetDivisorB(value)
 	case 0x420B:
-		soc.dma.Mdmaen = value
+		soc.Dma.Mdmaen = value
 	case 0x420C:
-		soc.dma.Hdmaen = value
+		soc.Dma.Hdmaen = value
 	case 0x420D:
 		soc.bus.SetMEMSEL(value)
 	default:

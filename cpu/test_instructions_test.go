@@ -30,7 +30,7 @@ func Test4C(t *testing.T) {
 		setState(cpu, tc.Initial)
 		i := 0
 		for {
-			ret := cpu.stepCycle()
+			ret := cpu.StepCycle()
 			if i < len(tc.Cycles) {
 				if !compareCycle(cpu, tc.Cycles[i]) {
 					t.Errorf("INACCURATE CYCLE: %v, %s[%v], Cause: %s", tc.Name, "cycle", i, cycleCause)

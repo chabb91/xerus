@@ -1,20 +1,39 @@
 package main
 
 import (
-	"SNES_emulator/debugger"
+	"SNES_emulator/soc"
 	"fmt"
 )
 
 func main() {
-	t, err := debugger.LoadTests("testdata/4c.json")
-	if err == nil {
-		fmt.Println(t)
-		for _, v := range t {
+	soc := soc.NewSoC()
+	var cnt uint64
 
-			fmt.Println(v.Cycles)
+	cpuTickRate := 6
+	dmaTickRate := 8
+
+	var dmaOn bool
+	for range 60000 {
+		cnt++
+		soc.MulDiv.StepCycle()
+		if soc.Dma.Mdmaen != 0 && cnt == uint64(dmaTickRate) {
+			if !dmaOn {
+				fmt.Println("doing little dma")
+				dmaOn = true
+			}
+			soc.Dma.Step()
+			cnt = 0
+			continue
+
 		}
-	} else {
-		fmt.Println(err)
+		if soc.Dma.Mdmaen == 0 && cnt == uint64(cpuTickRate) {
+			if dmaOn {
+				fmt.Println("dma ended")
+				dmaOn = false
+			}
+			soc.Cpu.StepCycle()
+			cnt = 0
+			continue
+		}
 	}
-
 }

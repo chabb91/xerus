@@ -1023,6 +1023,7 @@ func (i *ResetSequence) Step(cpu *CPU) bool {
 		i.state++
 	case 5:
 		i.lowByte = cpu.bus.ReadByte(i.eAddress)
+		i.state++
 	case 6:
 		i.highByte = cpu.bus.ReadByte(i.eAddress + 1)
 
