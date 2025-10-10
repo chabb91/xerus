@@ -40,6 +40,8 @@ func NewSoC() *SoC {
 
 func (soc *SoC) Read(addr uint16) (byte, error) {
 	switch addr {
+	case 0x4210:
+		return 0x82, fmt.Errorf("internal CPU register $%04X is unimplemented", addr)
 	case 0x4214:
 		return soc.MulDiv.Rddivl, nil
 	case 0x4215:

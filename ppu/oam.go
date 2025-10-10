@@ -141,7 +141,7 @@ type Sprite struct {
 	isLarge                                    bool
 }
 
-func (oam *OAMController) NewSprite(recordId int, obsel *OBSEL) *Sprite {
+func (oam *OAMController) NewSprite(recordId int) *Sprite {
 	recordId %= 128
 	ret := &Sprite{id: recordId}
 
@@ -150,7 +150,7 @@ func (oam *OAMController) NewSprite(recordId int, obsel *OBSEL) *Sprite {
 	recordId *= 4
 	lo3 := oam.LowTable[recordId+3]
 
-	ret.obsel = obsel
+	ret.obsel = oam.obsel
 	ret.posX = signExtend9(uint16(hi&1)<<8 | uint16(oam.LowTable[recordId]))
 	ret.posY = oam.LowTable[recordId+1]
 	ret.tileIndex = oam.LowTable[recordId+2]

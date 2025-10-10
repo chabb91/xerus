@@ -13,12 +13,12 @@ func main() {
 	dmaTickRate := 8
 
 	var dmaOn bool
-	for range 60000 {
+	for range 560000 {
 		cnt++
 		soc.MulDiv.StepCycle()
 		if soc.Dma.Mdmaen != 0 && cnt == uint64(dmaTickRate) {
 			if !dmaOn {
-				fmt.Println("doing little dma")
+				fmt.Println("doing little dma on channels ", soc.Dma.Mdmaen)
 				dmaOn = true
 			}
 			soc.Dma.Step()
@@ -35,5 +35,11 @@ func main() {
 			cnt = 0
 			continue
 		}
+	}
+
+	for v := range 32 {
+		sprite := soc.Ppu.OAM.NewSprite(v)
+		fmt.Printf("%+v\n", sprite)
+		//fmt.Println(sprite.GetVramFirstTileWordIndex())
 	}
 }
