@@ -37,11 +37,24 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 }
 
 func (ppu *PPU) Write(addr uint16, value byte) error {
+	if addr == 0x212C {
+		fmt.Println("TM: ", value)
+	}
+	if addr == 0x210B {
+		fmt.Println("BG12NBA: ", value)
+	}
+	if addr == 0x2107 {
+		fmt.Println("BG1SC: ", value)
+	}
+	if addr == 0x2105 {
+		fmt.Println("BGMODE: ", value)
+	}
 	switch addr {
 	case 0x2100:
 		//TODO writing this register the first line of vlblank causes an oam address reset
 		ppu.FBlank = (value>>7)&1 == 1
 		ppu.screenBrightness = value & 0xF
+		fmt.Println("INIDISP")
 	case 0x2101:
 		ppu.OAM.obsel.Setup(value)
 	case 0x2102:
@@ -52,14 +65,23 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.OAM.WriteOAMData(value)
 	case 0x2115:
 		ppu.VRAM.vmain.Setup(value)
+		fmt.Println("VMAIN: ", value)
 	case 0x2116:
 		ppu.VRAM.UpdateAddressLow(value)
+		fmt.Println("VMADDLOW: ", value)
 	case 0x2117:
 		ppu.VRAM.UpdateAddressHigh(value)
+		fmt.Println("VMADDHIGH: ", value)
 	case 0x2118:
 		ppu.VRAM.WriteDataLow(value)
+		if ppu.VRAM.vmadd >= 0x7C00 {
+			fmt.Println("WRITING TILEMAP at address: ", ppu.VRAM.vmadd, " to: ", value)
+		}
 	case 0x2119:
 		ppu.VRAM.WriteDataHigh(value)
+		if ppu.VRAM.vmadd >= 0x7C00 {
+			fmt.Println("WRITING TILEMAP at address: ", ppu.VRAM.vmadd, " to: ", value)
+		}
 	case 0x2121:
 		ppu.CGRAM.SetAddWord(value)
 	case 0x2122:

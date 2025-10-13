@@ -3,6 +3,7 @@ package dma
 import (
 	"SNES_emulator/memory"
 	"fmt"
+	"log"
 )
 
 type DmaChannel struct {
@@ -53,6 +54,7 @@ func (dma *Dma) Step() bool {
 		dma.currentDmaOp = dma.dmaOp
 		dma.currentDmaId = getNextActiveChannel(dma.Mdmaen)
 		dma.currentDmaOp.setup(dma.Channels[dma.currentDmaId])
+		log.Printf("Starting dma on channel %v with params %+v\n", dma.currentDmaId, dma.Channels[dma.currentDmaId])
 		return false
 	}
 	if dma.Mdmaen != 0 && dma.currentDmaOp != nil {
