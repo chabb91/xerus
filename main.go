@@ -88,7 +88,6 @@ func main() {
 	}
 	defer outFile.Close()
 
-	// 4. Encode the image data to the file using the PNG encoder.
 	if err := png.Encode(outFile, img); err != nil {
 		return
 	}
