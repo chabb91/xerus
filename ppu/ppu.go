@@ -84,14 +84,8 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		fmt.Println("VMADDHIGH: ", value)
 	case 0x2118:
 		ppu.VRAM.WriteDataLow(value)
-		if ppu.VRAM.vmadd >= 0x7C00 {
-			fmt.Println("WRITING TILEMAP at address: ", ppu.VRAM.vmadd, " to: ", value)
-		}
 	case 0x2119:
 		ppu.VRAM.WriteDataHigh(value)
-		if ppu.VRAM.vmadd >= 0x7C00 {
-			fmt.Println("WRITING TILEMAP at address: ", ppu.VRAM.vmadd, " to: ", value)
-		}
 	case 0x2121:
 		ppu.CGRAM.SetAddWord(value)
 	case 0x2122:

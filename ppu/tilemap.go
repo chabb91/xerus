@@ -1,7 +1,5 @@
 package ppu
 
-import "fmt"
-
 type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
 
 type Background interface {
@@ -35,7 +33,7 @@ func (bg1 *Background1) Invalidate(addr uint16) {
 		index := addr - bg1.tileMapAddress
 		if index < uint16(len(bg1.tileMap)) {
 			bg1.tileMap[index].isValid = false
-			fmt.Println("invlidation")
+			//fmt.Println("invlidation")
 		}
 		return
 	}
@@ -45,7 +43,7 @@ func (bg1 *Background1) Invalidate(addr uint16) {
 		tileIndex := (addr - bg1.charTileAddressBase) / wordsPerTile
 		if t, ok := bg1.charTiles[bg1.charTileAddressBase+(tileIndex*wordsPerTile)]; ok {
 			t.isValid = false
-			fmt.Println("invlidation")
+			//fmt.Println("invlidation")
 		}
 	}
 }
