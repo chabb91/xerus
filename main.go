@@ -44,7 +44,7 @@ func main() {
 	//soc.Ppu.VRAM.VRAM[0x7C01] = 79
 	//soc.Ppu.VRAM.VRAM[0x7C02] = 111
 	soc.Ppu.VRAM.VRAM[0x7C00] = 72
-	soc.Ppu.VRAM.VRAM[0x7C01] = 69
+	soc.Ppu.VRAM.VRAM[0x7C01] = 0x4045 //69
 	soc.Ppu.VRAM.VRAM[0x7C02] = 76
 	soc.Ppu.VRAM.VRAM[0x7C03] = 76
 	soc.Ppu.VRAM.VRAM[0x7C04] = 79
@@ -53,7 +53,7 @@ func main() {
 	soc.Ppu.VRAM.VRAM[0x7C07] = 97
 	soc.Ppu.VRAM.VRAM[0x7C08] = 114
 	soc.Ppu.VRAM.VRAM[0x7C09] = 32
-	soc.Ppu.VRAM.VRAM[0x7C0A] = 102
+	soc.Ppu.VRAM.VRAM[0x7C0A] = 0x4066 //102
 	soc.Ppu.VRAM.VRAM[0x7C0B] = 114
 	soc.Ppu.VRAM.VRAM[0x7C0C] = 111
 	soc.Ppu.VRAM.VRAM[0x7C0D] = 109

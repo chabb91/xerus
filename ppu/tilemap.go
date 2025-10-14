@@ -79,6 +79,13 @@ func (bg1 *Background1) GetDotAt(VRAM []uint16, CGRAM []uint16, H, V byte) uint1
 	if !tile.isValid {
 		tile.setup(VRAM[bg1.tileMapAddress+uint16(tileIndex)])
 	}
+	//TODO use lookuptables for this
+	if tile.horizontalFlip {
+		px = 7 - px
+	}
+	if tile.verticalFlip {
+		row = 7 - row
+	}
 
 	charAddress := tile.tileIndex*uint16(bg1.colorDepth*4) + bg1.charTileAddressBase
 	var char *CharTile
