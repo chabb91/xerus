@@ -67,9 +67,20 @@ func (bg1 *Background1) getDotAt(VRAM []uint16, CGRAM []uint16, H, V byte) uint1
 	columnCnt := H / 8
 	px := H % 8
 
-	tile := bg1.tileMap[rowCnt*32+columnCnt]
-	char := bg1.charTiles[tile.tileIndex*uint16(bg1.colorDepth*4)+bg1.charTileAddressBase]
-	return CGRAM[char.getPixelAt(VRAM, px, row)+tile.paletteNum]
+	tileIndex := rowCnt*32 + columnCnt
+	tile := bg1.tileMap[tileIndex]
+	if !tile.isValid {
+		tile.setup(VRAM[bg1.tileMapAddress+uint16(tileIndex)])
+	}
+
+	charAddress := tile.tileIndex*uint16(bg1.colorDepth*4) + bg1.charTileAddressBase
+	var char *CharTile
+	var ok bool
+	if char, ok = bg1.charTiles[charAddress]; !ok {
+		bg1.charTiles[charAddress] = &CharTile{isValid: false}
+	}
+
+	return CGRAM[char.getPixelAt(VRAM, bg1.colorDepth, charAddress, px, row)+tile.paletteNum*(1<<bg1.colorDepth)]
 }
 
 type BgTile struct {
@@ -81,6 +92,16 @@ type BgTile struct {
 	tileIndex  uint16
 }
 
+func (bt *BgTile) setup(params uint16) {
+	bt.verticalFlip = (params>>15)&1 == 1
+	bt.horizontalFlip = (params>>14)&1 == 1
+	bt.priority = byte(params>>13) & 1
+	bt.paletteNum = byte(params>>10) & 7
+	bt.tileIndex = params & 0x3FF
+
+	bt.isValid = true
+}
+
 // TODO chartile needs to be able to handle 16x16 tiles later on too
 type CharTile struct {
 	isValid bool
@@ -88,12 +109,26 @@ type CharTile struct {
 	renderer     bitPlaneRenderer
 	resolvedData [8][8]byte
 
-	tileIndex uint16
+	tileAddress uint16
 }
 
-func (ct *CharTile) getPixelAt(VRAM []uint16, px, row byte) byte {
+func (ct *CharTile) setup(bitPlanes byte, tileIndex uint16) {
+	switch bitPlanes {
+	case 2:
+		ct.renderer = RenderTile2bpp
+	case 4:
+		ct.renderer = RenderTile4bpp
+	case 8:
+		ct.renderer = RenderTile8bpp
+	}
+
+	ct.tileAddress = tileIndex
+}
+
+func (ct *CharTile) getPixelAt(VRAM []uint16, bitplanes byte, tileAddress uint16, px, row byte) byte {
 	if !ct.isValid {
-		ct.renderer(VRAM, ct.tileIndex, &ct.resolvedData)
+		ct.setup(bitplanes, tileAddress)
+		ct.renderer(VRAM, ct.tileAddress, &ct.resolvedData)
 		ct.isValid = true
 	}
 	return ct.resolvedData[row][px]
