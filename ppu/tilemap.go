@@ -61,7 +61,11 @@ func (bg1 *Background1) getTileMapWordCount() uint16 {
 	}
 }
 
-func (bg1 *Background1) getDotAt(VRAM []uint16, CGRAM []uint16, H, V byte) uint16 {
+// TODO this can be optimized like crazy
+// save the char reference in the tile
+// save the char address in the chartile
+// basically free pixels
+func (bg1 *Background1) GetDotAt(VRAM []uint16, CGRAM []uint16, H, V byte) uint16 {
 	rowCnt := V / 8
 	row := V % 8
 	columnCnt := H / 8
@@ -77,7 +81,8 @@ func (bg1 *Background1) getDotAt(VRAM []uint16, CGRAM []uint16, H, V byte) uint1
 	var char *CharTile
 	var ok bool
 	if char, ok = bg1.charTiles[charAddress]; !ok {
-		bg1.charTiles[charAddress] = &CharTile{isValid: false}
+		char = &CharTile{isValid: false}
+		bg1.charTiles[charAddress] = char
 	}
 
 	return CGRAM[char.getPixelAt(VRAM, bg1.colorDepth, charAddress, px, row)+tile.paletteNum*(1<<bg1.colorDepth)]

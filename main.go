@@ -2,6 +2,7 @@ package main
 
 import (
 	"SNES_emulator/soc"
+	"fmt"
 )
 
 func main() {
@@ -33,7 +34,12 @@ func main() {
 			continue
 		}
 	}
-
+	soc.Ppu.VRAM.VRAM[0x7C00] = 35
+	fmt.Println(soc.Ppu.Bg1.GetDotAt(soc.Ppu.VRAM.VRAM, soc.Ppu.CGRAM.CGRAM, 2, 5))
+	fmt.Println(soc.Ppu.Bg1.GetDotAt(soc.Ppu.VRAM.VRAM, soc.Ppu.CGRAM.CGRAM, 2, 5))
+	fmt.Println(soc.Ppu.Bg1.GetDotAt(soc.Ppu.VRAM.VRAM, soc.Ppu.CGRAM.CGRAM, 7, 5))
+	fmt.Println(soc.Ppu.Bg1.GetDotAt(soc.Ppu.VRAM.VRAM, soc.Ppu.CGRAM.CGRAM, 7, 6))
+	fmt.Println(soc.Ppu.Bg1.GetDotAt(soc.Ppu.VRAM.VRAM, soc.Ppu.CGRAM.CGRAM, 8, 6))
 	//for v := range 32 {
 	//	sprite := soc.Ppu.OAM.NewSprite(v)
 	//	fmt.Printf("%+v\n", sprite)
