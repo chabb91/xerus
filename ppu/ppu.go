@@ -14,12 +14,14 @@ type PPU struct {
 }
 
 func NewPPU() *PPU {
-	return &PPU{
+	ppu := &PPU{
 		OAM:   NewOAM(),
 		VRAM:  NewVRAM(),
 		CGRAM: NewCGRAM(),
 		Bg1:   NewBackground1(),
 	}
+	ppu.VRAM.ppu = ppu
+	return ppu
 }
 
 // Some of these registers can only be read and written to at specific times defined by the blanking periods

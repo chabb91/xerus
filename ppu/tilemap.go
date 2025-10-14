@@ -1,5 +1,7 @@
 package ppu
 
+import "fmt"
+
 type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
 
 type Background interface {
@@ -33,6 +35,7 @@ func (bg1 *Background1) Invalidate(addr uint16) {
 		index := addr - bg1.tileMapAddress
 		if index < uint16(len(bg1.tileMap)) {
 			bg1.tileMap[index].isValid = false
+			fmt.Println("invlidation")
 		}
 		return
 	}
@@ -42,6 +45,7 @@ func (bg1 *Background1) Invalidate(addr uint16) {
 		tileIndex := (addr - bg1.charTileAddressBase) / wordsPerTile
 		if t, ok := bg1.charTiles[bg1.charTileAddressBase+(tileIndex*wordsPerTile)]; ok {
 			t.isValid = false
+			fmt.Println("invlidation")
 		}
 	}
 }
@@ -65,10 +69,11 @@ func (bg1 *Background1) getTileMapWordCount() uint16 {
 // save the char reference in the tile
 // save the char address in the chartile
 // basically free pixels
+// the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
 func (bg1 *Background1) GetDotAt(VRAM []uint16, CGRAM []uint16, H, V byte) uint16 {
-	rowCnt := V / 8
+	rowCnt := uint16(V / 8)
 	row := V % 8
-	columnCnt := H / 8
+	columnCnt := uint16(H / 8)
 	px := H % 8
 
 	tileIndex := rowCnt*32 + columnCnt
@@ -146,7 +151,7 @@ func resolveWordBitPlanePixel(word uint16, px int) byte {
 
 func RenderTile2bpp(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 	for row := range 8 {
-		w1 := VRAM[wordBase+uint16(row*2)]
+		w1 := VRAM[wordBase+uint16(row)]
 		for px := range 8 {
 			out[row][px] = resolveWordBitPlanePixel(w1, px)
 		}
