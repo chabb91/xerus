@@ -9,6 +9,13 @@ type tileDataSource interface {
 	getCGRAM() []uint16
 }
 
+type tileValidator interface {
+	tryInvalidate(addr uint16)
+	//TODO
+	//invalidateBgTiles(bg Background)
+	//invalidateEverything()
+}
+
 type PPU struct {
 	OAM   *OAMController
 	VRAM  *VRAMController
@@ -23,11 +30,10 @@ type PPU struct {
 func NewPPU() *PPU {
 	ppu := &PPU{
 		OAM:   NewOAM(),
-		VRAM:  NewVRAM(),
 		CGRAM: NewCGRAM(),
 	}
-	ppu.VRAM.ppu = ppu
 	ppu.Bg1 = NewBackground1(ppu)
+	ppu.VRAM = NewVRAM(ppu)
 	return ppu
 }
 
@@ -117,4 +123,9 @@ func (ppu *PPU) getVRAM() []uint16 {
 
 func (ppu *PPU) getCGRAM() []uint16 {
 	return ppu.CGRAM.CGRAM
+}
+
+func (ppu *PPU) tryInvalidate(addr uint16) {
+	//maybe return true or something if theres a hit so it can stop checking the rest of the bgs
+	ppu.Bg1.Invalidate(addr)
 }

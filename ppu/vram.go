@@ -7,16 +7,17 @@ type VRAMController struct {
 	vmain *VMAIN
 	vmadd uint16
 
-	ppu *PPU
+	tv tileValidator
 
 	//absolute cringe VERY speshul case for VRAM register reads
 	vmLatchedValue uint16
 }
 
-func NewVRAM() *VRAMController {
+func NewVRAM(tv tileValidator) *VRAMController {
 	return &VRAMController{
 		VRAM:  make([]uint16, 0x8000),
 		vmain: newVMAIN(),
+		tv:    tv,
 	}
 }
 
@@ -52,8 +53,7 @@ func (vram *VRAMController) WriteDataLow(value byte) {
 	remapped_addr := vram.vmain.remapAndMask(vram.vmadd)
 	vram.VRAM[remapped_addr] = (vram.VRAM[remapped_addr] & 0xFF00) | uint16(value)
 
-	//TODO thisis placeholder
-	vram.ppu.Bg1.Invalidate(remapped_addr)
+	vram.tv.tryInvalidate(remapped_addr)
 
 	if !vram.vmain.incrementOnHighByte {
 		vram.vmadd += vram.vmain.incrementAmount
@@ -64,8 +64,7 @@ func (vram *VRAMController) WriteDataHigh(value byte) {
 	remapped_addr := vram.vmain.remapAndMask(vram.vmadd)
 	vram.VRAM[remapped_addr] = (vram.VRAM[remapped_addr] & 0x00FF) | (uint16(value) << 8)
 
-	//TODO thisis placeholder
-	vram.ppu.Bg1.Invalidate(remapped_addr)
+	vram.tv.tryInvalidate(remapped_addr)
 
 	if vram.vmain.incrementOnHighByte {
 		vram.vmadd += vram.vmain.incrementAmount
