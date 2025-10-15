@@ -1,5 +1,13 @@
 package ppu
 
+type colorDepth uint16
+
+const (
+	bpp2 colorDepth = 2
+	bpp4 colorDepth = 4
+	bpp8 colorDepth = 8
+)
+
 type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
 
 type Background interface {
@@ -21,7 +29,7 @@ type Background1 struct {
 	charTiles           map[uint16]*CharTile
 	charTileAddressBase uint16
 	charTileSize        byte
-	colorDepth          byte
+	colorDepth          colorDepth
 }
 
 func NewBackground1(ds tileDataSource) *Background1 {
@@ -130,7 +138,7 @@ type CharTile struct {
 	ds          tileDataSource
 }
 
-func (ct *CharTile) setup(bitPlanes byte) {
+func (ct *CharTile) setup(bitPlanes colorDepth) {
 	switch bitPlanes {
 	case 2:
 		ct.renderer = RenderTile2bppLUT
@@ -141,7 +149,7 @@ func (ct *CharTile) setup(bitPlanes byte) {
 	}
 }
 
-func (ct *CharTile) getPixelAt(bitplanes byte, px, row byte) byte {
+func (ct *CharTile) getPixelAt(bitplanes colorDepth, px, row byte) byte {
 	if !ct.isValid {
 		ct.setup(bitplanes)
 		ct.renderer(ct.ds.getVRAM(), ct.tileAddress, &ct.resolvedData)

@@ -64,7 +64,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	if addr == 0x2105 {
 		fmt.Println("BGMODE: ", value)
 		ppu.Bg1.charTileSize = (value >> 4) & 1
-		ppu.Bg1.colorDepth = 2
+		ppu.Bg1.colorDepth = bpp2
 	}
 	switch addr {
 	case 0x2100:
