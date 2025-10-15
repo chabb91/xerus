@@ -77,7 +77,7 @@ func main() {
 	img := image.NewNRGBA(image.Rect(0, 0, 256, 240))
 	for H := range 256 {
 		for V := range 240 {
-			img.Set(H, V, ppu.SNESColorToARGB(soc.Ppu.Bg1.GetDotAt(soc.Ppu.VRAM.VRAM, soc.Ppu.CGRAM.CGRAM, byte(H), byte(V))))
+			img.Set(H, V, ppu.SNESColorToARGB(soc.Ppu.Bg1.GetDotAt(byte(H), byte(V))))
 		}
 	}
 	fmt.Printf("Execution time: %v\n", time.Since(start))

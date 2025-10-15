@@ -12,6 +12,8 @@ type Background interface {
 }
 
 type Background1 struct {
+	ds tileDataSource
+
 	tileMap        [0x1000]BgTile //4x400
 	tileMapAddress uint16
 	tileMapSize    uint16
@@ -22,8 +24,9 @@ type Background1 struct {
 	colorDepth          byte
 }
 
-func NewBackground1() *Background1 {
+func NewBackground1(ds tileDataSource) *Background1 {
 	return &Background1{
+		ds:        ds,
 		charTiles: make(map[uint16]*CharTile),
 	}
 }
@@ -68,7 +71,7 @@ func (bg1 *Background1) getTileMapWordCount() uint16 {
 // save the char address in the chartile
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
-func (bg1 *Background1) GetDotAt(VRAM []uint16, CGRAM []uint16, H, V byte) uint16 {
+func (bg1 *Background1) GetDotAt(H, V byte) uint16 {
 	rowCnt := uint16(V / 8)
 	row := V % 8
 	columnCnt := uint16(H / 8)
@@ -77,7 +80,7 @@ func (bg1 *Background1) GetDotAt(VRAM []uint16, CGRAM []uint16, H, V byte) uint1
 	tileIndex := rowCnt*32 + columnCnt
 	tile := bg1.tileMap[tileIndex]
 	if !tile.isValid {
-		tile.setup(VRAM[bg1.tileMapAddress+uint16(tileIndex)])
+		tile.setup(bg1.ds.getVRAM()[bg1.tileMapAddress+uint16(tileIndex)])
 	}
 	//TODO use lookuptables for this
 	if tile.horizontalFlip {
@@ -88,14 +91,13 @@ func (bg1 *Background1) GetDotAt(VRAM []uint16, CGRAM []uint16, H, V byte) uint1
 	}
 
 	charAddress := tile.tileIndex*uint16(bg1.colorDepth*4) + bg1.charTileAddressBase
-	var char *CharTile
-	var ok bool
-	if char, ok = bg1.charTiles[charAddress]; !ok {
-		char = &CharTile{isValid: false}
+	char := bg1.charTiles[charAddress]
+	if char == nil {
+		char = &CharTile{isValid: false, ds: bg1.ds, tileAddress: charAddress}
 		bg1.charTiles[charAddress] = char
 	}
 
-	return CGRAM[char.getPixelAt(VRAM, bg1.colorDepth, charAddress, px, row)+tile.paletteNum*(1<<bg1.colorDepth)]
+	return bg1.ds.getCGRAM()[char.getPixelAt(bg1.colorDepth, px, row)+tile.paletteNum*(1<<bg1.colorDepth)]
 }
 
 type BgTile struct {
@@ -125,9 +127,10 @@ type CharTile struct {
 	resolvedData [8][8]byte
 
 	tileAddress uint16
+	ds          tileDataSource
 }
 
-func (ct *CharTile) setup(bitPlanes byte, tileIndex uint16) {
+func (ct *CharTile) setup(bitPlanes byte) {
 	switch bitPlanes {
 	case 2:
 		ct.renderer = RenderTile2bpp
@@ -136,14 +139,12 @@ func (ct *CharTile) setup(bitPlanes byte, tileIndex uint16) {
 	case 8:
 		ct.renderer = RenderTile8bpp
 	}
-
-	ct.tileAddress = tileIndex
 }
 
-func (ct *CharTile) getPixelAt(VRAM []uint16, bitplanes byte, tileAddress uint16, px, row byte) byte {
+func (ct *CharTile) getPixelAt(bitplanes byte, px, row byte) byte {
 	if !ct.isValid {
-		ct.setup(bitplanes, tileAddress)
-		ct.renderer(VRAM, ct.tileAddress, &ct.resolvedData)
+		ct.setup(bitplanes)
+		ct.renderer(ct.ds.getVRAM(), ct.tileAddress, &ct.resolvedData)
 		ct.isValid = true
 	}
 	return ct.resolvedData[row][px]

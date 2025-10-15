@@ -2,6 +2,13 @@ package ppu
 
 import "fmt"
 
+type tileDataSource interface {
+	getOAMLow() []byte
+	getOAMHigh() []byte
+	getVRAM() []uint16
+	getCGRAM() []uint16
+}
+
 type PPU struct {
 	OAM   *OAMController
 	VRAM  *VRAMController
@@ -18,9 +25,9 @@ func NewPPU() *PPU {
 		OAM:   NewOAM(),
 		VRAM:  NewVRAM(),
 		CGRAM: NewCGRAM(),
-		Bg1:   NewBackground1(),
 	}
 	ppu.VRAM.ppu = ppu
+	ppu.Bg1 = NewBackground1(ppu)
 	return ppu
 }
 
@@ -94,4 +101,20 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		return fmt.Errorf("invalid PPU register write at $%04X", addr)
 	}
 	return nil
+}
+
+func (ppu *PPU) getOAMLow() []byte {
+	return ppu.OAM.LowTable
+}
+
+func (ppu *PPU) getOAMHigh() []byte {
+	return ppu.OAM.HighTable
+}
+
+func (ppu *PPU) getVRAM() []uint16 {
+	return ppu.VRAM.VRAM
+}
+
+func (ppu *PPU) getCGRAM() []uint16 {
+	return ppu.CGRAM.CGRAM
 }
