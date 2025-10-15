@@ -21,7 +21,8 @@ type PPU struct {
 	VRAM  *VRAMController
 	CGRAM *CGRAMController
 
-	Bg1 *Background1
+	Bg1     *Background1
+	BGxnOFS *BGxnOFS
 
 	FBlank, VBlank, HBlank bool
 	screenBrightness       byte
@@ -29,8 +30,9 @@ type PPU struct {
 
 func NewPPU() *PPU {
 	ppu := &PPU{
-		OAM:   NewOAM(),
-		CGRAM: NewCGRAM(),
+		OAM:     NewOAM(),
+		CGRAM:   NewCGRAM(),
+		BGxnOFS: &BGxnOFS{},
 	}
 	ppu.Bg1 = NewBackground1(ppu)
 	ppu.VRAM = NewVRAM(ppu)
@@ -86,6 +88,11 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.OAM.SetAddWordHigh(value)
 	case 0x2104:
 		ppu.OAM.WriteOAMData(value)
+	//TODO add mode 7 scrolling
+	case 0x210D:
+		ppu.Bg1.hScroll = ppu.BGxnOFS.hFormula(value)
+	case 0x210E:
+		ppu.Bg1.vScroll = ppu.BGxnOFS.vFormula(value)
 	case 0x2115:
 		ppu.VRAM.vmain.Setup(value)
 		fmt.Println("VMAIN: ", value)

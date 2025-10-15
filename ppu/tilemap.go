@@ -30,6 +30,9 @@ type Background1 struct {
 	charTileAddressBase uint16
 	charTileSize        byte
 	colorDepth          colorDepth
+
+	vScroll uint16
+	hScroll uint16
 }
 
 func NewBackground1(ds tileDataSource) *Background1 {
