@@ -133,11 +133,11 @@ type CharTile struct {
 func (ct *CharTile) setup(bitPlanes byte) {
 	switch bitPlanes {
 	case 2:
-		ct.renderer = RenderTile2bpp
+		ct.renderer = RenderTile2bppLUT
 	case 4:
-		ct.renderer = RenderTile4bpp
+		ct.renderer = RenderTile4bppLUT
 	case 8:
-		ct.renderer = RenderTile8bpp
+		ct.renderer = RenderTile8bppLUT
 	}
 }
 
@@ -183,18 +183,6 @@ func RenderTile8bpp(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 		for px := range 8 {
 			out[row][px] = resolveWordBitPlanePixel(w1, px) | (resolveWordBitPlanePixel(w2, px) << 2) |
 				(resolveWordBitPlanePixel(w3, px) << 4) | (resolveWordBitPlanePixel(w4, px) << 6)
-		}
-	}
-}
-
-// EVEN FASTER: Pre-compute lookup tables (trade memory for speed)
-var bitplaneLUT [256][8]byte
-
-func initBitplaneLUT() {
-	// Pre-compute all possible byte -> 8 pixels mappings
-	for b := range 256 {
-		for px := range 8 {
-			bitplaneLUT[b][px] = byte((b >> (7 - px)) & 1)
 		}
 	}
 }
