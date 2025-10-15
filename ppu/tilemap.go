@@ -40,7 +40,7 @@ func NewBackground1(ds tileDataSource) *Background1 {
 }
 
 func (bg1 *Background1) Invalidate(addr uint16) {
-	if bg1.tileMapAddress <= addr && bg1.tileMapAddress+bg1.getTileMapWordCount() > addr {
+	if bg1.tileMapAddress <= addr && bg1.tileMapAddress+getTileMapWordCount(bg1.tileMapSize) > addr {
 		index := addr - bg1.tileMapAddress
 		if index < uint16(len(bg1.tileMap)) {
 			bg1.tileMap[index].isValid = false
@@ -59,8 +59,8 @@ func (bg1 *Background1) Invalidate(addr uint16) {
 	}
 }
 
-func (bg1 *Background1) getTileMapWordCount() uint16 {
-	switch bg1.tileMapSize {
+func getTileMapWordCount(tileMapSize uint16) uint16 {
+	switch tileMapSize {
 	case 0:
 		return 0x400 // 32x32
 	case 1:
