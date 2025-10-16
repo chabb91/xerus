@@ -8,7 +8,11 @@ const (
 	bpp8 colorDepth = 8
 )
 
-type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
+type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte) // The PPU provides access to the epoch relevant to a specific BG layer
+
+type BGEpochSource interface {
+	GetBGSourceEpoch() *uint64
+}
 
 type Background interface {
 	GetTileMapAddress() uint16
@@ -33,13 +37,22 @@ type Background1 struct {
 
 	vScroll uint16
 	hScroll uint16
+
+	currentEpoch *uint64
 }
 
-func NewBackground1(ds tileDataSource) *Background1 {
-	return &Background1{
-		ds:        ds,
-		charTiles: make(map[uint16]*CharTile),
+func NewBackground1(ds tileDataSource, epochPtr *uint64) *Background1 {
+	bg := &Background1{
+		ds:           ds,
+		charTiles:    make(map[uint16]*CharTile),
+		currentEpoch: epochPtr,
 	}
+
+	for i := range bg.tileMap {
+		bg.tileMap[i].bg = bg
+	}
+
+	return bg
 }
 
 func (bg1 *Background1) Invalidate(addr uint16) {
@@ -89,9 +102,7 @@ func (bg1 *Background1) GetDotAt(H, V byte) uint16 {
 	px, row, charMapID, tileIndex := getTileIndexAndPixelCoordinates(bg1.tileMapSize, bg1.charTileSize, hScroll, vScroll)
 
 	tile := bg1.tileMap[tileIndex]
-	if !tile.isValid {
-		tile.setup(bg1.ds.getVRAM()[bg1.tileMapAddress+uint16(tileIndex)])
-	}
+	tile.setup(bg1.ds.getVRAM()[bg1.tileMapAddress+uint16(tileIndex)])
 
 	px = tileFlipXLUT[tile.flipIndex][px]
 	row = tileFlipYLUT[tile.flipIndex][row]
@@ -104,7 +115,7 @@ func (bg1 *Background1) GetDotAt(H, V byte) uint16 {
 	charAddress := (tile.charIndex+charMapIdToOffsetLUT[charMapID])*uint16(bg1.colorDepth<<2) + bg1.charTileAddressBase
 	char := bg1.charTiles[charAddress]
 	if char == nil {
-		char = &CharTile{isValid: false, ds: bg1.ds, tileAddress: charAddress}
+		char = &CharTile{isValid: false, ds: bg1.ds, tileAddress: charAddress, bg: bg1}
 		bg1.charTiles[charAddress] = char
 	}
 
@@ -119,15 +130,24 @@ type BgTile struct {
 	priority   byte
 	paletteNum byte
 	charIndex  uint16
+
+	lastRenderEpoch uint64
+	bg              *Background1
 }
 
 func (bt *BgTile) setup(params uint16) {
+	currentEpoch := *bt.bg.currentEpoch
+	if bt.isValid && bt.lastRenderEpoch == currentEpoch {
+		return
+	}
+
 	bt.flipIndex = byte((params >> 14) & 3)
 	bt.priority = byte(params>>13) & 1
 	bt.paletteNum = byte(params>>10) & 7
 	bt.charIndex = params & 0x3FF
 
 	bt.isValid = true
+	bt.lastRenderEpoch = currentEpoch
 }
 
 // TODO chartile needs to be able to handle 16x16 tiles later on too
@@ -139,6 +159,9 @@ type CharTile struct {
 
 	tileAddress uint16
 	ds          tileDataSource
+
+	lastRenderEpoch uint64
+	bg              *Background1
 }
 
 func (ct *CharTile) setup(bitPlanes colorDepth) {
@@ -153,11 +176,23 @@ func (ct *CharTile) setup(bitPlanes colorDepth) {
 }
 
 func (ct *CharTile) getPixelAt(bitplanes colorDepth, px, row byte) byte {
-	if !ct.isValid {
-		ct.setup(bitplanes)
-		ct.renderer(ct.ds.getVRAM(), ct.tileAddress, &ct.resolvedData)
-		ct.isValid = true
+	currentEpoch := *ct.bg.currentEpoch
+	if ct.lastRenderEpoch != currentEpoch {
+		goto RENDER_AND_CACHE
 	}
+
+	if !ct.isValid {
+		goto RENDER_AND_CACHE
+	}
+
+	return ct.resolvedData[row][px]
+
+RENDER_AND_CACHE:
+	ct.setup(bitplanes)
+	ct.renderer(ct.ds.getVRAM(), ct.tileAddress, &ct.resolvedData)
+	ct.isValid = true
+	ct.lastRenderEpoch = currentEpoch
+
 	return ct.resolvedData[row][px]
 }
 

@@ -26,6 +26,8 @@ type PPU struct {
 
 	FBlank, VBlank, HBlank bool
 	screenBrightness       byte
+
+	bgEpochs [5]uint64 //1 2 3 4 and mode7
 }
 
 func NewPPU() *PPU {
@@ -34,7 +36,7 @@ func NewPPU() *PPU {
 		CGRAM:   NewCGRAM(),
 		BGxnOFS: &BGxnOFS{},
 	}
-	ppu.Bg1 = NewBackground1(ppu)
+	ppu.Bg1 = NewBackground1(ppu, &ppu.bgEpochs[0])
 	ppu.VRAM = NewVRAM(ppu)
 	return ppu
 }
@@ -135,4 +137,10 @@ func (ppu *PPU) getCGRAM() []uint16 {
 func (ppu *PPU) tryInvalidate(addr uint16) {
 	//maybe return true or something if theres a hit so it can stop checking the rest of the bgs
 	ppu.Bg1.Invalidate(addr)
+}
+
+func (ppu *PPU) InvalidateBG(bgIndex int) {
+	if bgIndex >= 0 && bgIndex < len(ppu.bgEpochs) {
+		ppu.bgEpochs[bgIndex]++
+	}
 }
