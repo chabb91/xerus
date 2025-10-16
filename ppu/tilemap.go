@@ -43,7 +43,7 @@ func NewBackground1(ds tileDataSource) *Background1 {
 }
 
 func (bg1 *Background1) Invalidate(addr uint16) {
-	if bg1.tileMapAddress <= addr && bg1.tileMapAddress+getTileMapWordCount(bg1.tileMapSize) > addr {
+	if bg1.tileMapAddress <= addr && bg1.tileMapAddress+tileMapDimensionsLUT[bg1.tileMapSize].wordSize > addr {
 		index := addr - bg1.tileMapAddress
 		if index < uint16(len(bg1.tileMap)) {
 			bg1.tileMap[index].isValid = false
@@ -62,19 +62,19 @@ func (bg1 *Background1) Invalidate(addr uint16) {
 	}
 }
 
-func getTileMapWordCount(tileMapSize uint16) uint16 {
-	switch tileMapSize {
-	case 0:
-		return 0x400 // 32x32
-	case 1:
-		return 0x800 // 64x32
-	case 2:
-		return 0x800 // 32x64
-	case 3:
-		return 0x1000 // 64x64
-	default:
-		return 0x400
-	}
+// in theory this entire thing can be cached between scrolling changes
+func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V uint16) (byte, byte, byte, uint16) {
+	tileDimensions := tileMapDimensionsLUT[tileMapSize]
+	charDimensions := charTileSizeLUT[charTileSize]
+	rowCnt := (V / uint16(charDimensions.H)) % tileDimensions.H
+	columnCnt := (H / uint16(charDimensions.W)) % tileDimensions.W
+	tileMapID := (rowCnt/32)*tileDimensions.mapsPerRow + columnCnt/32
+	row := byte(V % uint16(charDimensions.H))
+	px := byte(H % uint16(charDimensions.W))
+	charMapID := (row/8)*2 + px/8
+	tileIndex := tileMapID*0x400 + rowCnt*32 + columnCnt
+
+	return px, row, charMapID, tileIndex
 }
 
 // TODO this can be optimized like crazy
@@ -83,12 +83,11 @@ func getTileMapWordCount(tileMapSize uint16) uint16 {
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
 func (bg1 *Background1) GetDotAt(H, V byte) uint16 {
-	rowCnt := uint16(V / 8)
-	row := V % 8
-	columnCnt := uint16(H / 8)
-	px := H % 8
+	hScroll := uint16(H) + bg1.hScroll
+	vScroll := uint16(V) + bg1.vScroll
 
-	tileIndex := rowCnt*32 + columnCnt
+	px, row, charMapID, tileIndex := getTileIndexAndPixelCoordinates(bg1.tileMapSize, bg1.charTileSize, hScroll, vScroll)
+
 	tile := bg1.tileMap[tileIndex]
 	if !tile.isValid {
 		tile.setup(bg1.ds.getVRAM()[bg1.tileMapAddress+uint16(tileIndex)])
@@ -101,7 +100,8 @@ func (bg1 *Background1) GetDotAt(H, V byte) uint16 {
 		row = 7 - row
 	}
 
-	charAddress := tile.tileIndex*uint16(bg1.colorDepth*4) + bg1.charTileAddressBase
+	//TODO charaddress can also be cached in the bgtile. this is a pointless calculation
+	charAddress := (tile.charIndex+uint16(charMapID))*uint16(bg1.colorDepth*4) + bg1.charTileAddressBase
 	char := bg1.charTiles[charAddress]
 	if char == nil {
 		char = &CharTile{isValid: false, ds: bg1.ds, tileAddress: charAddress}
@@ -117,7 +117,7 @@ type BgTile struct {
 
 	priority   byte
 	paletteNum byte
-	tileIndex  uint16
+	charIndex  uint16
 }
 
 func (bt *BgTile) setup(params uint16) {
@@ -125,7 +125,7 @@ func (bt *BgTile) setup(params uint16) {
 	bt.horizontalFlip = (params>>14)&1 == 1
 	bt.priority = byte(params>>13) & 1
 	bt.paletteNum = byte(params>>10) & 7
-	bt.tileIndex = params & 0x3FF
+	bt.charIndex = params & 0x3FF
 
 	bt.isValid = true
 }
