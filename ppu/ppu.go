@@ -59,23 +59,6 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 }
 
 func (ppu *PPU) Write(addr uint16, value byte) error {
-	if addr == 0x212C {
-		fmt.Println("TM: ", value)
-	}
-	if addr == 0x210B {
-		fmt.Println("BG12NBA: ", value)
-		ppu.Bg1.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
-	}
-	if addr == 0x2107 {
-		fmt.Println("BG1SC: ", value)
-		ppu.Bg1.tileMapSize = uint16(value & 0x3)
-		ppu.Bg1.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
-	}
-	if addr == 0x2105 {
-		fmt.Println("BGMODE: ", value)
-		ppu.Bg1.charTileSize = (value >> 4) & 1
-		ppu.Bg1.colorDepth = bpp2
-	}
 	switch addr {
 	case 0x2100:
 		//TODO writing this register the first line of vlblank causes an oam address reset
@@ -90,6 +73,21 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.OAM.SetAddWordHigh(value)
 	case 0x2104:
 		ppu.OAM.WriteOAMData(value)
+	case 0x2105:
+		fmt.Println("BGMODE: ", value)
+		ppu.Bg1.charTileSize = (value >> 4) & 1
+		ppu.Bg1.colorDepth = bpp2
+		//TODO should invalidate everything
+		ppu.InvalidateBG(0)
+	case 0x2107:
+		fmt.Println("BG1SC: ", value)
+		ppu.Bg1.tileMapSize = uint16(value & 0x3)
+		ppu.Bg1.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
+		ppu.InvalidateBG(0)
+	case 0x210B:
+		fmt.Println("BG12NBA: ", value)
+		ppu.Bg1.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
+		ppu.InvalidateBG(0)
 	//TODO add mode 7 scrolling
 	case 0x210D:
 		ppu.Bg1.hScroll = ppu.BGxnOFS.hFormula(value)
@@ -112,6 +110,8 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.CGRAM.SetAddWord(value)
 	case 0x2122:
 		ppu.CGRAM.WriteData(value)
+	case 0x212C:
+		fmt.Println("TM: ", value)
 	default:
 		return fmt.Errorf("invalid PPU register write at $%04X", addr)
 	}
