@@ -6,15 +6,17 @@ import (
 	"SNES_emulator/dma"
 	"SNES_emulator/memory"
 	"SNES_emulator/ppu"
+	"SNES_emulator/soc/interruptchip"
 	"SNES_emulator/soc/muldivchip"
 	"fmt"
 )
 
 type SoC struct {
-	MulDiv *muldivchip.MulDiv
-	Dma    *dma.Dma
-	Cpu    *cpu.CPU
-	Ppu    *ppu.PPU
+	MulDiv              *muldivchip.MulDiv
+	InterruptController *interruptchip.InterruptController
+	Dma                 *dma.Dma
+	Cpu                 *cpu.CPU
+	Ppu                 *ppu.PPU
 
 	bus memory.Bus
 }
@@ -32,6 +34,9 @@ func NewSoC() *SoC {
 		Ppu:    ppu.NewPPU(),
 		bus:    bus,
 	}
+	soc.InterruptController = &interruptchip.InterruptController{Rdnmi: 0x02}
+	soc.Ppu.InterruptScheduler = soc.InterruptController
+
 	bus.RegisterRange(0x4200, 0x4217, soc, "internal CPU")
 	bus.RegisterRange(0x2100, 0x213F, soc.Ppu, "PPU")
 
@@ -41,7 +46,9 @@ func NewSoC() *SoC {
 func (soc *SoC) Read(addr uint16) (byte, error) {
 	switch addr {
 	case 0x4210:
-		return 0x82, fmt.Errorf("internal CPU register $%04X is unimplemented", addr)
+		//return 0x82, fmt.Errorf("internal CPU register $%04X is unimplemented", addr)
+		ret := soc.InterruptController.ReadRdnmi()
+		return ret, nil
 	case 0x4214:
 		return soc.MulDiv.Rddivl, nil
 	case 0x4215:

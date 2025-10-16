@@ -27,7 +27,11 @@ type PPU struct {
 	FBlank, VBlank, HBlank bool
 	screenBrightness       byte
 
+	H, V uint16
+
 	bgEpochs [5]uint64 //1 2 3 4 and mode7
+
+	InterruptScheduler InterruptScheduler
 }
 
 func NewPPU() *PPU {

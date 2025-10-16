@@ -13,15 +13,24 @@ import (
 func main() {
 	soc := soc.NewSoC()
 	var cnt uint64
+	var cnt2 uint64
 
 	cpuTickRate := 3
 	dmaTickRate := 4
+	ppuTickRate := 2
 
 	start := time.Now()
 	var dmaOn bool
-	for range 27000 {
+	for range 1299999 {
 		cnt++
+		cnt2++
 		soc.MulDiv.StepCycle()
+
+		if cnt2 == uint64(ppuTickRate) {
+			soc.Ppu.Step()
+			cnt2 = 0
+		}
+
 		if soc.Dma.Mdmaen != 0 && cnt == uint64(dmaTickRate) {
 			if !dmaOn {
 				dmaOn = true
@@ -39,6 +48,7 @@ func main() {
 			cnt = 0
 			continue
 		}
+
 	}
 	//soc.Ppu.VRAM.VRAM[0x7C00] = 35
 	//soc.Ppu.VRAM.VRAM[0x7C01] = 79
@@ -63,6 +73,8 @@ func main() {
 	soc.Ppu.VRAM.VRAM[0x7C11] = 69
 	soc.Ppu.VRAM.VRAM[0x7C12] = 83
 	soc.Ppu.VRAM.VRAM[0x7C13] = 33
+
+	soc.Ppu.VRAM.VRAM[0x7C55] = 0x4066 //102
 	//fmt.Println(soc.Ppu.Bg1.GetDotAt(soc.Ppu.VRAM.VRAM, soc.Ppu.CGRAM.CGRAM, 2, 5))
 	//for v := range 32 {
 	//	sprite := soc.Ppu.OAM.NewSprite(v)

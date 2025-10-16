@@ -1,6 +1,8 @@
 package interruptchip
 
-import "SNES_emulator/cpu"
+import (
+	"SNES_emulator/cpu"
+)
 
 type irqMode func(*InterruptController) bool
 
@@ -64,7 +66,7 @@ func (ic *InterruptController) SetVtimeH(value byte) {
 
 // used as the actual register
 // TODO bits 456 of this value are supposed to be open bus
-func (ic *InterruptController) ReadRdnmi(value byte) byte {
+func (ic *InterruptController) ReadRdnmi() byte {
 	//ret := (ic.Rdnmi & 0x8F) | (bus.OpenBus & 0x70)
 	ret := ic.Rdnmi
 	ic.Rdnmi &= 0x7F
@@ -73,11 +75,11 @@ func (ic *InterruptController) ReadRdnmi(value byte) byte {
 }
 
 // used by the ppu to set/unset the registers nmi indicator as needed
-func (ic *InterruptController) SetRdnmi(nmiState bool) {
-	if nmiState {
-		ic.Rdnmi = 0xF1
+func (ic *InterruptController) SetRdnmi(nmiOn bool) {
+	if nmiOn {
+		ic.Rdnmi = 0x82
 	} else {
-		ic.Rdnmi = 0x71
+		ic.Rdnmi = 0x02
 	}
 }
 
