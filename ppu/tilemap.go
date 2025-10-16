@@ -92,22 +92,13 @@ func (bg1 *Background1) GetDotAt(H, V byte) uint16 {
 	if !tile.isValid {
 		tile.setup(bg1.ds.getVRAM()[bg1.tileMapAddress+uint16(tileIndex)])
 	}
-	//TODO use lookuptables for this
-	flipOffset := int8(0)
-	if tile.horizontalFlip {
-		px = 7 - px
-		if bg1.charTileSize == 1 {
-			flipOffset += charMapIdTransformFlipLUT[charMapID].H
-		}
-	}
-	if tile.verticalFlip {
-		row = 7 - row
-		if bg1.charTileSize == 1 {
-			flipOffset += charMapIdTransformFlipLUT[charMapID].V
-		}
-	}
 
-	charMapID += byte(flipOffset)
+	px = tileFlipXLUT[tile.flipIndex][px]
+	row = tileFlipYLUT[tile.flipIndex][row]
+
+	if bg1.charTileSize == 1 {
+		charMapID += compositeFlipLUT[charMapID][tile.flipIndex]
+	}
 
 	//TODO charaddress can also be cached in the bgtile. this is a pointless calculation
 	charAddress := (tile.charIndex+charMapIdToOffsetLUT[charMapID])*uint16(bg1.colorDepth<<2) + bg1.charTileAddressBase
@@ -123,6 +114,7 @@ func (bg1 *Background1) GetDotAt(H, V byte) uint16 {
 type BgTile struct {
 	isValid                      bool
 	verticalFlip, horizontalFlip bool
+	flipIndex                    byte
 
 	priority   byte
 	paletteNum byte
@@ -130,8 +122,7 @@ type BgTile struct {
 }
 
 func (bt *BgTile) setup(params uint16) {
-	bt.verticalFlip = (params>>15)&1 == 1
-	bt.horizontalFlip = (params>>14)&1 == 1
+	bt.flipIndex = byte((params >> 14) & 3)
 	bt.priority = byte(params>>13) & 1
 	bt.paletteNum = byte(params>>10) & 7
 	bt.charIndex = params & 0x3FF
