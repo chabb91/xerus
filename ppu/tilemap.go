@@ -93,15 +93,24 @@ func (bg1 *Background1) GetDotAt(H, V byte) uint16 {
 		tile.setup(bg1.ds.getVRAM()[bg1.tileMapAddress+uint16(tileIndex)])
 	}
 	//TODO use lookuptables for this
+	flipOffset := int8(0)
 	if tile.horizontalFlip {
-		px = byte(charTileSizeLUT[bg1.charTileSize].modMask) - px
+		px = 7 - px
+		if bg1.charTileSize == 1 {
+			flipOffset += charMapIdTransformFlipLUT[charMapID].H
+		}
 	}
 	if tile.verticalFlip {
-		row = byte(charTileSizeLUT[bg1.charTileSize].modMask) - row
+		row = 7 - row
+		if bg1.charTileSize == 1 {
+			flipOffset += charMapIdTransformFlipLUT[charMapID].V
+		}
 	}
 
+	charMapID += byte(flipOffset)
+
 	//TODO charaddress can also be cached in the bgtile. this is a pointless calculation
-	charAddress := (tile.charIndex+uint16(charMapID))*uint16(bg1.colorDepth<<2) + bg1.charTileAddressBase
+	charAddress := (tile.charIndex+charMapIdToOffsetLUT[charMapID])*uint16(bg1.colorDepth<<2) + bg1.charTileAddressBase
 	char := bg1.charTiles[charAddress]
 	if char == nil {
 		char = &CharTile{isValid: false, ds: bg1.ds, tileAddress: charAddress}

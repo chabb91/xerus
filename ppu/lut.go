@@ -12,6 +12,11 @@ var charTileSizeLUT = [2]struct{ W, H, divMask, modMask uint16 }{
 	{16, 16, 4, 15},
 }
 
+var charMapIdToOffsetLUT = [4]uint16{0, 1, 0x10, 0x11}
+var charMapIdTransformFlipLUT = [4]struct{ H, V int8 }{
+	{1, 2}, {-1, 1}, {1, -2}, {-1, -2},
+}
+
 func init() {
 	initBitplaneLUT()
 }
