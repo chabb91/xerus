@@ -94,21 +94,21 @@ func (bg1 *Background1) GetDotAt(H, V byte) uint16 {
 	}
 	//TODO use lookuptables for this
 	if tile.horizontalFlip {
-		px = 7 - px
+		px = byte(charTileSizeLUT[bg1.charTileSize].modMask) - px
 	}
 	if tile.verticalFlip {
-		row = 7 - row
+		row = byte(charTileSizeLUT[bg1.charTileSize].modMask) - row
 	}
 
 	//TODO charaddress can also be cached in the bgtile. this is a pointless calculation
-	charAddress := (tile.charIndex+uint16(charMapID))*uint16(bg1.colorDepth*4) + bg1.charTileAddressBase
+	charAddress := (tile.charIndex+uint16(charMapID))*uint16(bg1.colorDepth<<2) + bg1.charTileAddressBase
 	char := bg1.charTiles[charAddress]
 	if char == nil {
 		char = &CharTile{isValid: false, ds: bg1.ds, tileAddress: charAddress}
 		bg1.charTiles[charAddress] = char
 	}
 
-	return bg1.ds.getCGRAM()[char.getPixelAt(bg1.colorDepth, px, row)+tile.paletteNum*(1<<bg1.colorDepth)]
+	return bg1.ds.getCGRAM()[char.getPixelAt(bg1.colorDepth, px, row)+tile.paletteNum<<bg1.colorDepth]
 }
 
 type BgTile struct {
