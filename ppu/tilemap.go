@@ -102,7 +102,7 @@ func (bg1 *Background1) GetDotAt(H, V byte) uint16 {
 	px, row, charMapID, tileIndex := getTileIndexAndPixelCoordinates(bg1.tileMapSize, bg1.charTileSize, hScroll, vScroll)
 
 	tile := bg1.tileMap[tileIndex]
-	tile.setup(bg1.ds.getVRAM()[bg1.tileMapAddress+uint16(tileIndex)])
+	tile.setup(tileIndex)
 
 	px = tileFlipXLUT[tile.flipIndex][px]
 	row = tileFlipYLUT[tile.flipIndex][row]
@@ -135,12 +135,13 @@ type BgTile struct {
 	bg              *Background1
 }
 
-func (bt *BgTile) setup(params uint16) {
+func (bt *BgTile) setup(tileIndex uint16) {
 	currentEpoch := *bt.bg.currentEpoch
 	if bt.isValid && bt.lastRenderEpoch == currentEpoch {
 		return
 	}
 
+	params := bt.bg.ds.getVRAM()[bt.bg.tileMapAddress+tileIndex]
 	bt.flipIndex = byte((params >> 14) & 3)
 	bt.priority = byte(params>>13) & 1
 	bt.paletteNum = byte(params>>10) & 7
