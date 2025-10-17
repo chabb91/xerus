@@ -6,6 +6,7 @@ import (
 
 const ScreenWidth = 256
 const ScreenHeight = 224
+const ScalingFactor = 3
 
 type Framebuffer struct {
 	front, Back *[ScreenWidth][ScreenHeight]uint16
@@ -35,7 +36,6 @@ func (fb *Framebuffer) Swap() {
 type EmulatorDisplay struct {
 	fb                *Framebuffer
 	img               *ebiten.Image
-	latest            *[ScreenWidth][ScreenHeight]uint16
 	transformedBuffer []byte
 }
 
@@ -50,8 +50,7 @@ func NewEmulatorDisplay(fb *Framebuffer) *EmulatorDisplay {
 func (ed *EmulatorDisplay) Update() error {
 	select {
 	case frame := <-ed.fb.swap:
-		ed.latest = frame
-		ed.convertBGR15ToRGBA(ed.latest)
+		ed.convertBGR15ToRGBA(frame)
 	default:
 		// no new frame yet
 	}
@@ -59,9 +58,6 @@ func (ed *EmulatorDisplay) Update() error {
 }
 
 func (ed *EmulatorDisplay) Draw(screen *ebiten.Image) {
-	if ed.latest == nil {
-		return
-	}
 	ed.img.WritePixels(ed.transformedBuffer)
 	screen.DrawImage(ed.img, nil)
 }
@@ -71,6 +67,7 @@ func (ed *EmulatorDisplay) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func (ed *EmulatorDisplay) convertBGR15ToRGBA(buffer *[ScreenWidth][ScreenHeight]uint16) {
+	//doesnt work for some reason FIXME
 	brightness := (ed.fb.Brightness * 17) & 0xFF
 
 	for y := 0; y < ScreenHeight; y++ {

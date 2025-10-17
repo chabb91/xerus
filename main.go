@@ -8,6 +8,9 @@ import (
 )
 
 func main() {
+	ebiten.SetWindowTitle("SNES Emulator")
+	ebiten.SetWindowSize(ui.ScreenWidth*3, ui.ScreenHeight*3)
+
 	fb := ui.NewFramebuffer()
 	display := ui.NewEmulatorDisplay(fb)
 
