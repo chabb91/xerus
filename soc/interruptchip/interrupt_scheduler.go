@@ -2,13 +2,14 @@ package interruptchip
 
 import (
 	"SNES_emulator/cpu"
+	"SNES_emulator/memory"
 )
 
 type irqMode func(*InterruptController) bool
 
 type InterruptController struct {
 	Htime, Vtime uint16
-	Rdnmi        byte
+	rdnmi        byte
 	Timeup       byte
 	//todo this is just part of the ppu fr fr
 	Hvbjoy byte
@@ -21,6 +22,16 @@ type InterruptController struct {
 
 	nmi bool
 	irq irqMode
+
+	bus memory.Bus
+}
+
+func NewInterruptController(bus memory.Bus, cpu *cpu.CPU) *InterruptController {
+	return &InterruptController{
+		cpu:   cpu,
+		bus:   bus,
+		rdnmi: 0x02,
+	}
 }
 
 func (ic *InterruptController) SetNmitimen(value byte) {
@@ -65,11 +76,9 @@ func (ic *InterruptController) SetVtimeH(value byte) {
 }
 
 // used as the actual register
-// TODO bits 456 of this value are supposed to be open bus
 func (ic *InterruptController) ReadRdnmi() byte {
-	//ret := (ic.Rdnmi & 0x8F) | (bus.OpenBus & 0x70)
-	ret := ic.Rdnmi
-	ic.Rdnmi &= 0x7F
+	ret := (ic.rdnmi & 0x8F) | (ic.bus.GetOpenBus() & 0x70)
+	ic.rdnmi &= 0x7F
 
 	return ret
 }
@@ -77,9 +86,9 @@ func (ic *InterruptController) ReadRdnmi() byte {
 // used by the ppu to set/unset the registers nmi indicator as needed
 func (ic *InterruptController) SetRdnmi(nmiOn bool) {
 	if nmiOn {
-		ic.Rdnmi = 0x82
+		ic.rdnmi |= 0x80
 	} else {
-		ic.Rdnmi = 0x02
+		ic.rdnmi &= 0x7F
 	}
 }
 

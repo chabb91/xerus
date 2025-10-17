@@ -40,3 +40,7 @@ func (b *TestBus) RegisterRange(start, end uint16, handler RegisterHandler, name
 
 func (b *TestBus) SetMEMSEL(value byte) {
 }
+
+func (b *TestBus) GetOpenBus() byte {
+	return 0
+}

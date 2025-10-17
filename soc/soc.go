@@ -23,7 +23,7 @@ type SoC struct {
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/CPUADC.sfc")
+	romData, err := cartridge.Load("/home/chabb/Downloads/CPUPHL.sfc")
 	if err != nil {
 		panic(err)
 	}
@@ -35,7 +35,7 @@ func NewSoC(framebuffer *ui.Framebuffer) *SoC {
 		Ppu:    ppu.NewPPU(),
 		bus:    bus,
 	}
-	soc.InterruptController = &interruptchip.InterruptController{Rdnmi: 0x02}
+	soc.InterruptController = interruptchip.NewInterruptController(bus, soc.Cpu)
 	soc.Ppu.InterruptScheduler = soc.InterruptController
 	soc.Ppu.Framebuffer = framebuffer
 

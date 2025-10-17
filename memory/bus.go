@@ -13,6 +13,7 @@ type Bus interface {
 	//serves as a temporary overclock for slow roms.
 	//does nothing for fast roms
 	SetMEMSEL(value byte)
+	GetOpenBus() byte
 }
 
 type RealBus struct {
@@ -120,4 +121,8 @@ func (b *RealBus) RegisterRange(start, end uint16, handler RegisterHandler, name
 
 func (b *RealBus) SetMEMSEL(value byte) {
 	b.memsel = value&1 == 1
+}
+
+func (b *RealBus) GetOpenBus() byte {
+	return b.openBus
 }
