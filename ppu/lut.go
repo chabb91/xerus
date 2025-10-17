@@ -87,7 +87,7 @@ func initTileFlipLUT() {
 func initNTSCNoInterlace() {
 	for v := range V_TOTAL {
 		for h := range H_TOTAL {
-			isVisible := (h >= 22 && h <= 277) && (v >= 1 && v <= 224)
+			isVisible := (h >= 22 && h <= 277) && (v >= 1 && v <= NTSC_V)
 
 			visibleLUTNtscNoInterlace[v][h] = struct {
 				H, V      byte

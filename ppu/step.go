@@ -5,6 +5,12 @@ const (
 	V_TOTAL = 262
 )
 
+const (
+	NTSC_V      = 224
+	PAL_V       = 240
+	SCREEN_WITH = 256
+)
+
 func (ppu *PPU) Step() {
 	ppu.H++
 	if ppu.H >= H_TOTAL {
@@ -36,6 +42,7 @@ func (ppu *PPU) Step() {
 		ppu.InterruptScheduler.SetRdnmi(true)
 	} else if ppu.V == 0 && ppu.H == 0 {
 		ppu.VBlank = false
+		ppu.InterruptScheduler.SetRdnmi(false)
 	}
 }
 
