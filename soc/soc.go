@@ -8,6 +8,7 @@ import (
 	"SNES_emulator/ppu"
 	"SNES_emulator/soc/interruptchip"
 	"SNES_emulator/soc/muldivchip"
+	"SNES_emulator/ui"
 	"fmt"
 )
 
@@ -21,7 +22,7 @@ type SoC struct {
 	bus memory.Bus
 }
 
-func NewSoC() *SoC {
+func NewSoC(framebuffer *ui.Framebuffer) *SoC {
 	romData, err := cartridge.Load("/home/chabb/Downloads/CPUADC.sfc")
 	if err != nil {
 		panic(err)
@@ -36,6 +37,7 @@ func NewSoC() *SoC {
 	}
 	soc.InterruptController = &interruptchip.InterruptController{Rdnmi: 0x02}
 	soc.Ppu.InterruptScheduler = soc.InterruptController
+	soc.Ppu.Framebuffer = framebuffer
 
 	bus.RegisterRange(0x4200, 0x4217, soc, "internal CPU")
 	bus.RegisterRange(0x2100, 0x213F, soc.Ppu, "PPU")

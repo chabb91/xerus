@@ -1,6 +1,9 @@
 package ppu
 
-import "fmt"
+import (
+	"SNES_emulator/ui"
+	"fmt"
+)
 
 type tileDataSource interface {
 	getOAMLow() []byte
@@ -32,6 +35,8 @@ type PPU struct {
 	bgEpochs [5]uint64 //1 2 3 4 and mode7
 
 	InterruptScheduler InterruptScheduler
+
+	Framebuffer *ui.Framebuffer
 }
 
 func NewPPU() *PPU {
@@ -67,7 +72,8 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2100:
 		//TODO writing this register the first line of vlblank causes an oam address reset
 		ppu.FBlank = (value>>7)&1 == 1
-		ppu.screenBrightness = value & 0xF
+		//ppu.screenBrightness = value & 0xF
+		ppu.Framebuffer.Brightness = value & 0xF
 		fmt.Println("INIDISP")
 	case 0x2101:
 		ppu.OAM.obsel.Setup(value)
