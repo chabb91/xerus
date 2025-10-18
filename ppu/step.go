@@ -11,9 +11,9 @@ const (
 )
 
 const (
-	NTSC_V      = 224
-	PAL_V       = 240
-	SCREEN_WITH = 256
+	NTSC_V       = 224
+	PAL_V        = 240
+	SCREEN_WIDTH = 256
 )
 
 const TargetFrameDuration = time.Millisecond * 1000

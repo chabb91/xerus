@@ -124,6 +124,9 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.CGRAM.WriteData(value)
 	case 0x212C:
 		fmt.Println("TM: ", value)
+	case 0x2133:
+		ppu.Framebuffer.CurrentHeight, ppu.Framebuffer.CurrentWidth = NTSC_V, SCREEN_WIDTH
+		fmt.Println("SETINI", value)
 	default:
 		return fmt.Errorf("invalid PPU register write at $%04X", addr)
 	}
