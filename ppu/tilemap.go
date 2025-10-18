@@ -23,6 +23,12 @@ type Background interface {
 	IsOffsetPerTile() bool
 }
 
+type tileAndPixelCacheEntry struct {
+	px, row, charMapID byte
+	tileIndex          uint16
+	entryEpoch         uint64
+}
+
 type Background1 struct {
 	ds tileDataSource
 
@@ -35,8 +41,11 @@ type Background1 struct {
 	charTileSize        byte
 	colorDepth          colorDepth
 
-	vScroll uint16
-	hScroll uint16
+	vScroll     uint16
+	hScroll     uint16
+	scrollEpoch uint64
+
+	tileMapLookupCacke [350][350]tileAndPixelCacheEntry
 
 	currentEpoch *uint64
 }
@@ -46,6 +55,7 @@ func NewBackground1(ds tileDataSource, epochPtr *uint64) *Background1 {
 		ds:           ds,
 		charTiles:    make(map[uint16]*CharTile),
 		currentEpoch: epochPtr,
+		scrollEpoch:  1,
 	}
 
 	for i := range bg.tileMap {
@@ -53,6 +63,10 @@ func NewBackground1(ds tileDataSource, epochPtr *uint64) *Background1 {
 	}
 
 	return bg
+}
+
+func (bg *Background1) InvalidateScrollCache() {
+	bg.scrollEpoch++
 }
 
 func (bg1 *Background1) Invalidate(addr uint16) {
@@ -96,17 +110,23 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
 func (bg1 *Background1) GetDotAt(H, V byte) uint16 {
-	hScroll := uint16(H) + bg1.hScroll
-	vScroll := uint16(V) + bg1.vScroll
+	cache := &bg1.tileMapLookupCacke[H][V]
+	if bg1.scrollEpoch != cache.entryEpoch {
+		//TODO add a nested for loop that set up all 8x8 dots of the tile with this data
+		//so this is only calculated once every character tile which i think is fast
+		hScroll := uint16(H) + bg1.hScroll
+		vScroll := uint16(V) + bg1.vScroll
+		cache.px, cache.row, cache.charMapID, cache.tileIndex = getTileIndexAndPixelCoordinates(bg1.tileMapSize, bg1.charTileSize, hScroll, vScroll)
+		cache.entryEpoch = bg1.scrollEpoch
+	}
 
-	px, row, charMapID, tileIndex := getTileIndexAndPixelCoordinates(bg1.tileMapSize, bg1.charTileSize, hScroll, vScroll)
+	tile := bg1.tileMap[cache.tileIndex]
+	tile.setup(cache.tileIndex)
 
-	tile := bg1.tileMap[tileIndex]
-	tile.setup(tileIndex)
+	px := tileFlipXLUT[tile.flipIndex][cache.px]
+	row := tileFlipYLUT[tile.flipIndex][cache.row]
 
-	px = tileFlipXLUT[tile.flipIndex][px]
-	row = tileFlipYLUT[tile.flipIndex][row]
-
+	charMapID := cache.charMapID
 	if bg1.charTileSize == 1 {
 		charMapID += compositeFlipLUT[charMapID][tile.flipIndex]
 	}

@@ -28,7 +28,6 @@ type PPU struct {
 	BGxnOFS *BGxnOFS
 
 	FBlank, VBlank, HBlank bool
-	screenBrightness       byte
 
 	H, V uint16
 
@@ -72,7 +71,6 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2100:
 		//TODO writing this register the first line of vlblank causes an oam address reset
 		ppu.FBlank = (value>>7)&1 == 1
-		//ppu.screenBrightness = value & 0xF
 		ppu.Framebuffer.Brightness = value & 0xF
 		fmt.Println("INIDISP")
 	case 0x2101:
@@ -89,11 +87,13 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.Bg1.colorDepth = bpp2
 		//TODO should invalidate everything
 		ppu.InvalidateBG(0)
+		ppu.Bg1.InvalidateScrollCache()
 	case 0x2107:
 		fmt.Println("BG1SC: ", value)
 		ppu.Bg1.tileMapSize = uint16(value & 0x3)
 		ppu.Bg1.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.InvalidateBG(0)
+		ppu.Bg1.InvalidateScrollCache()
 	case 0x210B:
 		fmt.Println("BG12NBA: ", value)
 		ppu.Bg1.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
@@ -101,8 +101,10 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	//TODO add mode 7 scrolling
 	case 0x210D:
 		ppu.Bg1.hScroll = ppu.BGxnOFS.hFormula(value)
+		ppu.Bg1.InvalidateScrollCache()
 	case 0x210E:
 		ppu.Bg1.vScroll = ppu.BGxnOFS.vFormula(value)
+		ppu.Bg1.InvalidateScrollCache()
 	case 0x2115:
 		ppu.VRAM.vmain.Setup(value)
 		fmt.Println("VMAIN: ", value)
