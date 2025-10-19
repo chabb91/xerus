@@ -1070,6 +1070,10 @@ func (i *RepSep) Step(cpu *CPU) bool {
 		if cpu.r.E {
 			cpu.r.P |= 0x30
 		}
+		if cpu.r.hasFlag(FlagX) {
+			cpu.r.X = maskHighByte(cpu.r.X)
+			cpu.r.Y = maskHighByte(cpu.r.Y)
+		}
 		return true
 	}
 	return false
