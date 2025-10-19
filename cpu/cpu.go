@@ -76,7 +76,11 @@ func (c *CPU) handleReset() bool {
 	}
 	c.currentInstruction = c.hwInterrupts[resetId]
 	c.currentInstruction.Reset(c)
+	//reset clears all other interrupts
 	c.resetSignal = false
+	c.abortSignal = false
+	c.NmiSignal = false
+	c.IrqSignal = false
 	c.executionState = normalState
 	return true
 }
@@ -172,7 +176,7 @@ func (cpu *CPU) PopByte() byte {
 	return cpu.bus.ReadByte(addr)
 }
 
-//TODO this method might mess up the stack pouinter in emulation mode after an abort interrupt!
+// TODO this method might mess up the stack pouinter in emulation mode after an abort interrupt!
 // new instructions(the ones expanding the original 6502 instructionset
 // dont wrap the stack pointer till they are done
 func (cpu *CPU) PushByteNewOpCode(val byte) {
