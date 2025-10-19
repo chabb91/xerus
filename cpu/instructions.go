@@ -8,8 +8,8 @@ type Instruction interface {
 	Reset(cpu *CPU)
 }
 
-func NewHWInterruptMap() map[int]Instruction {
-	ret := make(map[int]Instruction)
+func NewHWInterruptMap() []Instruction {
+	ret := make([]Instruction, 4)
 	ret[irqId] = &NmiIrqSequence{eAddress: 0x00FFFE, nAddress: 0x00FFEE}
 	ret[nmiId] = &NmiIrqSequence{eAddress: 0x00FFFA, nAddress: 0x00FFEA}
 	ret[abortId] = &AbortSequence{eAddress: 0x00FFF8, nAddress: 0x00FFE8}
@@ -18,8 +18,8 @@ func NewHWInterruptMap() map[int]Instruction {
 	return ret
 }
 
-func NewInstructionMap() map[byte]Instruction {
-	ret := make(map[byte]Instruction)
+func NewInstructionMap() []Instruction {
+	ret := make([]Instruction, 256)
 
 	ret[0x4C] = &JMP_Abs{}
 	ret[0x5C] = &JMP_Long{}

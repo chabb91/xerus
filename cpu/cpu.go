@@ -20,12 +20,11 @@ const (
 type CPU struct {
 	r *registers
 
-	instructions       map[byte]Instruction
+	instructions       []Instruction
 	currentInstruction Instruction
 
-	hwInterrupts map[int]Instruction
-
-	bus memory.Bus
+	hwInterrupts []Instruction
+	bus          memory.Bus
 
 	//placeholder. TODO make it into a channel or something nice
 	abortSignal bool
