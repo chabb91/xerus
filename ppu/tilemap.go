@@ -109,7 +109,7 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 // save the char address in the chartile
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
-func (bg1 *Background1) GetDotAt(H, V byte) uint16 {
+func (bg1 *Background1) GetDotAt(H, V uint16) uint16 {
 	cache := &bg1.tileMapLookupCacke[H][V]
 	if bg1.scrollEpoch != cache.entryEpoch {
 		//TODO add a nested for loop that set up all 8x8 dots of the tile with this data

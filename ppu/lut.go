@@ -21,16 +21,16 @@ var baseTileFlipOffsets = [4]struct{ H, V int8 }{
 	{1, 2}, {-1, 1}, {1, -2}, {-1, -2},
 }
 
-var visibleLUTNtscNoInterlace [V_TOTAL][H_TOTAL]struct {
-	H, V      byte
-	IsVisible bool
-}
-
 func init() {
 	initBitplaneLUT()
 	initTileFlipLUT()
 	initCompositeFlipLUT()
-	initNTSCNoInterlace()
+
+	NTSC_TIMING.VisibilityLUTs[false] = GenerateVisibilityLUT(&NTSC_TIMING, false)
+	NTSC_TIMING.VisibilityLUTs[true] = GenerateVisibilityLUT(&NTSC_TIMING, true)
+
+	PAL_TIMING.VisibilityLUTs[false] = GenerateVisibilityLUT(&PAL_TIMING, false)
+	PAL_TIMING.VisibilityLUTs[true] = GenerateVisibilityLUT(&PAL_TIMING, true)
 }
 
 func initBitplaneLUT() {
@@ -80,23 +80,6 @@ func initTileFlipLUT() {
 				finalY = 7 - coord
 			}
 			tileFlipYLUT[flipIndex][coord] = finalY
-		}
-	}
-}
-
-func initNTSCNoInterlace() {
-	for v := range V_TOTAL {
-		for h := range H_TOTAL {
-			isVisible := (h >= 22 && h <= 277) && (v >= 1 && v <= NTSC_V)
-
-			visibleLUTNtscNoInterlace[v][h] = struct {
-				H, V      byte
-				IsVisible bool
-			}{
-				H:         byte(h - 22),
-				V:         byte(v - 1),
-				IsVisible: isVisible,
-			}
 		}
 	}
 }
