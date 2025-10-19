@@ -36,7 +36,7 @@ type Background1 struct {
 	tileMapAddress uint16
 	tileMapSize    uint16
 
-	charTiles           map[uint16]*CharTile
+	charTiles           [0x8000]*CharTile
 	charTileAddressBase uint16
 	charTileSize        byte
 	colorDepth          colorDepth
@@ -53,7 +53,6 @@ type Background1 struct {
 func NewBackground1(ds tileDataSource, epochPtr *uint64) *Background1 {
 	bg := &Background1{
 		ds:           ds,
-		charTiles:    make(map[uint16]*CharTile),
 		currentEpoch: epochPtr,
 		scrollEpoch:  1,
 	}
@@ -82,7 +81,7 @@ func (bg1 *Background1) Invalidate(addr uint16) {
 	if addr >= bg1.charTileAddressBase {
 		wordsPerTile := uint16(bg1.colorDepth) * 4
 		tileIndex := (addr - bg1.charTileAddressBase) / wordsPerTile
-		if t, ok := bg1.charTiles[bg1.charTileAddressBase+(tileIndex*wordsPerTile)]; ok {
+		if t := bg1.charTiles[bg1.charTileAddressBase+(tileIndex*wordsPerTile)]; t != nil {
 			t.isValid = false
 			//fmt.Println("invlidation")
 		}
