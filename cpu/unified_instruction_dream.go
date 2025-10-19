@@ -64,7 +64,7 @@ type Umbrella struct {
 
 	combineExecuteAndWrite bool
 	executeInFetch         bool
-	stackWrite           bool
+	stackWrite             bool
 
 	addressHi, addressLo, addressBank uint32
 	lowByte, highByte, bankByte       byte
@@ -114,7 +114,9 @@ func (i *Umbrella) is8Bit(cpu *CPU) bool {
 
 func (i *Umbrella) WriteHi(cpu *CPU) {
 	if i.stackWrite {
-		cpu.PushByte(getHighByte(i.result))
+		//STACKWRITE is specific to PEA PEI PER and is always 16 bit and is like this
+		cpu.r.SetStack(cpu.r.S)
+		cpu.PushByteNewOpCode(getHighByte(i.result))
 	} else {
 		cpu.bus.WriteByte(i.addressHi, getHighByte(i.result))
 	}
@@ -123,7 +125,9 @@ func (i *Umbrella) WriteHi(cpu *CPU) {
 
 func (i *Umbrella) WriteLo(cpu *CPU) {
 	if i.stackWrite {
-		cpu.PushByte(getLowByte(i.result))
+		//STACKWRITE is specific to PEA PEI PER and is always 16 bit and is like this
+		cpu.PushByteNewOpCode(getLowByte(i.result))
+		cpu.r.SetStack(cpu.r.S)
 	} else {
 		cpu.bus.WriteByte(i.addressLo, getLowByte(i.result))
 	}
@@ -210,7 +214,7 @@ func (i *Direct) Step(cpu *CPU, u *Umbrella) bool {
 		}
 	case READ_LO:
 		if i.isXY() {
-			u.addressLo, u.addressHi = directPageXY(cpu, u.lowByte, i.register)
+			u.addressLo, u.addressHi = directPageXY(cpu, u.lowByte, i.register, i.mode)
 		}
 		if i.mode == BASE_MODE || i.mode == INDIRECT || i.mode == INDIRECT_INDEXED {
 			u.addressLo, u.addressHi = directPage(cpu, u.lowByte, i.isPEI)

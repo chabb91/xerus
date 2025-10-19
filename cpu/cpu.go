@@ -171,3 +171,18 @@ func (cpu *CPU) PopByte() byte {
 	addr := cpu.r.GetStackAddr()
 	return cpu.bus.ReadByte(addr)
 }
+
+//TODO this method might mess up the stack pouinter in emulation mode after an abort interrupt!
+// new instructions(the ones expanding the original 6502 instructionset
+// dont wrap the stack pointer till they are done
+func (cpu *CPU) PushByteNewOpCode(val byte) {
+	cpu.bus.WriteByte(uint32(cpu.r.S), val)
+	cpu.r.S--
+}
+
+// new instructions(the ones expanding the original 6502 instructionset
+// dont wrap the stack pointer till they are done
+func (cpu *CPU) PopByteNewOpCode() byte {
+	cpu.r.S++
+	return cpu.bus.ReadByte(uint32(cpu.r.S))
+}

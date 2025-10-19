@@ -577,11 +577,11 @@ type JSL struct {
 	state    int
 	lowByte  byte
 	highByte byte
-	pbByte   byte
 	address  uint16
 }
 
 // the emulation test case for this so 22.e.json seems to not wrap the stack pointer
+// future me: nor should it
 func (i *JSL) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
@@ -593,20 +593,21 @@ func (i *JSL) Step(cpu *CPU) bool {
 		i.state++
 	case 2:
 		i.highByte, i.lowByte = splitWord(cpu.r.PC)
-		cpu.PushByte(cpu.r.PB)
+		cpu.r.SetStack(cpu.r.S)
+		cpu.PushByteNewOpCode(cpu.r.PB)
 		i.state++
 	case 3:
 		i.state++
 	case 4:
-		i.pbByte = cpu.fetchByte()
+		cpu.r.PB = cpu.fetchByte()
 		cpu.r.PC = i.address
-		cpu.r.PB = i.pbByte
 		i.state++
 	case 5:
-		cpu.PushByte(i.highByte)
+		cpu.PushByteNewOpCode(i.highByte)
 		i.state++
 	case 6:
-		cpu.PushByte(i.lowByte)
+		cpu.PushByteNewOpCode(i.lowByte)
+		cpu.r.SetStack(cpu.r.S)
 		return true
 	}
 	return false
@@ -617,6 +618,7 @@ func (i *JSL) Reset(cpu *CPU) {
 }
 
 // Jump to SubRoutine with absolute(indexed indirect) addressing
+// another new instruction, new pain
 type JSR_AbsIndexedIndirect struct {
 	state int
 
@@ -635,10 +637,12 @@ func (i *JSR_AbsIndexedIndirect) Step(cpu *CPU) bool {
 		i.state++
 	case 1:
 		i.highByte, i.lowByteS = splitWord(cpu.r.PC)
-		cpu.PushByte(i.highByte)
+		cpu.r.SetStack(cpu.r.S)
+		cpu.PushByteNewOpCode(i.highByte)
 		i.state++
 	case 2:
-		cpu.PushByte(i.lowByteS)
+		cpu.PushByteNewOpCode(i.lowByteS)
+		cpu.r.SetStack(cpu.r.S)
 		i.state++
 	case 3:
 		i.highByte = cpu.fetchByte()
@@ -681,6 +685,7 @@ func (i *RTI) Step(cpu *CPU) bool {
 		if cpu.r.E {
 			i.lowByte |= 0x30 //m and x flags are always 1 in emulation mode
 		}
+		//TODO this p assign potentially needs to reset the high part of X and Y
 		cpu.r.P = i.lowByte
 		i.state++
 	case 3:
@@ -715,7 +720,8 @@ type RtsRtl struct {
 	highByte byte
 }
 
-// TODO test data is trying to read form page 2 again in emulation mode beware
+// test data is trying to read form page 2 again in emulation mode beware
+// as it should!!!
 func (i *RtsRtl) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
@@ -723,15 +729,25 @@ func (i *RtsRtl) Step(cpu *CPU) bool {
 	case 1:
 		i.state++
 	case 2:
-		i.lowByte = cpu.PopByte()
+		if i.long {
+			cpu.r.SetStack(cpu.r.S)
+			i.lowByte = cpu.PopByteNewOpCode()
+		} else {
+			i.lowByte = cpu.PopByte()
+		}
 		i.state++
 	case 3:
-		i.highByte = cpu.PopByte()
+		if i.long {
+			i.highByte = cpu.PopByteNewOpCode()
+		} else {
+			i.highByte = cpu.PopByte()
+		}
 		cpu.r.PC = createWord(i.highByte, i.lowByte) + 1
 		i.state++
 	case 4:
 		if i.long {
-			cpu.r.PB = cpu.PopByte()
+			cpu.r.PB = cpu.PopByteNewOpCode()
+			cpu.r.SetStack(cpu.r.S)
 		}
 		return true
 	}

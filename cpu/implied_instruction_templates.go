@@ -49,10 +49,12 @@ func (i *Ipld) Step(cpu *CPU) bool {
 	case 1:
 		i.state++
 	case 2:
-		i.lowByte = cpu.PopByte()
+		cpu.r.SetStack(cpu.r.S)
+		i.lowByte = cpu.PopByteNewOpCode()
 		i.state++
 	case 3:
-		i.highByte = cpu.PopByte()
+		i.highByte = cpu.PopByteNewOpCode()
+		cpu.r.SetStack(cpu.r.S)
 		cpu.r.D = createWord(i.highByte, i.lowByte)
 		cpu.r.setFlag(FlagN, cpu.r.D&0x8000 == 0)
 		cpu.r.setFlag(FlagZ, cpu.r.D != 0)
@@ -102,7 +104,8 @@ func (i *Iplb) Step(cpu *CPU) bool {
 	case 1:
 		i.state++
 	case 2:
-		cpu.r.DB = cpu.PopByte()
+		cpu.r.DB = cpu.PopByteNewOpCode()
+		cpu.r.SetStack(cpu.r.S)
 		cpu.r.setFlag(FlagN, cpu.r.DB&0x80 == 0)
 		cpu.r.setFlag(FlagZ, cpu.r.DB != 0)
 		return true
@@ -146,10 +149,12 @@ func (i *Iphd) Step(cpu *CPU) bool {
 		i.state++
 	case 1:
 		i.highByte, i.lowByte = splitWord(cpu.r.D)
-		cpu.PushByte(i.highByte)
+		cpu.r.SetStack(cpu.r.S)
+		cpu.PushByteNewOpCode(i.highByte)
 		i.state++
 	case 2:
-		cpu.PushByte(i.lowByte)
+		cpu.PushByteNewOpCode(i.lowByte)
+		cpu.r.SetStack(cpu.r.S)
 		return true
 	}
 	return false

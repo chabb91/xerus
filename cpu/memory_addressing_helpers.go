@@ -41,8 +41,14 @@ func directPage(cpu *CPU, op byte, isPEI bool) (addressLo, addressHi uint32) {
 	return addressLo, addressHi
 }
 
-func directPageXY(cpu *CPU, op byte, register uint16) (addressLo, addressHi uint32) {
+func directPageXY(cpu *CPU, op byte, register uint16, mode int) (addressLo, addressHi uint32) {
 	addressLo, addressHi = directPageLogic(cpu, op, register, false)
+	//little hardware quirk
+	//the last part is just the !isW function but not slow
+	//TODO remove isW and optimize it instead
+	if mode == INDEXED_INDIRECT && cpu.r.E && (cpu.r.D&0xFF != 0) {
+		addressHi = (addressLo+1)&0xFF | addressLo&0xFFFF00
+	}
 	return addressLo, addressHi
 }
 
