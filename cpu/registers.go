@@ -30,8 +30,20 @@ type registers struct {
 	instrPC uint16
 }
 
+func (c *registers) setP(value byte) {
+	if value&FlagX != 0 && c.P&FlagX == 0 {
+		c.X &= 0x00FF
+		c.Y &= 0x00FF
+	}
+	c.P = value
+}
+
 func (c *registers) setFlag(flag byte, reset bool) {
 	if !reset {
+		if flag == FlagX && c.P&FlagX == 0 {
+			c.X &= 0x00FF
+			c.Y &= 0x00FF
+		}
 		c.P |= flag
 	} else {
 		c.P &= ^flag
@@ -68,7 +80,7 @@ func (r *registers) SetStack(val uint16) {
 func (r *registers) EmulationON() {
 	if !r.E {
 		r.E = true
-		r.P |= 0x30
+		r.setP(r.P | 0x30)
 		r.S = 0x0100 | maskHighByte(r.S)
 	}
 }

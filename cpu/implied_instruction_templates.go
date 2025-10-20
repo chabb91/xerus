@@ -79,10 +79,11 @@ func (i *Iplp) Step(cpu *CPU) bool {
 	case 1:
 		i.state++
 	case 2:
-		cpu.r.P = cpu.PopByte()
+		newP := cpu.PopByte()
 		if cpu.r.E {
-			cpu.r.P |= 0x30
+			newP |= 0x30
 		}
+		cpu.r.setP(newP)
 		return true
 	}
 	return false

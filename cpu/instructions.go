@@ -685,8 +685,7 @@ func (i *RTI) Step(cpu *CPU) bool {
 		if cpu.r.E {
 			i.lowByte |= 0x30 //m and x flags are always 1 in emulation mode
 		}
-		//TODO this p assign potentially needs to reset the high part of X and Y
-		cpu.r.P = i.lowByte
+		cpu.r.setP(i.lowByte)
 		i.state++
 	case 3:
 		i.lowByte = cpu.PopByte()
@@ -1052,7 +1051,7 @@ func (i *ResetSequence) Step(cpu *CPU) bool {
 		cpu.r.S = 0x01FF
 
 		// set M X and I to 1
-		cpu.r.P = 0x34
+		cpu.r.setP(0x34)
 
 		cpu.r.PC = createWord(i.highByte, i.lowByte)
 		return true
@@ -1078,18 +1077,16 @@ func (i *RepSep) Step(cpu *CPU) bool {
 		i.operand = cpu.fetchByte()
 		i.state++
 	case 1:
+		newP := cpu.r.P
 		if i.reset {
-			cpu.r.P &= ^i.operand
+			newP &= ^i.operand
 		} else {
-			cpu.r.P |= i.operand
+			newP |= i.operand
 		}
 		if cpu.r.E {
-			cpu.r.P |= 0x30
+			newP |= 0x30
 		}
-		if cpu.r.hasFlag(FlagX) {
-			cpu.r.X = maskHighByte(cpu.r.X)
-			cpu.r.Y = maskHighByte(cpu.r.Y)
-		}
+		cpu.r.setP(newP)
 		return true
 	}
 	return false

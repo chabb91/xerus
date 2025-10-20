@@ -159,7 +159,7 @@ func setState(c *CPU, s debugger.CPUState) {
 
 	c.r.PC = s.PC
 	c.r.SetStack(s.S)
-	c.r.P = s.P
+	c.r.setP(s.P)
 	c.r.A = s.A
 	c.r.X = s.X
 	c.r.Y = s.Y
