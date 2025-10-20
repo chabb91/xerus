@@ -1,0 +1,47 @@
+package ppu
+
+type SETINI struct {
+	externalSync    bool
+	m7EXTBG         bool
+	hires           bool
+	overscan        bool
+	objInterlace    bool
+	screenInterlace bool
+
+	Timing       VideoTiming
+	TimingLUT    VisibilityLUT
+	ScreenHeight int
+}
+
+func NewSETINI(region VideoTiming) *SETINI {
+	ret := &SETINI{
+		Timing:       region,
+		TimingLUT:    region.VisibilityLUTs[false],
+		ScreenHeight: region.getScreenHeight(false),
+	}
+	ret.setup(0)
+	return ret
+}
+
+func (s *SETINI) setup(value byte) {
+	s.externalSync = value&0x80 != 0
+	s.m7EXTBG = value&0x40 != 0
+	s.hires = value&0x08 != 0
+	s.setOverscan(value&0x04 != 0)
+	s.objInterlace = value&0x02 != 0
+	s.screenInterlace = value&0x01 != 0
+}
+
+func (s *SETINI) setOverscan(overscan bool) {
+	s.TimingLUT = s.Timing.VisibilityLUTs[overscan]
+	s.ScreenHeight = s.Timing.getScreenHeight(overscan)
+	s.overscan = overscan
+}
+
+func (s *SETINI) getScreenHeight() int {
+	return s.ScreenHeight
+}
+
+func (s *SETINI) getScreenWidth() int {
+	return s.Timing.ScreenWidth
+}

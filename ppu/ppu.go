@@ -20,8 +20,7 @@ type tileValidator interface {
 }
 
 type PPU struct {
-	Timing    VideoTiming
-	ActiveLUT VisibilityLUT
+	SETINI *SETINI
 
 	OAM   *OAMController
 	VRAM  *VRAMController
@@ -43,11 +42,10 @@ type PPU struct {
 
 func NewPPU() *PPU {
 	ppu := &PPU{
-		OAM:       NewOAM(),
-		CGRAM:     NewCGRAM(),
-		BGxnOFS:   &BGxnOFS{},
-		Timing:    NTSC_TIMING,
-		ActiveLUT: NTSC_TIMING.VisibilityLUTs[false],
+		OAM:     NewOAM(),
+		CGRAM:   NewCGRAM(),
+		BGxnOFS: &BGxnOFS{},
+		SETINI:  NewSETINI(PAL_TIMING),
 	}
 	ppu.Bg1 = NewBackground1(ppu, &ppu.bgEpochs[0])
 	ppu.VRAM = NewVRAM(ppu)
@@ -130,8 +128,9 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x212C:
 		fmt.Println("TM: ", value)
 	case 0x2133:
-		ppu.Framebuffer.CurrentHeight, ppu.Framebuffer.CurrentWidth = int(ppu.Timing.ScreenHeight), int(ppu.Timing.ScreenWidth)
 		fmt.Println("SETINI", value)
+		ppu.SETINI.setup(value)
+		ppu.Framebuffer.CurrentHeight, ppu.Framebuffer.CurrentWidth = ppu.SETINI.getScreenHeight(), ppu.SETINI.getScreenWidth()
 	default:
 		return fmt.Errorf("invalid PPU register write at $%04X", addr)
 	}
@@ -163,10 +162,4 @@ func (ppu *PPU) InvalidateBG(bgIndex int) {
 	if bgIndex >= 0 && bgIndex < len(ppu.bgEpochs) {
 		ppu.bgEpochs[bgIndex]++
 	}
-}
-
-func (ppu *PPU) SetOverscanMode(isOverscan bool) {
-	//ppu.isOverscanEnabled = isOverscan // Update the flag
-
-	ppu.ActiveLUT = ppu.Timing.VisibilityLUTs[isOverscan]
 }

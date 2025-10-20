@@ -1,5 +1,7 @@
 package ppu
 
+import "time"
+
 type PPUAction byte
 
 const (
@@ -47,7 +49,7 @@ type VideoTiming struct {
 	InterlaceHeight int
 
 	TotalScanlines int
-	TargetFrameMS  float64
+	TargetFrameMS  time.Duration
 
 	VisibilityLUTs map[bool]VisibilityLUT
 }
@@ -58,24 +60,24 @@ var NTSC_TIMING = VideoTiming{
 	OverscanHeight:  239,
 	InterlaceHeight: NTSC_STANDARD_HEIGHT * 2,
 	TotalScanlines:  NTSC_TOTAL_SCANLINES,
-	TargetFrameMS:   1000.0 / 60.0988,
+	TargetFrameMS:   time.Millisecond * 1000.0 / 60,
 	VisibilityLUTs:  make(map[bool]VisibilityLUT),
 }
 
 var PAL_TIMING = VideoTiming{
 	ScreenWidth:     SCREEN_WIDTH,
-	ScreenHeight:    PAL_STANDARD_HEIGHT,
-	OverscanHeight:  239,
+	ScreenHeight:    224,
+	OverscanHeight:  PAL_STANDARD_HEIGHT,
 	InterlaceHeight: PAL_STANDARD_HEIGHT * 2,
 	TotalScanlines:  PAL_TOTAL_SCANLINES,
-	TargetFrameMS:   1000.0 / 50.0,
+	TargetFrameMS:   time.Millisecond * 1000.0 / 50.0,
 	VisibilityLUTs:  make(map[bool]VisibilityLUT),
 }
 
 func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
-	vActive := 224
+	vActive := timing.ScreenHeight
 	if isOverscan {
-		vActive = 239
+		vActive = timing.OverscanHeight
 	}
 
 	lut := make(VisibilityLUT, timing.TotalScanlines*H_TOTAL)

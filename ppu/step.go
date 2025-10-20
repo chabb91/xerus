@@ -10,13 +10,11 @@ const TargetFrameDuration = time.Millisecond * 1000
 var frameStartTime time.Time
 
 func (ppu *PPU) Step() {
-	//TODO create setini struct so overscan can be tracked
-	screenHeight := ppu.Timing.getScreenHeight(false)
 	ppu.H++
 	if ppu.H >= H_TOTAL {
 		ppu.H = 0
 		ppu.V++
-		if ppu.V >= ppu.Timing.TotalScanlines {
+		if ppu.V >= ppu.SETINI.Timing.TotalScanlines {
 			ppu.V = 0
 		}
 	}
@@ -24,13 +22,13 @@ func (ppu *PPU) Step() {
 	if ppu.V == 0 && ppu.H == 0 {
 		frameStartTime = time.Now()
 	}
-	if ppu.V == ppu.Timing.TotalScanlines-1 && ppu.H == H_TOTAL-1 {
+	if ppu.V == ppu.SETINI.Timing.TotalScanlines-1 && ppu.H == H_TOTAL-1 {
 
 		elapsed := time.Since(frameStartTime)
 		fmt.Println(elapsed)
 
 		//TODO use PPU TIMING FOR THIS
-		waitDuration := TargetFrameDuration - elapsed
+		waitDuration := time.Duration(ppu.SETINI.Timing.TargetFrameMS) - elapsed
 
 		if waitDuration > 0 {
 			time.Sleep(waitDuration)
@@ -38,9 +36,7 @@ func (ppu *PPU) Step() {
 	}
 
 	if !ppu.FBlank {
-		//TODO create setini struct so overscan can be tracked
-		//draw := ppu.Timing.VisibilityLUTs[false][ppu.V*H_TOTAL+ppu.H]
-		draw := ppu.ActiveLUT[ppu.V*H_TOTAL+ppu.H]
+		draw := ppu.SETINI.TimingLUT[ppu.V*H_TOTAL+ppu.H]
 		if draw.IsVisible {
 			ppu.Framebuffer.Back[draw.H][draw.V] = ppu.Bg1.GetDotAt(draw.H, draw.V)
 		}
@@ -53,7 +49,7 @@ func (ppu *PPU) Step() {
 		ppu.HBlank = false
 	}
 
-	if ppu.V == screenHeight+1 && ppu.H == 0 {
+	if ppu.V == ppu.SETINI.getScreenHeight()+1 && ppu.H == 0 {
 		ppu.VBlank = true
 		ppu.InterruptScheduler.SetRdnmi(true)
 		ppu.Framebuffer.Swap()
