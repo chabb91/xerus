@@ -8,8 +8,18 @@ const (
 	ActionNone PPUAction = iota
 	ActionVBlankStart
 	ActionVBlankEnd
+	ActionHBlankStart
+	ActionHBlankEnd
+	ActionHBlankEndInterlaceFieldToggle
 	ActionOAMReset
 	ActionHDMAStart
+	ActionHDMAReload
+	ActionShortLine
+	ActionLongLine
+	ActionSetNmi
+	ActionJoypadReadStart
+	ActionJoypadReadEnd
+	ActionCpuRefresh
 )
 
 const (
@@ -85,14 +95,55 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 	for v := 0; v < timing.TotalScanlines; v++ {
 		for h := 0; h < H_TOTAL; h++ {
 
-			isVisible := (h >= H_BLANK_START && h <= H_BLANK_END) && (v >= 1 && v < vActive+1)
+			action := ActionNone
+			if v == 0 && h == 0 {
+				action = ActionVBlankEnd
+			}
+			if v == vActive+1 && h == 0 {
+				action = ActionVBlankStart
+				//TODO this also sets NMI 2(0.5dots) cycles later.
+			}
+			if v == vActive+1 && h == 10 {
+				action = ActionOAMReset
+			}
+			if v == vActive+1 && h == 33 {
+				action = ActionJoypadReadStart
+			}
+			if v == 0 && h == 6 {
+				action = ActionHDMAReload
+			}
+			if (v >= 0 && v <= vActive) && h == 278 {
+				action = ActionHDMAStart
+			}
+			if h == 1 {
+				action = ActionHBlankEnd
+				if v == 0 {
+					action = ActionHBlankEndInterlaceFieldToggle
+				}
+			}
+			if h == 274 {
+				action = ActionHBlankStart
+			}
+			if h == 134 {
+				action = ActionCpuRefresh
+			}
+			if v == 311 && h == 23 && timing.TotalScanlines == PAL_TOTAL_SCANLINES {
+				//TODO find the best way to handle the infinite loop this causes with just h--
+				//luckily this is interlace only
+				action = ActionLongLine
+			}
+			if v == 240 && h == 23 && timing.TotalScanlines == NTSC_TOTAL_SCANLINES {
+				action = ActionShortLine
+			}
+
+			isVisible := (h >= H_BLANK_START && h <= H_BLANK_END) && (v >= 1 && v <= vActive)
 
 			key := v*H_TOTAL + h
 			entry := VisibilityEntry{
 				H:         uint16(h - H_BLANK_START),
 				V:         uint16(v - 1),
 				IsVisible: isVisible,
-				Action:    ActionNone,
+				Action:    action,
 			}
 			lut[key] = entry
 		}

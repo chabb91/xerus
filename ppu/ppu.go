@@ -72,11 +72,14 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 func (ppu *PPU) Write(addr uint16, value byte) error {
 	switch addr {
 	case 0x2100:
-		if ppu.V == ppu.SETINI.getScreenHeight()+1 && ppu.VBlank {
-			ppu.OAM.InvalidateInternalIndex()
-		}
+		tempFBlank := ppu.FBlank
+
 		ppu.FBlank = (value>>7)&1 == 1
 		ppu.Framebuffer.Brightness = value & 0xF
+
+		if !tempFBlank && ppu.FBlank {
+			ppu.OAM.InvalidateInternalIndex()
+		}
 	case 0x2101:
 		ppu.OAM.obsel.Setup(value)
 	case 0x2102:
