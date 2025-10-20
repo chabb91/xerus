@@ -323,6 +323,8 @@ func NewInstructionMap() []Instruction {
 	ret[0x7B] = &TwoCycleImplied{instructionFunc: tdc}
 	ret[0x3B] = &TwoCycleImplied{instructionFunc: tsc}
 
+	//TODO check B-flag weirdness
+	//Notes: PLA sets Z and N according to content of A. The B-flag and unused flags cannot be changed by PLP, these flags are always written as "1" by PHP.
 	// stack Push/Pull implied instructions
 	ret[0x2B] = &Ipld{}
 	ret[0x28] = &Iplp{}
@@ -435,20 +437,14 @@ func (i *JMP_AbsIndirect) Step(cpu *CPU) bool {
 		i.state++
 	case 3:
 		var highByteAddress uint32
-		//TODO
-		/* the tests are passing without the glitch so its removed for now
 		if i.pointerAddress&0x00FF == 0x00FF {
-			// The glitch! The high byte is fetched from the start of the same page.
 			highByteAddress = uint32(i.pointerAddress & 0xFF00)
 		} else {
-		*/
-		highByteAddress = uint32(i.pointerAddress + 1)
-		//}
+			highByteAddress = uint32(i.pointerAddress + 1)
+		}
 		i.highByte = cpu.bus.ReadByte(highByteAddress)
 
-		finalAddress := createWord(i.highByte, i.lowByte)
-		cpu.r.PC = finalAddress
-
+		cpu.r.PC = createWord(i.highByte, i.lowByte)
 		return true
 	}
 	return false
@@ -683,6 +679,7 @@ func (i *RTI) Step(cpu *CPU) bool {
 	case 2:
 		i.lowByte = cpu.PopByte()
 		if cpu.r.E {
+			//TODO check B-flag weirdness Note: RTI cannot modify the B-Flag or the unused flag.
 			i.lowByte |= 0x30 //m and x flags are always 1 in emulation mode
 		}
 		cpu.r.setP(i.lowByte)
