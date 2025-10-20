@@ -35,30 +35,45 @@ func (ppu *PPU) Step() {
 		}
 	}
 
+	draw := ppu.SETINI.TimingLUT[ppu.V*H_TOTAL+ppu.H]
 	if !ppu.FBlank {
-		draw := ppu.SETINI.TimingLUT[ppu.V*H_TOTAL+ppu.H]
 		if draw.IsVisible {
 			ppu.Framebuffer.Back[draw.H][draw.V] = ppu.Bg1.GetDotAt(draw.H, draw.V)
 		}
 	}
 
-	switch ppu.H {
-	case 274:
-		ppu.HBlank = true
-	case 1:
-		ppu.HBlank = false
-	}
-
-	if ppu.V == ppu.SETINI.getScreenHeight()+1 && ppu.H == 0 {
-		ppu.VBlank = true
-		ppu.InterruptScheduler.SetRdnmi(true)
-		ppu.Framebuffer.Swap()
-	} else if ppu.V == 0 && ppu.H == 0 {
-		ppu.VBlank = false
-		ppu.InterruptScheduler.SetRdnmi(false)
+	if draw.Action != ActionNone {
+		ppu.performAction(draw.Action)
 	}
 }
 
 type InterruptScheduler interface {
 	SetRdnmi(bool)
+}
+
+func (ppu *PPU) performAction(action PPUAction) {
+	switch action {
+	case ActionVBlankStart:
+		ppu.VBlank = true
+		ppu.InterruptScheduler.SetRdnmi(true)
+		ppu.Framebuffer.Swap()
+	case ActionVBlankEnd:
+		ppu.VBlank = false
+		ppu.InterruptScheduler.SetRdnmi(false)
+	case ActionHBlankStart:
+		ppu.HBlank = true
+	case ActionHBlankEnd:
+		ppu.HBlank = false
+	case ActionHBlankEndInterlaceFieldToggle:
+		ppu.HBlank = false
+	case ActionOAMReset:
+		ppu.OAM.InvalidateInternalIndex()
+	case ActionHDMAStart:
+	case ActionHDMAReload:
+	case ActionShortLine:
+	case ActionLongLine:
+	case ActionSetNmi:
+	case ActionJoypadReadStart:
+	case ActionCpuRefresh:
+	}
 }

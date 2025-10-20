@@ -18,7 +18,7 @@ const (
 	ActionLongLine
 	ActionSetNmi
 	ActionJoypadReadStart
-	ActionJoypadReadEnd
+	//ActionJoypadReadEnd
 	ActionCpuRefresh
 )
 
@@ -98,6 +98,7 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 			action := ActionNone
 			if v == 0 && h == 0 {
 				action = ActionVBlankEnd
+				//this also clears nmi if it hasnt been consumed yet
 			}
 			if v == vActive+1 && h == 0 {
 				action = ActionVBlankStart
@@ -127,12 +128,12 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 			if h == 134 {
 				action = ActionCpuRefresh
 			}
-			if v == 311 && h == 23 && timing.TotalScanlines == PAL_TOTAL_SCANLINES {
+			if v == 311 && h == 123 && timing.TotalScanlines == PAL_TOTAL_SCANLINES {
 				//TODO find the best way to handle the infinite loop this causes with just h--
 				//luckily this is interlace only
 				action = ActionLongLine
 			}
-			if v == 240 && h == 23 && timing.TotalScanlines == NTSC_TOTAL_SCANLINES {
+			if v == 240 && h == 123 && timing.TotalScanlines == NTSC_TOTAL_SCANLINES {
 				action = ActionShortLine
 			}
 
