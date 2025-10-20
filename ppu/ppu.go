@@ -72,10 +72,11 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 func (ppu *PPU) Write(addr uint16, value byte) error {
 	switch addr {
 	case 0x2100:
-		//TODO writing this register the first line of vlblank causes an oam address reset
+		if ppu.V == ppu.SETINI.getScreenHeight()+1 && ppu.VBlank {
+			ppu.OAM.InvalidateInternalIndex()
+		}
 		ppu.FBlank = (value>>7)&1 == 1
 		ppu.Framebuffer.Brightness = value & 0xF
-		fmt.Println("INIDISP")
 	case 0x2101:
 		ppu.OAM.obsel.Setup(value)
 	case 0x2102:
