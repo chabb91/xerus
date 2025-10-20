@@ -54,12 +54,9 @@ func (c *registers) hasFlag(flag byte) bool {
 	return (c.P & flag) != 0
 }
 
-func (r *registers) GetStackAddr() uint32 {
-	return uint32(r.GetStack())
-}
-
 // It's paramount to interact with the values that can be locked to 8 bit through a getter/setter
 // this prevents the return of a wrong value in emulation mode/with certain registers set
+// tests pass with just return r.S but i leave this in for peace of mind
 func (r *registers) GetStack() uint16 {
 	if r.E {
 		// Emulation mode: $01SS
@@ -85,6 +82,7 @@ func (r *registers) EmulationON() {
 	}
 }
 
+// tests pass with just return r.X but i leave this in for peace of mind
 func (r *registers) GetX() uint16 {
 	if r.E || r.hasFlag(FlagX) {
 		return maskHighByte(r.X)

@@ -162,8 +162,7 @@ func (c *CPU) fetchByte() byte {
 
 // PushByte pushes one byte onto the stack and updates SP.
 func (cpu *CPU) PushByte(val byte) {
-	addr := cpu.r.GetStackAddr()
-	cpu.bus.WriteByte(addr, val)
+	cpu.bus.WriteByte(uint32(cpu.r.GetStack()), val)
 	//cpu.r.S--
 	cpu.r.SetStack(cpu.r.S - 1)
 }
@@ -172,8 +171,7 @@ func (cpu *CPU) PushByte(val byte) {
 func (cpu *CPU) PopByte() byte {
 	//cpu.r.S++
 	cpu.r.SetStack(cpu.r.S + 1)
-	addr := cpu.r.GetStackAddr()
-	return cpu.bus.ReadByte(addr)
+	return cpu.bus.ReadByte(uint32(cpu.r.GetStack()))
 }
 
 // TODO this method might mess up the stack pouinter in emulation mode after an abort interrupt!
