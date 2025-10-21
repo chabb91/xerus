@@ -230,6 +230,7 @@ func RenderTile2bpp(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 	}
 }
 
+// FIXME this one doesnt work
 func RenderTile4bpp(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 	for row := range 8 {
 		w1 := VRAM[wordBase+uint16(row*2)]
@@ -240,15 +241,33 @@ func RenderTile4bpp(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 	}
 }
 
+// EVERYTHING IS BASED ON 2bpp. in memory 8bpp is just 2bpp 2bpp 2bpp 2bpp
 func RenderTile8bpp(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
-	for row := range 8 {
-		w1 := VRAM[wordBase+uint16(row*4)]
-		w2 := VRAM[wordBase+uint16(row*4)+1]
-		w3 := VRAM[wordBase+uint16(row*4)+2]
-		w4 := VRAM[wordBase+uint16(row*4)+3]
-		for px := range 8 {
-			out[row][px] = resolveWordBitPlanePixel(w1, px) | (resolveWordBitPlanePixel(w2, px) << 2) |
-				(resolveWordBitPlanePixel(w3, px) << 4) | (resolveWordBitPlanePixel(w4, px) << 6)
+	for row := 0; row < 8; row++ {
+		w01 := VRAM[wordBase+uint16(row)]    // bitplanes 0-1
+		w23 := VRAM[wordBase+uint16(row)+8]  // bitplanes 2-3
+		w45 := VRAM[wordBase+uint16(row)+16] // bitplanes 4-5
+		w67 := VRAM[wordBase+uint16(row)+24] // bitplanes 6-7
+
+		p0 := byte(w01)
+		p1 := byte(w01 >> 8)
+		p2 := byte(w23)
+		p3 := byte(w23 >> 8)
+		p4 := byte(w45)
+		p5 := byte(w45 >> 8)
+		p6 := byte(w67)
+		p7 := byte(w67 >> 8)
+		for px := 0; px < 8; px++ {
+			mask := byte(1 << (7 - px))
+			idx := (p0&mask)>>(7-px)<<0 |
+				(p1&mask)>>(7-px)<<1 |
+				(p2&mask)>>(7-px)<<2 |
+				(p3&mask)>>(7-px)<<3 |
+				(p4&mask)>>(7-px)<<4 |
+				(p5&mask)>>(7-px)<<5 |
+				(p6&mask)>>(7-px)<<6 |
+				(p7&mask)>>(7-px)<<7
+			out[row][px] = idx
 		}
 	}
 }
@@ -285,21 +304,30 @@ func RenderTile4bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 }
 
 func RenderTile8bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
-	for row := range 8 {
-		offset := wordBase + uint16(row*4)
+	for row := 0; row < 8; row++ {
+		w01 := VRAM[wordBase+uint16(row)]    // bitplanes 0-1
+		w23 := VRAM[wordBase+uint16(row)+8]  // bitplanes 2-3
+		w45 := VRAM[wordBase+uint16(row)+16] // bitplanes 4-5
+		w67 := VRAM[wordBase+uint16(row)+24] // bitplanes 6-7
 
-		bp0 := bitplaneLUT[byte(VRAM[offset])]
-		bp1 := bitplaneLUT[byte(VRAM[offset]>>8)]
-		bp2 := bitplaneLUT[byte(VRAM[offset+1])]
-		bp3 := bitplaneLUT[byte(VRAM[offset+1]>>8)]
-		bp4 := bitplaneLUT[byte(VRAM[offset+2])]
-		bp5 := bitplaneLUT[byte(VRAM[offset+2]>>8)]
-		bp6 := bitplaneLUT[byte(VRAM[offset+3])]
-		bp7 := bitplaneLUT[byte(VRAM[offset+3]>>8)]
+		p0 := byte(w01)
+		p1 := byte(w01 >> 8)
+		p2 := byte(w23)
+		p3 := byte(w23 >> 8)
+		p4 := byte(w45)
+		p5 := byte(w45 >> 8)
+		p6 := byte(w67)
+		p7 := byte(w67 >> 8)
 
-		for px := range 8 {
-			out[row][px] = bp0[px] | (bp1[px] << 1) | (bp2[px] << 2) | (bp3[px] << 3) |
-				(bp4[px] << 4) | (bp5[px] << 5) | (bp6[px] << 6) | (bp7[px] << 7)
+		for px := 0; px < 8; px++ {
+			out[row][px] = bitplaneLUT[p0][px] |
+				bitplaneLUT[p1][px]<<1 |
+				bitplaneLUT[p2][px]<<2 |
+				bitplaneLUT[p3][px]<<3 |
+				bitplaneLUT[p4][px]<<4 |
+				bitplaneLUT[p5][px]<<5 |
+				bitplaneLUT[p6][px]<<6 |
+				bitplaneLUT[p7][px]<<7
 		}
 	}
 }

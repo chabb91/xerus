@@ -91,7 +91,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2105:
 		fmt.Println("BGMODE: ", value)
 		ppu.Bg1.charTileSize = (value >> 4) & 1
-		ppu.Bg1.colorDepth = bpp2
+		ppu.Bg1.colorDepth = bpp8
 		//TODO should invalidate everything
 		ppu.InvalidateBG(0)
 		ppu.Bg1.InvalidateScrollCache()
@@ -131,6 +131,8 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.CGRAM.WriteData(value)
 	case 0x212C:
 		fmt.Println("TM: ", value)
+	case 0x2130:
+		fmt.Println("CGWSEL", value)
 	case 0x2133:
 		fmt.Println("SETINI", value)
 		ppu.SETINI.setup(value)
