@@ -27,6 +27,7 @@ type PPU struct {
 	CGRAM *CGRAMController
 
 	Bg1     *Background1
+	Bg2     *Background1
 	BGxnOFS *BGxnOFS
 
 	FBlank, VBlank, HBlank bool
@@ -48,6 +49,7 @@ func NewPPU() *PPU {
 		SETINI:  NewSETINI(PAL_TIMING),
 	}
 	ppu.Bg1 = NewBackground1(ppu, &ppu.bgEpochs[0])
+	ppu.Bg2 = NewBackground1(ppu, &ppu.bgEpochs[1])
 	ppu.VRAM = NewVRAM(ppu)
 	return ppu
 }
@@ -92,19 +94,32 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		fmt.Println("BGMODE: ", value)
 		ppu.Bg1.charTileSize = (value >> 4) & 1
 		ppu.Bg1.colorDepth = bpp8
+
+		ppu.Bg2.charTileSize = (value >> 5) & 1
+		ppu.Bg2.colorDepth = bpp4
 		//TODO should invalidate everything
 		ppu.InvalidateBG(0)
 		ppu.Bg1.InvalidateScrollCache()
+		ppu.InvalidateBG(1)
+		ppu.Bg2.InvalidateScrollCache()
 	case 0x2107:
 		fmt.Println("BG1SC: ", value)
 		ppu.Bg1.tileMapSize = uint16(value & 0x3)
 		ppu.Bg1.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.InvalidateBG(0)
 		ppu.Bg1.InvalidateScrollCache()
+	case 0x2108:
+		fmt.Println("BG2SC: ", value)
+		ppu.Bg2.tileMapSize = uint16(value & 0x3)
+		ppu.Bg2.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
+		ppu.InvalidateBG(1)
+		ppu.Bg2.InvalidateScrollCache()
 	case 0x210B:
 		fmt.Println("BG12NBA: ", value)
 		ppu.Bg1.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
+		ppu.Bg2.charTileAddressBase = (uint16((value>>4)&0xF) << 12) & 0x7FFF
 		ppu.InvalidateBG(0)
+		ppu.InvalidateBG(1)
 	//TODO add mode 7 scrolling
 	case 0x210D:
 		ppu.Bg1.hScroll = ppu.BGxnOFS.hFormula(value)
@@ -112,6 +127,12 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x210E:
 		ppu.Bg1.vScroll = ppu.BGxnOFS.vFormula(value)
 		ppu.Bg1.InvalidateScrollCache()
+	case 0x210F:
+		ppu.Bg2.hScroll = ppu.BGxnOFS.hFormula(value)
+		ppu.Bg2.InvalidateScrollCache()
+	case 0x2110:
+		ppu.Bg2.vScroll = ppu.BGxnOFS.vFormula(value)
+		ppu.Bg2.InvalidateScrollCache()
 	case 0x2115:
 		ppu.VRAM.vmain.Setup(value)
 		fmt.Println("VMAIN: ", value)
@@ -162,6 +183,7 @@ func (ppu *PPU) getCGRAM() []uint16 {
 func (ppu *PPU) tryInvalidate(addr uint16) {
 	//maybe return true or something if theres a hit so it can stop checking the rest of the bgs
 	ppu.Bg1.Invalidate(addr)
+	ppu.Bg2.Invalidate(addr)
 }
 
 func (ppu *PPU) InvalidateBG(bgIndex int) {

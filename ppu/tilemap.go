@@ -289,16 +289,19 @@ func RenderTile2bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 
 func RenderTile4bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 	for row := range 8 {
-		w1 := VRAM[wordBase+uint16(row*2)]
-		w2 := VRAM[wordBase+uint16(row*2)+1]
+		w01 := VRAM[wordBase+uint16(row)]   // bitplanes 0-1
+		w23 := VRAM[wordBase+uint16(row)+8] // bitplanes 2-3
 
-		bp0 := bitplaneLUT[byte(w1)]
-		bp1 := bitplaneLUT[byte(w1>>8)]
-		bp2 := bitplaneLUT[byte(w2)]
-		bp3 := bitplaneLUT[byte(w2>>8)]
+		p0 := byte(w01)
+		p1 := byte(w01 >> 8)
+		p2 := byte(w23)
+		p3 := byte(w23 >> 8)
 
 		for px := range 8 {
-			out[row][px] = bp0[px] | (bp1[px] << 1) | (bp2[px] << 2) | (bp3[px] << 3)
+			out[row][px] = bitplaneLUT[p0][px] |
+				bitplaneLUT[p1][px]<<1 |
+				bitplaneLUT[p2][px]<<2 |
+				bitplaneLUT[p3][px]<<3
 		}
 	}
 }
