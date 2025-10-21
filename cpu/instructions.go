@@ -436,12 +436,13 @@ func (i *JMP_AbsIndirect) Step(cpu *CPU) bool {
 		i.lowByte = cpu.bus.ReadByte(uint32(i.pointerAddress))
 		i.state++
 	case 3:
+		//TODO keep an eye out for this
 		var highByteAddress uint32
-		if i.pointerAddress&0x00FF == 0x00FF {
+		/*if i.pointerAddress&0x00FF == 0x00FF {
 			highByteAddress = uint32(i.pointerAddress & 0xFF00)
-		} else {
-			highByteAddress = uint32(i.pointerAddress + 1)
-		}
+		} else {*/
+		highByteAddress = uint32(i.pointerAddress + 1)
+		//}
 		i.highByte = cpu.bus.ReadByte(highByteAddress)
 
 		cpu.r.PC = createWord(i.highByte, i.lowByte)
