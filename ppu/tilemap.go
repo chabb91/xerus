@@ -98,7 +98,7 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 	row := byte(V & charDimensions.modMask)
 	px := byte(H & charDimensions.modMask)
 	charMapID := (row>>3)<<1 + (px >> 3)
-	tileIndex := tileMapID*0x400 + rowCnt<<5 + columnCnt
+	tileIndex := tileMapID*0x400 + (rowCnt&31)<<5 + columnCnt&31
 
 	return px, row, charMapID, tileIndex
 }
