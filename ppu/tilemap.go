@@ -288,9 +288,9 @@ func RenderTile2bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 }
 
 func RenderTile4bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
-	for row := range 8 {
-		w01 := VRAM[wordBase+uint16(row)]   // bitplanes 0-1
-		w23 := VRAM[wordBase+uint16(row)+8] // bitplanes 2-3
+	for row := range uint16(8) {
+		w01 := VRAM[wordBase+row]   // bitplanes 0-1
+		w23 := VRAM[wordBase+row+8] // bitplanes 2-3
 
 		p0 := byte(w01)
 		p1 := byte(w01 >> 8)
@@ -307,11 +307,11 @@ func RenderTile4bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 }
 
 func RenderTile8bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
-	for row := 0; row < 8; row++ {
-		w01 := VRAM[wordBase+uint16(row)]    // bitplanes 0-1
-		w23 := VRAM[wordBase+uint16(row)+8]  // bitplanes 2-3
-		w45 := VRAM[wordBase+uint16(row)+16] // bitplanes 4-5
-		w67 := VRAM[wordBase+uint16(row)+24] // bitplanes 6-7
+	for row := range uint16(8) {
+		w01 := VRAM[wordBase+row]    // bitplanes 0-1
+		w23 := VRAM[wordBase+row+8]  // bitplanes 2-3
+		w45 := VRAM[wordBase+row+16] // bitplanes 4-5
+		w67 := VRAM[wordBase+row+24] // bitplanes 6-7
 
 		p0 := byte(w01)
 		p1 := byte(w01 >> 8)
@@ -322,7 +322,7 @@ func RenderTile8bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 		p6 := byte(w67)
 		p7 := byte(w67 >> 8)
 
-		for px := 0; px < 8; px++ {
+		for px := range 8 {
 			out[row][px] = bitplaneLUT[p0][px] |
 				bitplaneLUT[p1][px]<<1 |
 				bitplaneLUT[p2][px]<<2 |
