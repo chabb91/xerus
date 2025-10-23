@@ -48,8 +48,8 @@ func NewPPU() *PPU {
 		BGxnOFS: &BGxnOFS{},
 		SETINI:  NewSETINI(PAL_TIMING),
 	}
-	ppu.Bg1 = NewBackground1(ppu, &ppu.bgEpochs[0])
-	ppu.Bg2 = NewBackground1(ppu, &ppu.bgEpochs[1])
+	ppu.Bg1 = NewBackground1(ppu, &ppu.bgEpochs[bg1], bg1)
+	ppu.Bg2 = NewBackground1(ppu, &ppu.bgEpochs[bg2], bg2)
 	ppu.VRAM = NewVRAM(ppu)
 	return ppu
 }
@@ -98,28 +98,28 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.Bg2.charTileSize = (value >> 5) & 1
 		ppu.Bg2.colorDepth = bpp4
 		//TODO should invalidate everything
-		ppu.InvalidateBG(0)
+		ppu.InvalidateBG(bg1)
 		ppu.Bg1.InvalidateScrollCache()
-		ppu.InvalidateBG(1)
+		ppu.InvalidateBG(bg2)
 		ppu.Bg2.InvalidateScrollCache()
 	case 0x2107:
 		fmt.Println("BG1SC: ", value)
 		ppu.Bg1.tileMapSize = uint16(value & 0x3)
 		ppu.Bg1.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
-		ppu.InvalidateBG(0)
+		ppu.InvalidateBG(bg1)
 		ppu.Bg1.InvalidateScrollCache()
 	case 0x2108:
 		fmt.Println("BG2SC: ", value)
 		ppu.Bg2.tileMapSize = uint16(value & 0x3)
 		ppu.Bg2.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
-		ppu.InvalidateBG(1)
+		ppu.InvalidateBG(bg2)
 		ppu.Bg2.InvalidateScrollCache()
 	case 0x210B:
 		fmt.Println("BG12NBA: ", value)
 		ppu.Bg1.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
 		ppu.Bg2.charTileAddressBase = (uint16((value>>4)&0xF) << 12) & 0x7FFF
-		ppu.InvalidateBG(0)
-		ppu.InvalidateBG(1)
+		ppu.InvalidateBG(bg1)
+		ppu.InvalidateBG(bg2)
 	//TODO add mode 7 scrolling
 	case 0x210D:
 		ppu.Bg1.hScroll = ppu.BGxnOFS.hFormula(value)
@@ -186,8 +186,8 @@ func (ppu *PPU) tryInvalidate(addr uint16) {
 	ppu.Bg2.Invalidate(addr)
 }
 
-func (ppu *PPU) InvalidateBG(bgIndex int) {
-	if bgIndex >= 0 && bgIndex < len(ppu.bgEpochs) {
+func (ppu *PPU) InvalidateBG(bgIndex ppuLayer) {
+	if bgIndex >= 0 && bgIndex < ppuLayer(len(ppu.bgEpochs)) {
 		ppu.bgEpochs[bgIndex]++
 	}
 }

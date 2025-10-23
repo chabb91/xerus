@@ -1,6 +1,16 @@
 package ppu
 
 type colorDepth uint16
+type ppuLayer uint16
+
+const (
+	bg1     ppuLayer = 0
+	bg2     ppuLayer = 1
+	bg3     ppuLayer = 2
+	bg4     ppuLayer = 3
+	bgMode7 ppuLayer = 4
+	obj     ppuLayer = 5
+)
 
 const (
 	bpp2 colorDepth = 2
@@ -48,13 +58,16 @@ type Background1 struct {
 	tileMapLookupCacke [350][350]tileAndPixelCacheEntry
 
 	currentEpoch *uint64
+
+	layerId ppuLayer
 }
 
-func NewBackground1(ds tileDataSource, epochPtr *uint64) *Background1 {
+func NewBackground1(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Background1 {
 	bg := &Background1{
 		ds:           ds,
 		currentEpoch: epochPtr,
 		scrollEpoch:  1,
+		layerId:           layer,
 	}
 
 	for i := range bg.tileMap {
