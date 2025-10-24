@@ -18,8 +18,10 @@ const (
 	bpp8 colorDepth = 8
 )
 
-type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte) // The PPU provides access to the epoch relevant to a specific BG layer
+type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
+type optResolver func(ppuLayer, uint16, uint16) (uint16, uint16)
 
+// The PPU provides access to the epoch relevant to a specific BG layer
 type BGEpochSource interface {
 	GetBGSourceEpoch() *uint64
 }
@@ -61,7 +63,8 @@ type Background struct {
 
 	layerId ppuLayer
 
-	OPTMap *Background
+	OPTMap  *Background
+	optFunc optResolver
 }
 
 func NewBackground1(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Background {
@@ -143,7 +146,7 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 		if tileColumn > 0 {
 			//TODO implement mode 4 OPT.
 			//I THINK this is the correct logic tho i cant verify yet so it is what it is.
-			hScroll, vScroll := bg.resolveOPTMode26(bg.layerId, H, V)
+			hScroll, vScroll := bg.optFunc(bg.layerId, H, V)
 			px, row, charMapID, tileIndex = getTileIndexAndPixelCoordinates(bg.tileMapSize, bg.charTileSize, hScroll, vScroll)
 		}
 	}
@@ -188,6 +191,48 @@ func (bg *Background) resolveOPTMode26(layer ppuLayer, H, V uint16) (uint16, uin
 
 	hScrollData := bg.ds.getVRAM()[bg.OPTMap.tileMapAddress+hTileIndex]
 	vScrollData := bg.ds.getVRAM()[bg.OPTMap.tileMapAddress+vTileIndex]
+
+	checkBit := uint16(0x2000) // BG1
+	if layer == bg2 {
+		checkBit = 0x4000 // BG2
+	}
+
+	if hScrollData&checkBit != 0 {
+		HOFS = (HOFS & 7) | (H & 0xFFF8) + (hScrollData & 0x3F8) // 0000001111111000
+	}
+
+	if vScrollData&checkBit != 0 {
+		VOFS = vScrollData&0x3FF + V
+	}
+
+	return HOFS, VOFS
+}
+
+func (bg *Background) resolveOPTMode4(layer ppuLayer, H, V uint16) (uint16, uint16) {
+	HOFS := bg.hScroll + H
+	VOFS := bg.vScroll + V
+
+	if layer != bg1 && layer != bg2 {
+		return HOFS, VOFS
+	}
+
+	hLookup := HOFS&7 | (((H - 8) & 0xFFF8) + (bg.OPTMap.hScroll & 0xFFF8))
+	vLookup := bg.OPTMap.vScroll
+
+	_, _, _, tileIndex := getTileIndexAndPixelCoordinates(
+		bg.OPTMap.tileMapSize, bg.OPTMap.charTileSize, hLookup, vLookup)
+
+	scrollData := bg.ds.getVRAM()[bg.OPTMap.tileMapAddress+tileIndex]
+
+	var hScrollData, vScrollData uint16
+
+	if scrollData&0x8000 != 0 {
+		hScrollData = 0
+		vScrollData = scrollData
+	} else {
+		hScrollData = scrollData
+		vScrollData = 0
+	}
 
 	checkBit := uint16(0x2000) // BG1
 	if layer == bg2 {
