@@ -26,8 +26,8 @@ type PPU struct {
 	VRAM  *VRAMController
 	CGRAM *CGRAMController
 
-	Bg1     *Background1
-	Bg2     *Background1
+	Bg1     *Background
+	Bg2     *Background
 	BGxnOFS *BGxnOFS
 
 	FBlank, VBlank, HBlank bool

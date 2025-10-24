@@ -19,10 +19,10 @@ func (bgofs *BGxnOFS) vFormula(current byte) uint16 {
 	return ret & 0x03FF
 }
 
-func (bgofs *BGxnOFS) setBg1V(bg1 *Background1, value byte) {
+func (bgofs *BGxnOFS) setBg1V(bg1 *Background, value byte) {
 	bg1.vScroll = bgofs.vFormula(value)
 }
 
-func (bgofs *BGxnOFS) setBg1H(bg1 *Background1, value byte) {
+func (bgofs *BGxnOFS) setBg1H(bg1 *Background, value byte) {
 	bg1.hScroll = bgofs.hFormula(value)
 }

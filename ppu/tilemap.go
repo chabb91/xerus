@@ -24,7 +24,7 @@ type BGEpochSource interface {
 	GetBGSourceEpoch() *uint64
 }
 
-type Background interface {
+type BackgroundI interface {
 	GetTileMapAddress() uint16
 	GetTileMapSize() byte
 	GetCharTileAddress() uint16
@@ -39,7 +39,7 @@ type tileAndPixelCacheEntry struct {
 	entryEpoch         uint64
 }
 
-type Background1 struct {
+type Background struct {
 	ds tileDataSource
 
 	tileMap        [0x1000]BgTile //4x400
@@ -61,11 +61,11 @@ type Background1 struct {
 
 	layerId ppuLayer
 
-	OPTMap *Background1
+	OPTMap *Background
 }
 
-func NewBackground1(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Background1 {
-	bg := &Background1{
+func NewBackground1(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Background {
+	bg := &Background{
 		ds:           ds,
 		currentEpoch: epochPtr,
 		scrollEpoch:  1,
@@ -79,11 +79,11 @@ func NewBackground1(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Backgr
 	return bg
 }
 
-func (bg *Background1) InvalidateScrollCache() {
+func (bg *Background) InvalidateScrollCache() {
 	bg.scrollEpoch++
 }
 
-func (bg *Background1) Invalidate(addr uint16) {
+func (bg *Background) Invalidate(addr uint16) {
 	if bg.tileMapAddress <= addr && bg.tileMapAddress+tileMapDimensionsLUT[bg.tileMapSize].wordSize > addr {
 		index := addr - bg.tileMapAddress
 		if index < uint16(len(bg.tileMap)) {
@@ -123,7 +123,7 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 // save the char address in the chartile
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
-func (bg *Background1) GetDotAt(H, V uint16) uint16 {
+func (bg *Background) GetDotAt(H, V uint16) uint16 {
 	cache := &bg.tileMapLookupCacke[H][V]
 	if bg.scrollEpoch != cache.entryEpoch {
 		//TODO add a nested for loop that set up all 8x8 dots of the tile with this data
@@ -170,7 +170,7 @@ func (bg *Background1) GetDotAt(H, V uint16) uint16 {
 }
 
 // my best guess for OPT. will test it in a year when i can run games LUL
-func (bg *Background1) resolveOPTMode26(layer ppuLayer, H, V uint16) (uint16, uint16) {
+func (bg *Background) resolveOPTMode26(layer ppuLayer, H, V uint16) (uint16, uint16) {
 	HOFS := bg.hScroll + H
 	VOFS := bg.vScroll + V
 
@@ -215,7 +215,7 @@ type BgTile struct {
 	charIndex  uint16
 
 	lastRenderEpoch uint64
-	bg              *Background1
+	bg              *Background
 }
 
 func (bt *BgTile) setup(tileIndex uint16) {
@@ -245,7 +245,7 @@ type CharTile struct {
 	ds          tileDataSource
 
 	lastRenderEpoch uint64
-	bg              *Background1
+	bg              *Background
 }
 
 func (ct *CharTile) setup(bitPlanes colorDepth) {
