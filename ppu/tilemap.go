@@ -4,12 +4,13 @@ type colorDepth uint16
 type ppuLayer uint16
 
 const (
-	bg1     ppuLayer = 0
-	bg2     ppuLayer = 1
-	bg3     ppuLayer = 2
-	bg4     ppuLayer = 3
-	bgMode7 ppuLayer = 4
-	obj     ppuLayer = 5
+	bg1         ppuLayer = 0
+	bg2         ppuLayer = 1
+	bg3         ppuLayer = 2
+	bg4         ppuLayer = 3
+	bgMode7     ppuLayer = 4
+	obj         ppuLayer = 5
+	colorWindow ppuLayer = 6
 )
 
 const (
@@ -142,9 +143,7 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 	tileIndex := cache.tileIndex
 
 	if bg.OPTMap != nil {
-		tileColumn := (H + uint16(7-cache.px)) >> 3
-		if tileColumn > 0 {
-			//TODO implement mode 4 OPT.
+		if tileColumn := (H + uint16(7-cache.px)) >> 3; tileColumn > 0 {
 			//I THINK this is the correct logic tho i cant verify yet so it is what it is.
 			hScroll, vScroll := bg.optFunc(bg.layerId, H, V)
 			px, row, charMapID, tileIndex = getTileIndexAndPixelCoordinates(bg.tileMapSize, bg.charTileSize, hScroll, vScroll)
