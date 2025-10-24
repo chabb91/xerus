@@ -55,11 +55,13 @@ type Background1 struct {
 	hScroll     uint16
 	scrollEpoch uint64
 
-	tileMapLookupCacke [350][350]tileAndPixelCacheEntry
+	tileMapLookupCacke [600][600]tileAndPixelCacheEntry
 
 	currentEpoch *uint64
 
 	layerId ppuLayer
+
+	OPTMap *Background1
 }
 
 func NewBackground1(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Background1 {
@@ -67,7 +69,7 @@ func NewBackground1(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Backgr
 		ds:           ds,
 		currentEpoch: epochPtr,
 		scrollEpoch:  1,
-		layerId:           layer,
+		layerId:      layer,
 	}
 
 	for i := range bg.tileMap {
@@ -81,20 +83,20 @@ func (bg *Background1) InvalidateScrollCache() {
 	bg.scrollEpoch++
 }
 
-func (bg1 *Background1) Invalidate(addr uint16) {
-	if bg1.tileMapAddress <= addr && bg1.tileMapAddress+tileMapDimensionsLUT[bg1.tileMapSize].wordSize > addr {
-		index := addr - bg1.tileMapAddress
-		if index < uint16(len(bg1.tileMap)) {
-			bg1.tileMap[index].isValid = false
+func (bg *Background1) Invalidate(addr uint16) {
+	if bg.tileMapAddress <= addr && bg.tileMapAddress+tileMapDimensionsLUT[bg.tileMapSize].wordSize > addr {
+		index := addr - bg.tileMapAddress
+		if index < uint16(len(bg.tileMap)) {
+			bg.tileMap[index].isValid = false
 			//fmt.Println("invlidation")
 		}
 		return
 	}
 
-	if addr >= bg1.charTileAddressBase {
-		wordsPerTile := uint16(bg1.colorDepth) * 4
-		tileIndex := (addr - bg1.charTileAddressBase) / wordsPerTile
-		if t := bg1.charTiles[bg1.charTileAddressBase+(tileIndex*wordsPerTile)]; t != nil {
+	if addr >= bg.charTileAddressBase {
+		wordsPerTile := uint16(bg.colorDepth) * 4
+		tileIndex := (addr - bg.charTileAddressBase) / wordsPerTile
+		if t := bg.charTiles[bg.charTileAddressBase+(tileIndex*wordsPerTile)]; t != nil {
 			t.isValid = false
 			//fmt.Println("invlidation")
 		}
@@ -121,37 +123,86 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 // save the char address in the chartile
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
-func (bg1 *Background1) GetDotAt(H, V uint16) uint16 {
-	cache := &bg1.tileMapLookupCacke[H][V]
-	if bg1.scrollEpoch != cache.entryEpoch {
+func (bg *Background1) GetDotAt(H, V uint16) uint16 {
+	cache := &bg.tileMapLookupCacke[H][V]
+	if bg.scrollEpoch != cache.entryEpoch {
 		//TODO add a nested for loop that set up all 8x8 dots of the tile with this data
 		//so this is only calculated once every character tile which i think is fast
-		hScroll := uint16(H) + bg1.hScroll
-		vScroll := uint16(V) + bg1.vScroll
-		cache.px, cache.row, cache.charMapID, cache.tileIndex = getTileIndexAndPixelCoordinates(bg1.tileMapSize, bg1.charTileSize, hScroll, vScroll)
-		cache.entryEpoch = bg1.scrollEpoch
+		hScroll, vScroll := H+bg.hScroll, V+bg.vScroll
+		cache.px, cache.row, cache.charMapID, cache.tileIndex = getTileIndexAndPixelCoordinates(bg.tileMapSize, bg.charTileSize, hScroll, vScroll)
+		cache.entryEpoch = bg.scrollEpoch
 	}
 
-	tile := bg1.tileMap[cache.tileIndex]
-	tile.setup(cache.tileIndex)
-
-	px := tileFlipXLUT[tile.flipIndex][cache.px]
-	row := tileFlipYLUT[tile.flipIndex][cache.row]
-
 	charMapID := cache.charMapID
-	if bg1.charTileSize == 1 {
+	px := cache.px
+	row := cache.row
+	tileIndex := cache.tileIndex
+
+	if bg.OPTMap != nil {
+		tileColumn := (H + uint16(7-cache.px)) >> 3
+		if tileColumn > 0 {
+			//TODO implement mode 4 OPT.
+			//I THINK this is the correct logic tho i cant verify yet so it is what it is.
+			hScroll, vScroll := bg.resolveOPTMode26(bg.layerId, H, V)
+			px, row, charMapID, tileIndex = getTileIndexAndPixelCoordinates(bg.tileMapSize, bg.charTileSize, hScroll, vScroll)
+		}
+	}
+
+	tile := bg.tileMap[tileIndex]
+	tile.setup(tileIndex)
+
+	px = tileFlipXLUT[tile.flipIndex][px]
+	row = tileFlipYLUT[tile.flipIndex][row]
+
+	if bg.charTileSize == 1 {
 		charMapID += compositeFlipLUT[charMapID][tile.flipIndex]
 	}
 
 	//TODO charaddress can also be cached in the bgtile. this is a pointless calculation
-	charAddress := (tile.charIndex+charMapIdToOffsetLUT[charMapID])*uint16(bg1.colorDepth<<2) + bg1.charTileAddressBase
-	char := bg1.charTiles[charAddress]
+	charAddress := (tile.charIndex+charMapIdToOffsetLUT[charMapID])*uint16(bg.colorDepth<<2) + bg.charTileAddressBase
+	char := bg.charTiles[charAddress]
 	if char == nil {
-		char = &CharTile{isValid: false, ds: bg1.ds, tileAddress: charAddress, bg: bg1}
-		bg1.charTiles[charAddress] = char
+		char = &CharTile{isValid: false, ds: bg.ds, tileAddress: charAddress, bg: bg}
+		bg.charTiles[charAddress] = char
 	}
 
-	return bg1.ds.getCGRAM()[char.getPixelAt(bg1.colorDepth, px, row)+tile.paletteNum<<bg1.colorDepth]
+	return bg.ds.getCGRAM()[char.getPixelAt(bg.colorDepth, px, row)+tile.paletteNum<<bg.colorDepth]
+}
+
+//my best guess for OPT. will test it in a year when i can run games LUL
+func (bg *Background1) resolveOPTMode26(layer ppuLayer, H, V uint16) (uint16, uint16) {
+	HOFS := bg.hScroll + H
+	VOFS := bg.vScroll + V
+
+	if layer != bg1 && layer != bg2 {
+		return HOFS, VOFS
+	}
+
+	hLookup := HOFS&7 | (((H - 8) & 0xFFF8) + (bg.OPTMap.hScroll & 0xFFF8))
+	vLookup := bg.OPTMap.vScroll
+
+	_, _, _, hTileIndex := getTileIndexAndPixelCoordinates(
+		bg.OPTMap.tileMapSize, bg.OPTMap.charTileSize, hLookup, vLookup)
+	_, _, _, vTileIndex := getTileIndexAndPixelCoordinates(
+		bg.OPTMap.tileMapSize, bg.OPTMap.charTileSize, hLookup, vLookup+8)
+
+	hScrollData := bg.ds.getVRAM()[bg.OPTMap.charTileAddressBase+hTileIndex]
+	vScrollData := bg.ds.getVRAM()[bg.OPTMap.charTileAddressBase+vTileIndex]
+
+	checkBit := uint16(0x2000) // BG1
+	if layer == bg2 {
+		checkBit = 0x4000 // BG2
+	}
+
+	if hScrollData&checkBit != 0 {
+		HOFS = (HOFS & 7) | (H & 0xFFF8) + (hScrollData & 0x3F8) // 0000001111111000
+	}
+
+	if vScrollData&checkBit != 0 {
+		VOFS = vScrollData&0x3FF + V
+	}
+
+	return HOFS, VOFS
 }
 
 type BgTile struct {
