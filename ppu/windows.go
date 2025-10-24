@@ -96,7 +96,7 @@ func (wc *WindowController) WBGLOG(value byte) {
 	wc.layers[bg4].wMaskLogic = getWMaskLogic(value >> 6)
 }
 
-func (wc *WindowController) WOGJLOG(value byte) {
+func (wc *WindowController) WOBJLOG(value byte) {
 	wc.layers[obj].wMaskLogic = getWMaskLogic(value)
 	wc.layers[colorWindow].wMaskLogic = getWMaskLogic(value >> 2)
 }

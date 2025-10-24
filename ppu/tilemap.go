@@ -161,7 +161,7 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 	}
 
 	//TODO charaddress can also be cached in the bgtile. this is a pointless calculation
-	charAddress := (tile.charIndex+charMapIdToOffsetLUT[charMapID])*uint16(bg.colorDepth<<2) + bg.charTileAddressBase
+	charAddress := ((tile.charIndex+charMapIdToOffsetLUT[charMapID])*uint16(bg.colorDepth<<2) + bg.charTileAddressBase) & 0x7FFF
 	char := bg.charTiles[charAddress]
 	if char == nil {
 		char = &CharTile{isValid: false, ds: bg.ds, tileAddress: charAddress, bg: bg}

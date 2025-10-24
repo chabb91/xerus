@@ -26,6 +26,8 @@ type PPU struct {
 	VRAM  *VRAMController
 	CGRAM *CGRAMController
 
+	WINDOWS WindowController
+
 	Bg1     *Background
 	Bg2     *Background
 	BGxnOFS *BGxnOFS
@@ -150,10 +152,36 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.CGRAM.SetAddWord(value)
 	case 0x2122:
 		ppu.CGRAM.WriteData(value)
+	case 0x2123:
+		ppu.WINDOWS.W12SEL(value)
+	case 0x2124:
+		ppu.WINDOWS.W34SEL(value)
+	case 0x2125:
+		ppu.WINDOWS.WOBJSEL(value)
+	case 0x2126:
+		ppu.WINDOWS.w1LeftPos = value
+	case 0x2127:
+		ppu.WINDOWS.w1RightPos = value
+	case 0x2128:
+		ppu.WINDOWS.w2LeftPos = value
+	case 0x2129:
+		ppu.WINDOWS.w2RightPos = value
+	case 0x212A:
+		ppu.WINDOWS.WBGLOG(value)
+	case 0x212B:
+		ppu.WINDOWS.WOBJLOG(value)
 	case 0x212C:
 		fmt.Println("TM: ", value)
+	case 0x212D:
+		fmt.Println("TS: ", value)
+	case 0x212E:
+		ppu.WINDOWS.TMW(value)
+	case 0x212F:
+		ppu.WINDOWS.TSW(value)
 	case 0x2130:
 		fmt.Println("CGWSEL", value)
+	case 0x2131:
+		fmt.Println("CGADSUB", value)
 	case 0x2133:
 		fmt.Println("SETINI", value)
 		ppu.SETINI.setup(value)

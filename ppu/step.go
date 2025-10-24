@@ -27,7 +27,6 @@ func (ppu *PPU) Step() {
 		elapsed := time.Since(frameStartTime)
 		fmt.Println(elapsed)
 
-		//TODO use PPU TIMING FOR THIS
 		waitDuration := time.Duration(ppu.SETINI.Timing.TargetFrameMS) - elapsed
 
 		if waitDuration > 0 {
@@ -38,7 +37,12 @@ func (ppu *PPU) Step() {
 	draw := ppu.SETINI.TimingLUT[ppu.V*H_TOTAL+ppu.H]
 	if !ppu.FBlank {
 		if draw.IsVisible {
-			ppu.Framebuffer.Back[draw.H][draw.V] = ppu.Bg1.GetDotAt(draw.H, draw.V)
+			if ppu.WINDOWS.isDotMasked(bg1, false, draw.H) {
+				ppu.Framebuffer.Back[draw.H][draw.V] = ppu.CGRAM.CGRAM[0]
+			} else {
+				//ppu.Framebuffer.Back[draw.H][draw.V] = ppu.Bg1.GetDotAt(draw.H, draw.V)
+				ppu.Framebuffer.Back[draw.H][draw.V] = addColors(ppu.Bg1.GetDotAt(draw.H, draw.V), ppu.Bg2.GetDotAt(draw.H, draw.V), false)
+			}
 		}
 	}
 
