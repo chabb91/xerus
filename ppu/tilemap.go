@@ -169,7 +169,7 @@ func (bg *Background1) GetDotAt(H, V uint16) uint16 {
 	return bg.ds.getCGRAM()[char.getPixelAt(bg.colorDepth, px, row)+tile.paletteNum<<bg.colorDepth]
 }
 
-//my best guess for OPT. will test it in a year when i can run games LUL
+// my best guess for OPT. will test it in a year when i can run games LUL
 func (bg *Background1) resolveOPTMode26(layer ppuLayer, H, V uint16) (uint16, uint16) {
 	HOFS := bg.hScroll + H
 	VOFS := bg.vScroll + V
@@ -186,8 +186,8 @@ func (bg *Background1) resolveOPTMode26(layer ppuLayer, H, V uint16) (uint16, ui
 	_, _, _, vTileIndex := getTileIndexAndPixelCoordinates(
 		bg.OPTMap.tileMapSize, bg.OPTMap.charTileSize, hLookup, vLookup+8)
 
-	hScrollData := bg.ds.getVRAM()[bg.OPTMap.charTileAddressBase+hTileIndex]
-	vScrollData := bg.ds.getVRAM()[bg.OPTMap.charTileAddressBase+vTileIndex]
+	hScrollData := bg.ds.getVRAM()[bg.OPTMap.tileMapAddress+hTileIndex]
+	vScrollData := bg.ds.getVRAM()[bg.OPTMap.tileMapAddress+vTileIndex]
 
 	checkBit := uint16(0x2000) // BG1
 	if layer == bg2 {
