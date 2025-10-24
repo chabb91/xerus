@@ -6,6 +6,8 @@ const (
 	increment = iota
 	decrement
 	fixed
+	direct
+	indirect
 )
 
 type direction func(busA uint32, busB byte, validB bool, bus memory.Bus)
@@ -141,4 +143,61 @@ func (op *DmaOperation) stepCycle() bool {
 	} else {
 		return true
 	}
+}
+
+type HdmaOperation struct {
+	bus memory.Bus
+
+	transferMode     byte
+	transferIndex    byte
+	transferUnitSize byte
+	direction        direction
+	addressingMode   int
+
+	//table start address
+	//the bank is constant, the mid and lo are the reload values for 43x8/9
+	//i believe in indirect mode the table reads two bytes and loads it into indirectAddr which then is used for the actual write
+	tableStart   uint32
+	indirectAddr uint32
+	//bank taken from table
+	tableCurrentAddr uint16
+	busB             byte
+
+	lineCounter byte
+	repeat      bool
+}
+
+func (op *HdmaOperation) setup(channel DmaChannel) {
+	op.transferIndex = 0
+	op.transferMode = channel.dmap & 0b111
+	switch op.transferMode {
+	case 0:
+		op.transferUnitSize = 1
+	case 1, 2, 6:
+		op.transferUnitSize = 2
+	case 3, 4, 5, 7:
+		op.transferUnitSize = 4
+	}
+
+	switch (channel.dmap & 0x40) >> 6 {
+	case 0:
+		op.addressingMode = direct
+	case 1:
+		op.addressingMode = indirect
+	}
+
+	switch (channel.dmap >> 7) & 1 {
+	case 0:
+		op.direction = CpuToIo
+	case 1:
+		op.direction = IoToCpu
+	}
+
+	op.tableStart = uint32(channel.a1b)<<16 | uint32(channel.a1th)<<8 | uint32(channel.a1tl)
+	op.indirectAddr = uint32(channel.dasb)<<16 | uint32(channel.dash)<<8 | uint32(channel.dasl)
+	op.tableCurrentAddr = uint16(channel.a2ah)<<8 | uint16(channel.a2al)
+	op.busB = channel.bbad
+
+	op.lineCounter = channel.ntlrx & 0x7F
+	op.repeat = channel.ntlrx&0x80 != 0
 }
