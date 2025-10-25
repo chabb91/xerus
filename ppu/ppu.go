@@ -39,6 +39,7 @@ type PPU struct {
 	bgEpochs [5]uint64 //1 2 3 4 and mode7
 
 	InterruptScheduler InterruptScheduler
+	HdmaScheduler      HdmaScheduler
 
 	Framebuffer *ui.Framebuffer
 }

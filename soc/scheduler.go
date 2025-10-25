@@ -9,7 +9,6 @@ func (soc SoC) Run() {
 	dmaTickRate := 4
 	ppuTickRate := 2
 
-	var dmaOn bool
 	for {
 		cnt++
 		cnt2++
@@ -20,19 +19,13 @@ func (soc SoC) Run() {
 			cnt2 = 0
 		}
 
-		if soc.Dma.Mdmaen != 0 && cnt == uint64(dmaTickRate) {
-			if !dmaOn {
-				dmaOn = true
-			}
+		if soc.Dma.IsInProgress() && cnt == uint64(dmaTickRate) {
 			soc.Dma.Step()
 			cnt = 0
 			continue
 
 		}
-		if soc.Dma.Mdmaen == 0 && cnt == uint64(cpuTickRate) {
-			if dmaOn {
-				dmaOn = false
-			}
+		if !soc.Dma.IsInProgress() && cnt == uint64(cpuTickRate) {
 			soc.Cpu.StepCycle()
 			cnt = 0
 			continue

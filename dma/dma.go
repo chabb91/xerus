@@ -6,6 +6,14 @@ import (
 	"log"
 )
 
+const (
+	INACTIVE = iota
+	HDMA_RELOAD_INIT
+	HDMA_RELOAD
+	HDMA_TRANSFER
+	DMA_TRANSFER
+)
+
 type DmaChannel struct {
 	dmap  byte //control register
 	bbad  byte //destination register
@@ -18,20 +26,36 @@ type DmaChannel struct {
 	a2al  byte //hdma mid frame table address register low
 	a2ah  byte //hdma mid frame table address register high
 	ntlrx byte //hdma line counter register
+
+	addr1      uint32 //hdma table address latch
+	doTransfer bool   //lc > $00 and it is still active for this frame
+}
+
+func (dmac *DmaChannel) reload(bus memory.Bus) {
+	//TODO this disregards indirect HDMA valve please fix
+	dmac.addr1 = uint32(dmac.a1b)<<16 | uint32(dmac.a1th)<<8 | uint32(dmac.a1tl)
+	dmac.ntlrx = bus.ReadByte(dmac.addr1)
+	//this might be tied to the bank idk
+	dmac.addr1++
+	dmac.doTransfer = dmac.ntlrx != 0
 }
 
 type Dma struct {
-	//both the previous and the current values have to be non zero for DMA to be triggered
-	//update every cpu cycle. this is an easy way to give the cpu an extra cycle of operation
-	MdmaenPrevious, Mdmaen byte
-	Hdmaen                 byte
+	bus memory.Bus
+
+	Mdmaen byte
+	Hdmaen byte
 
 	dmaOp        *DmaOperation
 	currentDmaOp *DmaOperation
 
-	currentDmaId int
+	hdmaOp        *HdmaOperation
+	currentHdmaOp *HdmaOperation
 
-	hdmaActive bool
+	currentDmaId  int
+	currentHdmaId int
+
+	DmaState int
 
 	Channels [8]DmaChannel
 }
@@ -40,7 +64,9 @@ func NewDma(bus memory.Bus) *Dma {
 
 	dma := &Dma{
 		currentDmaOp: nil,
+		bus:          bus,
 		dmaOp:        &DmaOperation{bus: bus},
+		hdmaOp:       &HdmaOperation{bus: bus},
 		Channels:     [8]DmaChannel{}}
 
 	//TODO this probably isnt the best place to register it
@@ -49,23 +75,124 @@ func NewDma(bus memory.Bus) *Dma {
 }
 
 func (dma *Dma) Step() bool {
-	//TODO make this intelligent enough to handle HDMA when needed.
-	if dma.Mdmaen != 0 && dma.currentDmaOp == nil {
-		dma.currentDmaOp = dma.dmaOp
-		dma.currentDmaId = getNextActiveChannel(dma.Mdmaen)
-		dma.currentDmaOp.setup(dma.Channels[dma.currentDmaId])
-		log.Printf("Starting dma on channel %v with params %+v\n", dma.currentDmaId, dma.Channels[dma.currentDmaId])
-		return false
-	}
-	if dma.Mdmaen != 0 && dma.currentDmaOp != nil {
-		if dma.currentDmaOp.stepCycle() {
-			dma.currentDmaOp = nil
-			dma.Mdmaen &= ^(1 << dma.currentDmaId)
+	if dma.DmaState == HDMA_RELOAD_INIT {
+		if dma.Hdmaen > 0 {
+			dma.DmaState = HDMA_RELOAD
+			dma.currentHdmaId = -1
+			return false
 		}
-		return dma.Mdmaen == 0
+		if dma.isDmaActive() {
+			dma.DmaState = DMA_TRANSFER
+			return false
+		}
+		dma.DmaState = INACTIVE
+		return true
 	}
-
+	if dma.DmaState == HDMA_RELOAD {
+		dma.currentHdmaId = getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1)
+		if dma.currentHdmaId == -1 {
+			if dma.isDmaActive() {
+				dma.DmaState = DMA_TRANSFER
+				dma.currentHdmaId = -1
+				return false
+			}
+			dma.DmaState = INACTIVE
+			return true
+		} else {
+			dma.currentHdmaOp = nil
+			dma.Channels[dma.currentHdmaId].reload(dma.bus)
+		}
+	}
+	//TODO there should be another "HDMA_TRANSFER_INIT" step that costs 18 master cycles regardless of anything.
+	if dma.DmaState == HDMA_TRANSFER {
+		if dma.Hdmaen > 0 && (dma.currentHdmaOp == nil || dma.currentHdmaOp.isDoneForFrame()) {
+			dma.currentHdmaId = getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1)
+			dma.currentHdmaOp = dma.hdmaOp
+			if dma.currentHdmaId != -1 {
+				//dma and hdma on same channel cancels dma
+				if dma.currentHdmaId == dma.currentDmaId {
+					dma.currentDmaOp = nil
+					dma.Mdmaen &= ^(1 << dma.currentDmaId)
+				}
+				dma.currentHdmaOp.setup(dma.Channels[dma.currentHdmaId])
+				return false
+			}
+			if dma.isDmaActive() {
+				dma.DmaState = DMA_TRANSFER
+				return false
+			}
+			dma.DmaState = INACTIVE
+			return true
+		}
+		if dma.Hdmaen > 0 && (dma.currentHdmaOp != nil && !dma.currentHdmaOp.isDoneForFrame()) {
+			dma.currentHdmaOp = nil
+			if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
+				if dma.isDmaActive() {
+					dma.DmaState = DMA_TRANSFER
+					return false
+				}
+				dma.DmaState = INACTIVE
+				return true
+			}
+		}
+	}
+	if dma.DmaState == INACTIVE || dma.DmaState == DMA_TRANSFER {
+		if dma.isDmaActive() && dma.currentDmaOp == nil {
+			dma.DmaState = DMA_TRANSFER
+			dma.currentDmaOp = dma.dmaOp
+			dma.currentDmaId = getNextActiveChannel(dma.Mdmaen, 0)
+			dma.currentDmaOp.setup(dma.Channels[dma.currentDmaId])
+			log.Printf("Starting dma on channel %v with params %+v\n", dma.currentDmaId, dma.Channels[dma.currentDmaId])
+			return false
+		}
+		if dma.isDmaActive() && dma.currentDmaOp != nil {
+			if dma.currentDmaOp.stepCycle() {
+				dma.currentDmaOp = nil
+				dma.Mdmaen &= ^(1 << dma.currentDmaId)
+			}
+			if dma.Mdmaen == 0 {
+				dma.DmaState = INACTIVE
+				return true
+			} else {
+				dma.DmaState = DMA_TRANSFER
+				return false
+			}
+		}
+	}
 	return false
+}
+
+func (dma *Dma) IsInProgress() bool {
+	return dma.isDmaActive() || dma.DmaState != INACTIVE
+}
+
+func (dma *Dma) Reload() {
+	if dma.Hdmaen > 0 {
+		dma.DmaState = HDMA_RELOAD_INIT
+		log.Printf("RELOADING HDMA on channel %v with params %+v\n", 0, dma.Channels[0])
+	}
+}
+
+func (dma *Dma) DoTransfer() {
+	//if dma.isHdmaActive() {
+	if dma.Hdmaen > 0 {
+		dma.DmaState = HDMA_TRANSFER
+	}
+	//}
+}
+
+func (dma *Dma) isHdmaActive() bool {
+	for v := range 8 {
+		if (dma.Hdmaen&(1<<v)) != 0 && dma.Channels[v].ntlrx != 0 {
+			//dma.currentHdmaId = v
+			return true
+		}
+	}
+	return false
+}
+
+func (dma *Dma) isDmaActive() bool {
+	return dma.Mdmaen != 0
 }
 
 func (dma *Dma) Read(addr uint16) (byte, error) {
@@ -136,12 +263,12 @@ func getChannelNum(address uint16) (byte, error) {
 	}
 }
 
-func getNextActiveChannel(enabledChannels byte) int {
+func getNextActiveChannel(enabledChannels byte, from int) int {
 	if enabledChannels == 0 {
 		return -1
 	}
 
-	for i := range 8 {
+	for i := from; i < 8; i++ {
 		if (enabledChannels>>i)&1 == 1 {
 			return i
 		}

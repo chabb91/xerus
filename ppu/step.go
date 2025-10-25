@@ -55,6 +55,11 @@ type InterruptScheduler interface {
 	SetRdnmi(bool)
 }
 
+type HdmaScheduler interface {
+	Reload()
+	DoTransfer()
+}
+
 func (ppu *PPU) performAction(action PPUAction) {
 	switch action {
 	case ActionVBlankStart:
@@ -73,7 +78,9 @@ func (ppu *PPU) performAction(action PPUAction) {
 	case ActionOAMReset:
 		ppu.OAM.InvalidateInternalIndex()
 	case ActionHDMAStart:
+		ppu.HdmaScheduler.DoTransfer()
 	case ActionHDMAReload:
+		ppu.HdmaScheduler.Reload()
 	case ActionShortLine:
 	case ActionLongLine:
 	case ActionSetNmi:

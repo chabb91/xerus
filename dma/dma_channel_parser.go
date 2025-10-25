@@ -167,6 +167,10 @@ type HdmaOperation struct {
 	repeat      bool
 }
 
+func (op *HdmaOperation) isDoneForFrame() bool {
+	return op.lineCounter == 0 && !op.repeat
+}
+
 func (op *HdmaOperation) setup(channel DmaChannel) {
 	op.transferIndex = 0
 	op.transferMode = channel.dmap & 0b111

@@ -23,7 +23,7 @@ type SoC struct {
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/HiColor575Myst.sfc")
+	romData, err := cartridge.Load("/home/chabb/Downloads/WindowHDMA.sfc")
 	if err != nil {
 		panic(err)
 	}
@@ -37,6 +37,7 @@ func NewSoC(framebuffer *ui.Framebuffer) *SoC {
 	}
 	soc.InterruptController = interruptchip.NewInterruptController(bus, soc.Cpu)
 	soc.Ppu.InterruptScheduler = soc.InterruptController
+	soc.Ppu.HdmaScheduler = soc.Dma
 	soc.Ppu.Framebuffer = framebuffer
 
 	bus.RegisterRange(0x4200, 0x4217, soc, "internal CPU")
