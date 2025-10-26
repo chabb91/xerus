@@ -1,6 +1,8 @@
 package dma
 
-import "SNES_emulator/memory"
+import (
+	"SNES_emulator/memory"
+)
 
 const (
 	increment = iota
@@ -157,7 +159,7 @@ type HdmaOperation struct {
 	//table start address
 	//the bank is constant, the mid and lo are the reload values for 43x8/9
 	//i believe in indirect mode the table reads two bytes and loads it into indirectAddr which then is used for the actual write
-	tableStart   uint32
+	addr1        uint32
 	indirectAddr uint32
 	//bank taken from table
 	tableCurrentAddr uint16
@@ -169,6 +171,14 @@ type HdmaOperation struct {
 
 func (op *HdmaOperation) isDoneForFrame() bool {
 	return op.lineCounter == 0 && !op.repeat
+}
+
+func (op *HdmaOperation) reload(channel DmaChannel) {
+	op.addr1 = uint32(channel.a1b)<<16 | uint32(channel.a1th)<<8 | uint32(channel.a1tl)
+	ntlrx := op.bus.ReadByte(op.addr1)
+	op.lineCounter = ntlrx & 0x7F
+	op.repeat = ntlrx&0x80 != 0
+	op.addr1++
 }
 
 func (op *HdmaOperation) setup(channel DmaChannel) {
@@ -197,11 +207,34 @@ func (op *HdmaOperation) setup(channel DmaChannel) {
 		op.direction = IoToCpu
 	}
 
-	op.tableStart = uint32(channel.a1b)<<16 | uint32(channel.a1th)<<8 | uint32(channel.a1tl)
+	op.addr1 = uint32(channel.a1b)<<16 | uint32(channel.a1th)<<8 | uint32(channel.a1tl)
 	op.indirectAddr = uint32(channel.dasb)<<16 | uint32(channel.dash)<<8 | uint32(channel.dasl)
 	op.tableCurrentAddr = uint16(channel.a2ah)<<8 | uint16(channel.a2al)
 	op.busB = channel.bbad
 
 	op.lineCounter = channel.ntlrx & 0x7F
 	op.repeat = channel.ntlrx&0x80 != 0
+}
+
+func (op *HdmaOperation) stepCycle() bool {
+	if op.transferIndex < op.transferUnitSize {
+		transfer(op.transferMode, op.transferIndex, op.addr1, op.busB, op.direction, op.bus)
+		op.transferIndex++
+		op.addr1++
+	}
+
+	if op.transferIndex == op.transferUnitSize {
+		op.transferIndex = 0
+		op.lineCounter--
+		if op.lineCounter == 0 {
+			ntlrx := op.bus.ReadByte(op.addr1)
+			op.lineCounter = ntlrx & 0x7F
+			op.repeat = ntlrx&0x80 != 0
+			op.addr1++
+		}
+		return true
+	} else {
+		return false
+	}
+
 }

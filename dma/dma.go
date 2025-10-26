@@ -49,7 +49,7 @@ type Dma struct {
 	dmaOp        *DmaOperation
 	currentDmaOp *DmaOperation
 
-	hdmaOp        *HdmaOperation
+	hdmaOp        [8]*HdmaOperation
 	currentHdmaOp *HdmaOperation
 
 	currentDmaId  int
@@ -66,8 +66,12 @@ func NewDma(bus memory.Bus) *Dma {
 		currentDmaOp: nil,
 		bus:          bus,
 		dmaOp:        &DmaOperation{bus: bus},
-		hdmaOp:       &HdmaOperation{bus: bus},
+		hdmaOp:       [8]*HdmaOperation{},
 		Channels:     [8]DmaChannel{}}
+
+	for i := range dma.hdmaOp {
+		dma.hdmaOp[i] = &HdmaOperation{bus: bus}
+	}
 
 	//TODO this probably isnt the best place to register it
 	bus.RegisterRange(0x4300, 0x437F, dma, "DMA")
@@ -90,49 +94,61 @@ func (dma *Dma) Step() bool {
 	}
 	if dma.DmaState == HDMA_RELOAD {
 		dma.currentHdmaId = getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1)
-		if dma.currentHdmaId == -1 {
-			if dma.isDmaActive() {
-				dma.DmaState = DMA_TRANSFER
-				dma.currentHdmaId = -1
-				return false
-			}
-			dma.DmaState = INACTIVE
-			return true
-		} else {
+		if dma.currentHdmaId != -1 {
 			dma.currentHdmaOp = nil
-			dma.Channels[dma.currentHdmaId].reload(dma.bus)
-		}
-	}
-	//TODO there should be another "HDMA_TRANSFER_INIT" step that costs 18 master cycles regardless of anything.
-	if dma.DmaState == HDMA_TRANSFER {
-		if dma.Hdmaen > 0 && (dma.currentHdmaOp == nil || dma.currentHdmaOp.isDoneForFrame()) {
-			dma.currentHdmaId = getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1)
-			dma.currentHdmaOp = dma.hdmaOp
-			if dma.currentHdmaId != -1 {
-				//dma and hdma on same channel cancels dma
-				if dma.currentHdmaId == dma.currentDmaId {
-					dma.currentDmaOp = nil
-					dma.Mdmaen &= ^(1 << dma.currentDmaId)
-				}
-				dma.currentHdmaOp.setup(dma.Channels[dma.currentHdmaId])
-				return false
-			}
-			if dma.isDmaActive() {
-				dma.DmaState = DMA_TRANSFER
-				return false
-			}
-			dma.DmaState = INACTIVE
-			return true
-		}
-		if dma.Hdmaen > 0 && (dma.currentHdmaOp != nil && !dma.currentHdmaOp.isDoneForFrame()) {
-			dma.currentHdmaOp = nil
+			dma.hdmaOp[dma.currentHdmaId].setup(dma.Channels[dma.currentHdmaId])
+			dma.hdmaOp[dma.currentHdmaId].reload(dma.Channels[dma.currentHdmaId])
+			log.Printf("RELOADING HDMA on channel %v with params %+v\n", 0, dma.Channels[dma.currentHdmaId])
 			if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
 				if dma.isDmaActive() {
 					dma.DmaState = DMA_TRANSFER
+					dma.currentHdmaId = -1
 					return false
 				}
 				dma.DmaState = INACTIVE
 				return true
+			}
+		}
+	}
+	//TODO there should be another "HDMA_TRANSFER_INIT" step that costs 18 master cycles regardless of anything.
+	if dma.DmaState == HDMA_TRANSFER {
+		if dma.Hdmaen > 0 && dma.currentHdmaOp == nil {
+			dma.currentHdmaId = getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1)
+			if dma.currentHdmaId != -1 {
+				if dma.hdmaOp[dma.currentHdmaId].isDoneForFrame() {
+					if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
+						dma.DmaState = INACTIVE
+						return true
+					}
+					return false
+				}
+				dma.currentHdmaOp = dma.hdmaOp[dma.currentHdmaId]
+				//dma and hdma on same channel cancels dma
+				if dma.currentHdmaId == dma.currentDmaId && dma.currentDmaOp != nil {
+					dma.currentDmaOp = nil
+					dma.Mdmaen &= ^(1 << dma.currentDmaId)
+				}
+				//dma.currentHdmaOp.setup(dma.Channels[dma.currentHdmaId])
+				return false
+			}
+			if dma.isDmaActive() {
+				dma.DmaState = DMA_TRANSFER
+				return false
+			}
+			dma.DmaState = INACTIVE
+			return true
+		}
+		if dma.Hdmaen > 0 && dma.currentHdmaOp != nil {
+			if dma.currentHdmaOp.stepCycle() {
+				dma.currentHdmaOp = nil
+				if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
+					if dma.isDmaActive() {
+						dma.DmaState = DMA_TRANSFER
+						return false
+					}
+					dma.DmaState = INACTIVE
+					return true
+				}
 			}
 		}
 	}
@@ -169,7 +185,6 @@ func (dma *Dma) IsInProgress() bool {
 func (dma *Dma) Reload() {
 	if dma.Hdmaen > 0 {
 		dma.DmaState = HDMA_RELOAD_INIT
-		log.Printf("RELOADING HDMA on channel %v with params %+v\n", 0, dma.Channels[0])
 	}
 }
 
