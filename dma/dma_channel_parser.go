@@ -58,7 +58,7 @@ func transfer(mode byte, index byte, busA uint32, busB byte, direction direction
 	case 1, 5:
 		busB += (index & 1)
 	case 3, 7:
-		busB += (index & 0b10)
+		busB += (index & 0b10) >> 1
 	case 4:
 		busB += index
 	default:
@@ -218,15 +218,17 @@ func (op *HdmaOperation) setup(channel DmaChannel) {
 
 func (op *HdmaOperation) stepCycle() bool {
 	if op.transferIndex < op.transferUnitSize {
-		transfer(op.transferMode, op.transferIndex, op.addr1, op.busB, op.direction, op.bus)
+		transfer(op.transferMode, op.transferIndex, op.addr1+uint32(op.transferIndex), op.busB, op.direction, op.bus)
 		op.transferIndex++
-		op.addr1++
 	}
 
 	if op.transferIndex == op.transferUnitSize {
 		op.transferIndex = 0
-		op.lineCounter--
+		op.lineCounter = op.lineCounter - 1
 		if op.lineCounter == 0 {
+			if !op.repeat {
+				op.addr1 += uint32(op.transferUnitSize) // Only skip data if NOT repeat
+			}
 			ntlrx := op.bus.ReadByte(op.addr1)
 			op.lineCounter = ntlrx & 0x7F
 			op.repeat = ntlrx&0x80 != 0

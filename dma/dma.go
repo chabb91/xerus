@@ -143,10 +143,10 @@ func (dma *Dma) Step() bool {
 				dma.currentHdmaOp = nil
 				if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
 					if dma.isDmaActive() {
-						dma.DmaState = DMA_TRANSFER
+						//dma.DmaState = DMA_TRANSFER
 						return false
 					}
-					dma.DmaState = INACTIVE
+					//dma.DmaState = INACTIVE
 					return true
 				}
 			}
