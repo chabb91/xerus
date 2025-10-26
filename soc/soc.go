@@ -80,7 +80,8 @@ func (soc *SoC) Write(addr uint16, value byte) error {
 	case 0x420B:
 		soc.Dma.Mdmaen = value
 	case 0x420C:
-		soc.Dma.Hdmaen = value
+		//soc.Dma.Hdmaen = value
+		soc.Dma.SetHdmaen(value)
 	case 0x420D:
 		soc.bus.SetMEMSEL(value)
 	default:

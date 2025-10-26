@@ -26,18 +26,6 @@ type DmaChannel struct {
 	a2al  byte //hdma mid frame table address register low
 	a2ah  byte //hdma mid frame table address register high
 	ntlrx byte //hdma line counter register
-
-	addr1      uint32 //hdma table address latch
-	doTransfer bool   //lc > $00 and it is still active for this frame
-}
-
-func (dmac *DmaChannel) reload(bus memory.Bus) {
-	//TODO this disregards indirect HDMA valve please fix
-	dmac.addr1 = uint32(dmac.a1b)<<16 | uint32(dmac.a1th)<<8 | uint32(dmac.a1tl)
-	dmac.ntlrx = bus.ReadByte(dmac.addr1)
-	//this might be tied to the bank idk
-	dmac.addr1++
-	dmac.doTransfer = dmac.ntlrx != 0
 }
 
 type Dma struct {
@@ -179,12 +167,22 @@ func (dma *Dma) DoTransfer() {
 
 func (dma *Dma) isHdmaActive() bool {
 	for v := range 8 {
-		if (dma.Hdmaen&(1<<v)) != 0 && dma.Channels[v].ntlrx != 0 {
+		if (dma.Hdmaen&(1<<v)) != 0 && !dma.hdmaOp[v].isDoneForFrame() {
 			//dma.currentHdmaId = v
 			return true
 		}
 	}
 	return false
+}
+
+// needed to properly enable midframe HDMA
+func (dma *Dma) SetHdmaen(value byte) {
+	for i := range 8 {
+		if (dma.Hdmaen>>i)&1 == 0 && (value>>i)&1 != 0 {
+			dma.hdmaOp[i].setup(dma.Channels[i])
+		}
+	}
+	dma.Hdmaen = value
 }
 
 func (dma *Dma) isDmaActive() bool {
