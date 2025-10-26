@@ -7,11 +7,11 @@ import (
 )
 
 const (
-	INACTIVE = iota
+	HDMA_INACTIVE = iota
 	HDMA_RELOAD_INIT
 	HDMA_RELOAD
+	HDMA_TRANSFER_INIT
 	HDMA_TRANSFER
-	DMA_TRANSFER
 )
 
 type DmaChannel struct {
@@ -80,16 +80,13 @@ func NewDma(bus memory.Bus) *Dma {
 
 func (dma *Dma) Step() bool {
 	if dma.DmaState == HDMA_RELOAD_INIT {
+		//this should always be >0 but who knows
 		if dma.Hdmaen > 0 {
 			dma.DmaState = HDMA_RELOAD
 			dma.currentHdmaId = -1
 			return false
 		}
-		if dma.isDmaActive() {
-			dma.DmaState = DMA_TRANSFER
-			return false
-		}
-		dma.DmaState = INACTIVE
+		dma.DmaState = HDMA_INACTIVE
 		return true
 	}
 	if dma.DmaState == HDMA_RELOAD {
@@ -98,63 +95,52 @@ func (dma *Dma) Step() bool {
 			dma.currentHdmaOp = nil
 			dma.hdmaOp[dma.currentHdmaId].setup(dma.Channels[dma.currentHdmaId])
 			dma.hdmaOp[dma.currentHdmaId].reload(dma.Channels[dma.currentHdmaId])
-			log.Printf("RELOADING HDMA on channel %v with params %+v\n", 0, dma.Channels[dma.currentHdmaId])
+			//	log.Printf("RELOADING HDMA on channel %v with params %+v\n", 0, dma.Channels[dma.currentHdmaId])
 			if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
-				if dma.isDmaActive() {
-					dma.DmaState = DMA_TRANSFER
-					dma.currentHdmaId = -1
-					return false
-				}
-				dma.DmaState = INACTIVE
+				dma.DmaState = HDMA_INACTIVE
 				return true
 			}
+			return false
 		}
 	}
-	//TODO there should be another "HDMA_TRANSFER_INIT" step that costs 18 master cycles regardless of anything.
+	//costs 18 master cycles
+	if dma.DmaState == HDMA_TRANSFER_INIT {
+		dma.currentHdmaId = -1
+		dma.DmaState = HDMA_TRANSFER
+		return false
+	}
 	if dma.DmaState == HDMA_TRANSFER {
 		if dma.Hdmaen > 0 && dma.currentHdmaOp == nil {
+			//this has to be non -1 the first time because ID= -1 and hdmaen >0
 			dma.currentHdmaId = getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1)
-			if dma.currentHdmaId != -1 {
-				if dma.hdmaOp[dma.currentHdmaId].isDoneForFrame() {
-					if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
-						dma.DmaState = INACTIVE
-						return true
-					}
-					return false
+			if dma.hdmaOp[dma.currentHdmaId].isDoneForFrame() {
+				if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
+					dma.DmaState = HDMA_INACTIVE
+					return true
 				}
-				dma.currentHdmaOp = dma.hdmaOp[dma.currentHdmaId]
-				//dma and hdma on same channel cancels dma
-				if dma.currentHdmaId == dma.currentDmaId && dma.currentDmaOp != nil {
-					dma.currentDmaOp = nil
-					dma.Mdmaen &= ^(1 << dma.currentDmaId)
-				}
-				//dma.currentHdmaOp.setup(dma.Channels[dma.currentHdmaId])
 				return false
 			}
-			if dma.isDmaActive() {
-				dma.DmaState = DMA_TRANSFER
-				return false
+			dma.currentHdmaOp = dma.hdmaOp[dma.currentHdmaId]
+			//dma and hdma on same channel cancels dma
+			if dma.currentHdmaId == dma.currentDmaId && dma.currentDmaOp != nil {
+				dma.currentDmaOp = nil
+				dma.Mdmaen &= ^(1 << dma.currentDmaId)
 			}
-			dma.DmaState = INACTIVE
-			return true
+			return false
 		}
 		if dma.Hdmaen > 0 && dma.currentHdmaOp != nil {
 			if dma.currentHdmaOp.stepCycle() {
 				dma.currentHdmaOp = nil
 				if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
-					if dma.isDmaActive() {
-						//dma.DmaState = DMA_TRANSFER
-						return false
-					}
-					//dma.DmaState = INACTIVE
+					dma.DmaState = HDMA_INACTIVE
 					return true
 				}
+				return false
 			}
 		}
 	}
-	if dma.DmaState == INACTIVE || dma.DmaState == DMA_TRANSFER {
+	if dma.DmaState == HDMA_INACTIVE {
 		if dma.isDmaActive() && dma.currentDmaOp == nil {
-			dma.DmaState = DMA_TRANSFER
 			dma.currentDmaOp = dma.dmaOp
 			dma.currentDmaId = getNextActiveChannel(dma.Mdmaen, 0)
 			dma.currentDmaOp.setup(dma.Channels[dma.currentDmaId])
@@ -166,20 +152,14 @@ func (dma *Dma) Step() bool {
 				dma.currentDmaOp = nil
 				dma.Mdmaen &= ^(1 << dma.currentDmaId)
 			}
-			if dma.Mdmaen == 0 {
-				dma.DmaState = INACTIVE
-				return true
-			} else {
-				dma.DmaState = DMA_TRANSFER
-				return false
-			}
+			return dma.Mdmaen == 0
 		}
 	}
 	return false
 }
 
 func (dma *Dma) IsInProgress() bool {
-	return dma.isDmaActive() || dma.DmaState != INACTIVE
+	return dma.isDmaActive() || dma.DmaState != HDMA_INACTIVE
 }
 
 func (dma *Dma) Reload() {
@@ -189,11 +169,12 @@ func (dma *Dma) Reload() {
 }
 
 func (dma *Dma) DoTransfer() {
-	//if dma.isHdmaActive() {
+	//uncommenting the hdmaen check breaks things and im not entirely sure why
+	//maybe the issue is the test rom uses channel 0 for uploading dma data
+	//and hdma effects so the conflicting dma gets canceled and stuff glitches
 	if dma.Hdmaen > 0 {
-		dma.DmaState = HDMA_TRANSFER
+		dma.DmaState = HDMA_TRANSFER_INIT
 	}
-	//}
 }
 
 func (dma *Dma) isHdmaActive() bool {
