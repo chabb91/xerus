@@ -23,7 +23,7 @@ type SoC struct {
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/RedSpace9BitHDMA.sfc")
+	romData, err := cartridge.Load("/home/chabb/Downloads/WindowHDMA.sfc")
 	if err != nil {
 		panic(err)
 	}
@@ -77,6 +77,8 @@ func (soc *SoC) Write(addr uint16, value byte) error {
 		soc.MulDiv.Wrdivh = value
 	case 0x4206:
 		soc.MulDiv.SetDivisorB(value)
+	case 0x4207:
+		fmt.Println("HTIMEL: ", value)
 	case 0x420B:
 		soc.Dma.Mdmaen = value
 	case 0x420C:
