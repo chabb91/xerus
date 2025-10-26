@@ -38,9 +38,9 @@ func (ppu *PPU) Step() {
 	if !ppu.FBlank {
 		if draw.IsVisible {
 			if ppu.WINDOWS.isDotMasked(bg1, false, draw.H) {
-				ppu.Framebuffer.Back[draw.H][draw.V] = ppu.CGRAM.CGRAM[0]
+				ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.CGRAM.CGRAM[0], ppu.brightness)
 			} else {
-				ppu.Framebuffer.Back[draw.H][draw.V] = ppu.Bg1.GetDotAt(draw.H, draw.V)
+				ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.Bg1.GetDotAt(draw.H, draw.V), ppu.brightness)
 				//ppu.Framebuffer.Back[draw.H][draw.V] = addColors(ppu.Bg1.GetDotAt(draw.H, draw.V), ppu.Bg2.GetDotAt(draw.H, draw.V), false)
 			}
 		}

@@ -33,6 +33,7 @@ type PPU struct {
 	BGxnOFS *BGxnOFS
 
 	FBlank, VBlank, HBlank bool
+	brightness             byte
 
 	H, V int
 
@@ -80,7 +81,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		tempFBlank := ppu.FBlank
 
 		ppu.FBlank = (value>>7)&1 == 1
-		ppu.Framebuffer.Brightness = value & 0xF
+		ppu.brightness = value & 0xF
 
 		if !tempFBlank && ppu.FBlank {
 			ppu.OAM.InvalidateInternalIndex()

@@ -10,10 +10,18 @@ const MaxWidth = 512
 const MaxHeight = 478
 const ScalingFactor = 3
 
+type SnesColorData struct {
+	Color      uint16
+	Brightness byte
+}
+
+func (scd *SnesColorData) SetColor(color uint16, brightness byte) {
+	scd.Color, scd.Brightness = color, brightness
+}
+
 type Framebuffer struct {
-	front, Back *[MaxWidth][MaxHeight]uint16
-	swap        chan *[MaxWidth][MaxHeight]uint16
-	Brightness  byte
+	front, Back *[MaxWidth][MaxHeight]SnesColorData
+	swap        chan *[MaxWidth][MaxHeight]SnesColorData
 
 	CurrentWidth  int
 	CurrentHeight int
@@ -21,9 +29,9 @@ type Framebuffer struct {
 
 func NewFramebuffer() *Framebuffer {
 	fb := &Framebuffer{
-		front:         new([MaxWidth][MaxHeight]uint16),
-		Back:          new([MaxWidth][MaxHeight]uint16),
-		swap:          make(chan *[MaxWidth][MaxHeight]uint16, 1),
+		front:         new([MaxWidth][MaxHeight]SnesColorData),
+		Back:          new([MaxWidth][MaxHeight]SnesColorData),
+		swap:          make(chan *[MaxWidth][MaxHeight]SnesColorData, 1),
 		CurrentWidth:  DefaultWidth,
 		CurrentHeight: DefaultHeight,
 	}
@@ -93,19 +101,22 @@ func (ed *EmulatorDisplay) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return ed.ScreenWidth, ed.ScreenHeight
 }
 
-func (ed *EmulatorDisplay) convertBGR15ToRGBA(buffer *[MaxWidth][MaxHeight]uint16) {
-	//doesnt work for some reason FIXME
-	brightness := (ed.fb.Brightness * 17) & 0xFF
-
+func (ed *EmulatorDisplay) convertBGR15ToRGBA(buffer *[MaxWidth][MaxHeight]SnesColorData) {
 	for y := 0; y < ed.ScreenHeight; y++ {
 		for x := 0; x < ed.ScreenWidth; x++ {
 			v := buffer[x][y]
-			i := (y*ed.ScreenWidth + x) * 4
+			i := (y*ed.ScreenWidth + x) << 2
 
-			ed.transformedBuffer[i] = byte((v & 0x1F) << 3)
-			ed.transformedBuffer[i+1] = byte(((v >> 5) & 0x1F) << 3)
-			ed.transformedBuffer[i+2] = byte(((v >> 10) & 0x1F) << 3)
-			ed.transformedBuffer[i+3] = byte(brightness)
+			r := float32(v.Color&0x1F) * 8
+			g := float32((v.Color>>5)&0x1F) * 8
+			b := float32((v.Color>>10)&0x1F) * 8
+
+			scale := float32(v.Brightness) / 15
+
+			ed.transformedBuffer[i+0] = byte(r * scale)
+			ed.transformedBuffer[i+1] = byte(g * scale)
+			ed.transformedBuffer[i+2] = byte(b * scale)
+			ed.transformedBuffer[i+3] = 0xFF // alpha always fully opaque
 		}
 	}
 }

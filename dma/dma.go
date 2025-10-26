@@ -83,7 +83,7 @@ func (dma *Dma) Step() bool {
 			dma.currentHdmaOp = nil
 			dma.hdmaOp[dma.currentHdmaId].setup(dma.Channels[dma.currentHdmaId])
 			dma.hdmaOp[dma.currentHdmaId].reload(dma.Channels[dma.currentHdmaId])
-			//	log.Printf("RELOADING HDMA on channel %v with params %+v\n", 0, dma.Channels[dma.currentHdmaId])
+			log.Printf("RELOADING HDMA on channel %v with params %+v\n", dma.currentHdmaId, dma.Channels[dma.currentHdmaId])
 			if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
 				dma.DmaState = HDMA_INACTIVE
 				return true
