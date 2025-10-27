@@ -32,7 +32,7 @@ func (oam *OAMController) SetAddWordHigh(value byte) {
 	oam.ByteIndexLatch = (oam.ByteIndexLatch & 0xFF) | (uint16(value&1) << 8)
 	oam.ByteIndexLatch <<= 1
 	oam.InvalidateInternalIndex()
-	oam.priorityRotation = value&0x80 == 1
+	oam.priorityRotation = value&0x80 == 0x80
 }
 
 func (oam *OAMController) WriteOAMData(value byte) {
@@ -142,7 +142,7 @@ type Sprite struct {
 }
 
 func (oam *OAMController) NewSprite(recordId int) *Sprite {
-	recordId %= 128
+	recordId &= 127
 	ret := &Sprite{id: recordId}
 
 	hi := (oam.HighTable[recordId/4] >> (byte(recordId%4) * 2)) & 0x03

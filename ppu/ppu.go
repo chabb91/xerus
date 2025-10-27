@@ -118,12 +118,16 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.Bg2.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.InvalidateBG(bg2)
 		ppu.Bg2.InvalidateScrollCache()
+	case 0x2109:
+		fmt.Println("BG3SC: ", value)
 	case 0x210B:
 		fmt.Println("BG12NBA: ", value)
 		ppu.Bg1.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
 		ppu.Bg2.charTileAddressBase = (uint16((value>>4)&0xF) << 12) & 0x7FFF
 		ppu.InvalidateBG(bg1)
 		ppu.InvalidateBG(bg2)
+	case 0x210C:
+		fmt.Println("BG34NBA: ", value)
 	//TODO add mode 7 scrolling
 	case 0x210D:
 		ppu.Bg1.hScroll = ppu.BGxnOFS.hFormula(value)
