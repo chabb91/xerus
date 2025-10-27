@@ -53,6 +53,8 @@ func (ppu *PPU) Step() {
 
 type InterruptScheduler interface {
 	SetRdnmi(bool)
+	SetHvbjoyV(bool)
+	SetHvbjoyH(bool)
 	FireNmi()
 }
 
@@ -66,18 +68,23 @@ func (ppu *PPU) performAction(action PPUAction) {
 	case ActionVBlankStart:
 		ppu.VBlank = true
 		ppu.InterruptScheduler.FireNmi()
+		ppu.InterruptScheduler.SetHvbjoyV(true)
 		ppu.Framebuffer.Swap()
 	case ActionVBlankEnd:
 		ppu.VBlank = false
 		ppu.InterruptScheduler.SetRdnmi(false)
+		ppu.InterruptScheduler.SetHvbjoyV(false)
 	case ActionSetRdnmi:
 		ppu.InterruptScheduler.SetRdnmi(true)
 	case ActionHBlankStart:
 		ppu.HBlank = true
+		ppu.InterruptScheduler.SetHvbjoyH(true)
 	case ActionHBlankEnd:
 		ppu.HBlank = false
+		ppu.InterruptScheduler.SetHvbjoyH(false)
 	case ActionHBlankEndInterlaceFieldToggle:
 		ppu.HBlank = false
+		ppu.InterruptScheduler.SetHvbjoyH(false)
 	case ActionOAMReset:
 		ppu.OAM.InvalidateInternalIndex()
 	case ActionHDMAStart:

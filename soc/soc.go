@@ -52,6 +52,10 @@ func (soc *SoC) Read(addr uint16) (byte, error) {
 		//return 0x82, fmt.Errorf("internal CPU register $%04X is unimplemented", addr)
 		ret := soc.InterruptController.ReadRdnmi()
 		return ret, nil
+	case 0x4212:
+		//TODO the JOY part of this is not implemented and its missing the specific timings in the ppu
+		//just using the general hblank/vblank for now
+		return soc.InterruptController.Hvbjoy, nil
 	case 0x4214:
 		return soc.MulDiv.Rddivl, nil
 	case 0x4215:

@@ -28,15 +28,32 @@ type InterruptController struct {
 
 func NewInterruptController(bus memory.Bus, cpu *cpu.CPU) *InterruptController {
 	return &InterruptController{
-		cpu:   cpu,
-		bus:   bus,
-		rdnmi: 0x02,
+		cpu:    cpu,
+		bus:    bus,
+		rdnmi:  0x02,
+		Hvbjoy: 0x0,
 	}
 }
 
 func (ic *InterruptController) FireNmi() {
 	if ic.nmi {
 		ic.cpu.NmiSignal = true
+	}
+}
+
+func (ic *InterruptController) SetHvbjoyV(on bool) {
+	if on {
+		ic.Hvbjoy |= 0x80
+	} else {
+		ic.Hvbjoy &= 0x7F
+	}
+}
+
+func (ic *InterruptController) SetHvbjoyH(on bool) {
+	if on {
+		ic.Hvbjoy |= 0x40
+	} else {
+		ic.Hvbjoy &= 0xBF
 	}
 }
 
