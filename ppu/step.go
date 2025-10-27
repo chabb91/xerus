@@ -53,6 +53,7 @@ func (ppu *PPU) Step() {
 
 type InterruptScheduler interface {
 	SetRdnmi(bool)
+	FireNmi()
 }
 
 type HdmaScheduler interface {
@@ -64,11 +65,13 @@ func (ppu *PPU) performAction(action PPUAction) {
 	switch action {
 	case ActionVBlankStart:
 		ppu.VBlank = true
-		ppu.InterruptScheduler.SetRdnmi(true)
+		ppu.InterruptScheduler.FireNmi()
 		ppu.Framebuffer.Swap()
 	case ActionVBlankEnd:
 		ppu.VBlank = false
 		ppu.InterruptScheduler.SetRdnmi(false)
+	case ActionSetRdnmi:
+		ppu.InterruptScheduler.SetRdnmi(true)
 	case ActionHBlankStart:
 		ppu.HBlank = true
 	case ActionHBlankEnd:

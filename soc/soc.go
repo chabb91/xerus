@@ -69,6 +69,8 @@ func (soc *SoC) Write(addr uint16, value byte) error {
 	switch addr {
 	case 0x4200:
 		fmt.Println("NMITIMEN: ", value)
+		//TODO THIS IS OMEGA EXPERIMENTAL
+		soc.InterruptController.SetNmitimen(value)
 	case 0x4202:
 		soc.MulDiv.Wrmpya = value
 	case 0x4203:

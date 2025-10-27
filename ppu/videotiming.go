@@ -17,6 +17,7 @@ const (
 	ActionShortLine
 	ActionLongLine
 	ActionSetNmi
+	ActionSetRdnmi
 	ActionJoypadReadStart
 	//ActionJoypadReadEnd
 	ActionCpuRefresh
@@ -103,6 +104,9 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 			if v == vActive+1 && h == 0 {
 				action = ActionVBlankStart
 				//TODO this also sets NMI 2(0.5dots) cycles later.
+			}
+			if v == vActive+1 && h == 54 {
+				action = ActionSetRdnmi
 			}
 			if v == vActive+1 && h == 10 {
 				action = ActionOAMReset

@@ -34,6 +34,12 @@ func NewInterruptController(bus memory.Bus, cpu *cpu.CPU) *InterruptController {
 	}
 }
 
+func (ic *InterruptController) FireNmi() {
+	if ic.nmi {
+		ic.cpu.NmiSignal = true
+	}
+}
+
 func (ic *InterruptController) SetNmitimen(value byte) {
 	if value >= 0x80 {
 		ic.nmi = true
