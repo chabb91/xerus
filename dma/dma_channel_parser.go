@@ -2,7 +2,6 @@ package dma
 
 import (
 	"SNES_emulator/memory"
-	"fmt"
 )
 
 const (
@@ -169,11 +168,8 @@ type HdmaOperation struct {
 	lineCounter byte
 	repeat      bool
 
-	doTransfer bool
-}
-
-func (op *HdmaOperation) isDoneForFrame() bool {
-	return op.lineCounter == 0 && !op.repeat
+	doTransfer   bool
+	isTerminated bool
 }
 
 func (op *HdmaOperation) reload(channel DmaChannel) {
@@ -183,6 +179,7 @@ func (op *HdmaOperation) reload(channel DmaChannel) {
 	op.repeat = ntlrx&0x80 != 0
 	op.addr1++
 	op.doTransfer = true
+	op.isTerminated = ntlrx == 0
 }
 
 func (op *HdmaOperation) setup(channel DmaChannel) {
@@ -218,30 +215,24 @@ func (op *HdmaOperation) setup(channel DmaChannel) {
 
 	op.lineCounter = channel.ntlrx & 0x7F
 	op.repeat = channel.ntlrx&0x80 != 0
+
+	op.isTerminated = channel.ntlrx == 0
+	op.doTransfer = false
 }
 
 func (op *HdmaOperation) stepCycle() bool {
-	if op.doTransfer {
-		fmt.Println("transferring data", op.lineCounter)
-		if op.transferIndex < op.transferUnitSize {
-			transfer(op.transferMode, op.transferIndex, op.addr1+uint32(op.transferIndex), op.busB, op.direction, op.bus)
-			op.transferIndex++
-		}
-		if op.transferIndex == op.transferUnitSize {
-			op.doTransfer = op.repeat
-			op.transferIndex = 0
-			op.lineCounter--
-			op.stepLineCounter()
-			return true
-		} else {
-			return false
-		}
-	} else {
-		fmt.Println("NOT transferring data", op.lineCounter)
+	if op.transferIndex < op.transferUnitSize {
+		transfer(op.transferMode, op.transferIndex, op.addr1+uint32(op.transferIndex), op.busB, op.direction, op.bus)
+		op.transferIndex++
+	}
+	if op.transferIndex == op.transferUnitSize {
+		op.doTransfer = op.repeat
+		op.transferIndex = 0
 		op.stepLineCounter()
 		return true
+	} else {
+		return false
 	}
-
 }
 
 func (op *HdmaOperation) stepLineCounter() {
@@ -253,5 +244,6 @@ func (op *HdmaOperation) stepLineCounter() {
 		op.repeat = ntlrx&0x80 != 0
 		op.addr1++
 		op.doTransfer = true
+		op.isTerminated = ntlrx == 0
 	}
 }

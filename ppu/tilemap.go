@@ -300,6 +300,9 @@ func (ct *CharTile) setup(bitPlanes colorDepth) {
 		ct.renderer = RenderTile4bppLUT
 	case 8:
 		ct.renderer = RenderTile8bppLUT
+	default:
+		//WHY WOULD A ROM NOT CALL BGMODE
+		ct.renderer = RenderTile2bppLUT
 	}
 }
 

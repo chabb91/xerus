@@ -23,7 +23,7 @@ type SoC struct {
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/WindowHDMA.sfc")
+	romData, err := cartridge.Load("/home/chabb/Downloads/hdma-2100-glitch-2ch-0a.sfc")
 	if err != nil {
 		panic(err)
 	}
@@ -67,6 +67,8 @@ func (soc *SoC) Read(addr uint16) (byte, error) {
 
 func (soc *SoC) Write(addr uint16, value byte) error {
 	switch addr {
+	case 0x4200:
+		fmt.Println("NMITIMEN: ", value)
 	case 0x4202:
 		soc.MulDiv.Wrmpya = value
 	case 0x4203:

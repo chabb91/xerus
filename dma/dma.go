@@ -39,8 +39,7 @@ type Dma struct {
 	dmaOp        *DmaOperation
 	currentDmaOp *DmaOperation
 
-	hdmaOp        [8]*HdmaOperation
-	currentHdmaOp *HdmaOperation
+	hdmaOp [8]*HdmaOperation
 
 	currentDmaId  int
 	currentHdmaId int
@@ -82,7 +81,6 @@ func (dma *Dma) Step() bool {
 	if dma.DmaState == HDMA_RELOAD {
 		dma.currentHdmaId = getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1)
 		if dma.currentHdmaId != -1 {
-			dma.currentHdmaOp = nil
 			dma.hdmaOp[dma.currentHdmaId].setup(dma.Channels[dma.currentHdmaId])
 			dma.hdmaOp[dma.currentHdmaId].reload(dma.Channels[dma.currentHdmaId])
 			log.Printf("RELOADING HDMA on channel %v with params %+v\n", dma.currentHdmaId, dma.Channels[dma.currentHdmaId])
@@ -96,37 +94,46 @@ func (dma *Dma) Step() bool {
 	//costs 18 master cycles
 	if dma.DmaState == HDMA_TRANSFER_INIT {
 		dma.currentHdmaId = -1
-		dma.DmaState = HDMA_TRANSFER
+		dma.DmaState = HDMA_TRANSFER_CH_OVERHEAD
 		return false
 	}
-	if dma.DmaState == HDMA_TRANSFER {
-		if dma.Hdmaen > 0 && dma.currentHdmaOp == nil {
+	if dma.DmaState == HDMA_TRANSFER_CH_OVERHEAD {
+		if dma.Hdmaen > 0 {
 			//this has to be non -1 the first time because ID= -1 and hdmaen >0
 			dma.currentHdmaId = getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1)
-			if dma.hdmaOp[dma.currentHdmaId].isDoneForFrame() {
+			if dma.hdmaOp[dma.currentHdmaId].isTerminated {
 				if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
 					dma.DmaState = HDMA_INACTIVE
 					return true
 				}
 				return false
 			}
-			dma.currentHdmaOp = dma.hdmaOp[dma.currentHdmaId]
-			//dma and hdma on same channel cancels dma
-			if dma.currentHdmaId == dma.currentDmaId && dma.currentDmaOp != nil {
-				dma.currentDmaOp = nil
-				dma.Mdmaen &= ^(1 << dma.currentDmaId)
+			if !dma.hdmaOp[dma.currentHdmaId].doTransfer {
+				dma.hdmaOp[dma.currentHdmaId].stepLineCounter()
+				if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
+					dma.DmaState = HDMA_INACTIVE
+					return true
+				}
+				return false
+			} else {
+				dma.DmaState = HDMA_TRANSFER
+				//dma and hdma on same channel cancels dma
+				if dma.currentHdmaId == dma.currentDmaId && dma.currentDmaOp != nil {
+					dma.currentDmaOp = nil
+					dma.Mdmaen &= ^(1 << dma.currentDmaId)
+				}
+				return false
 			}
-			return false
 		}
-		if dma.Hdmaen > 0 && dma.currentHdmaOp != nil {
-			if dma.currentHdmaOp.stepCycle() {
-				dma.currentHdmaOp = nil
-				if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
-					dma.DmaState = HDMA_INACTIVE
-					return true
-				}
-				return false
+	}
+	if dma.DmaState == HDMA_TRANSFER {
+		if dma.hdmaOp[dma.currentHdmaId].stepCycle() {
+			if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
+				dma.DmaState = HDMA_INACTIVE
+				return true
 			}
+			dma.DmaState = HDMA_TRANSFER_CH_OVERHEAD
+			return false
 		}
 	}
 	if dma.DmaState == HDMA_INACTIVE {
@@ -169,7 +176,7 @@ func (dma *Dma) DoTransfer() {
 
 func (dma *Dma) isHdmaActive() bool {
 	for v := range 8 {
-		if (dma.Hdmaen&(1<<v)) != 0 && !dma.hdmaOp[v].isDoneForFrame() {
+		if (dma.Hdmaen&(1<<v)) != 0 && !dma.hdmaOp[v].isTerminated {
 			//dma.currentHdmaId = v
 			return true
 		}
