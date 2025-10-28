@@ -11,12 +11,16 @@ type OAMController struct {
 	HighTable []byte
 
 	priorityRotation bool
+
+	sv spriteValidator
 }
 
-func NewOAM() *OAMController {
+func NewOAM(sv spriteValidator) *OAMController {
 	return &OAMController{
 		LowTable:  make([]byte, 0x200),
-		HighTable: make([]byte, 0x20)}
+		HighTable: make([]byte, 0x20),
+		sv:        sv,
+	}
 }
 
 func (oam *OAMController) SetAddWordLow(value byte) {
@@ -37,11 +41,16 @@ func (oam *OAMController) WriteOAMData(value byte) {
 		if oam.ByteIndex&1 == 1 {
 			oam.LowTable[wrapOAMLowTableIndex(oam.ByteIndex)] = value
 			oam.LowTable[wrapOAMLowTableIndex(oam.ByteIndex-1)] = oam.LowByteLatch
+
+			oam.sv.invalidateSpriteLo(wrapOAMLowTableIndex(oam.ByteIndex))
 		} else {
 			oam.LowByteLatch = value
 		}
 	} else {
-		oam.HighTable[wrapOAMHighTableIndex(oam.ByteIndex)] = value
+		id := wrapOAMHighTableIndex(oam.ByteIndex)
+		oam.HighTable[id] = value
+
+		oam.sv.invalidateSpriteHi(id)
 	}
 
 	oam.ByteIndex++

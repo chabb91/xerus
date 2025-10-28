@@ -19,6 +19,11 @@ type tileValidator interface {
 	//invalidateEverything()
 }
 
+type spriteValidator interface {
+	invalidateSpriteLo(id uint16)
+	invalidateSpriteHi(id uint16)
+}
+
 type PPU struct {
 	SETINI *SETINI
 
@@ -49,7 +54,6 @@ type PPU struct {
 
 func NewPPU() *PPU {
 	ppu := &PPU{
-		OAM:     NewOAM(),
 		CGRAM:   NewCGRAM(),
 		BGxnOFS: &BGxnOFS{},
 		SETINI:  NewSETINI(PAL_TIMING),
@@ -58,6 +62,7 @@ func NewPPU() *PPU {
 	ppu.Bg2 = NewBackground1(ppu, &ppu.bgEpochs[bg2], bg2)
 	ppu.Obj = newObjects(ppu, &ppu.bgEpochs[obj], obj)
 	ppu.VRAM = NewVRAM(ppu)
+	ppu.OAM = NewOAM(ppu)
 	return ppu
 }
 
@@ -91,6 +96,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		}
 	case 0x2101:
 		ppu.Obj.setupOBSEL(value)
+		ppu.InvalidateLayer(obj)
 	case 0x2102:
 		ppu.OAM.SetAddWordLow(value)
 	case 0x2103:
@@ -105,21 +111,22 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.Bg2.charTileSize = (value >> 5) & 1
 		ppu.Bg2.colorDepth = bpp4
 		//TODO should invalidate everything
-		ppu.InvalidateBG(bg1)
+		ppu.InvalidateLayer(bg1)
 		ppu.Bg1.InvalidateScrollCache()
-		ppu.InvalidateBG(bg2)
+		ppu.InvalidateLayer(bg2)
 		ppu.Bg2.InvalidateScrollCache()
+		ppu.InvalidateLayer(obj)
 	case 0x2107:
 		fmt.Println("BG1SC: ", value)
 		ppu.Bg1.tileMapSize = uint16(value & 0x3)
 		ppu.Bg1.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
-		ppu.InvalidateBG(bg1)
+		ppu.InvalidateLayer(bg1)
 		ppu.Bg1.InvalidateScrollCache()
 	case 0x2108:
 		fmt.Println("BG2SC: ", value)
 		ppu.Bg2.tileMapSize = uint16(value & 0x3)
 		ppu.Bg2.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
-		ppu.InvalidateBG(bg2)
+		ppu.InvalidateLayer(bg2)
 		ppu.Bg2.InvalidateScrollCache()
 	case 0x2109:
 		fmt.Println("BG3SC: ", value)
@@ -127,8 +134,8 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		fmt.Println("BG12NBA: ", value)
 		ppu.Bg1.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
 		ppu.Bg2.charTileAddressBase = (uint16((value>>4)&0xF) << 12) & 0x7FFF
-		ppu.InvalidateBG(bg1)
-		ppu.InvalidateBG(bg2)
+		ppu.InvalidateLayer(bg1)
+		ppu.InvalidateLayer(bg2)
 	case 0x210C:
 		fmt.Println("BG34NBA: ", value)
 	//TODO add mode 7 scrolling
@@ -221,10 +228,22 @@ func (ppu *PPU) tryInvalidate(addr uint16) {
 	//maybe return true or something if theres a hit so it can stop checking the rest of the bgs
 	ppu.Bg1.Invalidate(addr)
 	ppu.Bg2.Invalidate(addr)
+	ppu.Obj.Invalidate(addr)
 }
 
-func (ppu *PPU) InvalidateBG(bgIndex ppuLayer) {
-	if bgIndex >= 0 && bgIndex < ppuLayer(len(ppu.bgEpochs)) {
-		ppu.bgEpochs[bgIndex]++
+func (ppu *PPU) InvalidateLayer(layerIndex ppuLayer) {
+	if layerIndex >= 0 && layerIndex < ppuLayer(len(ppu.bgEpochs)) {
+		ppu.bgEpochs[layerIndex]++
+	}
+}
+
+func (ppu *PPU) invalidateSpriteLo(id uint16) {
+	ppu.Obj.Sprites[(id>>2)&127].isValid = false
+}
+
+func (ppu *PPU) invalidateSpriteHi(id uint16) {
+	id = (id & 31) << 2
+	for i := range uint16(4) {
+		ppu.Obj.Sprites[id+i].isValid = false
 	}
 }

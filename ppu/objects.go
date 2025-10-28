@@ -3,8 +3,9 @@ package ppu
 type Objects struct {
 	ds tileDataSource
 
-	Sprites   [128]Sprite
-	charTiles [0x8000]*CharTile
+	Sprites    [128]Sprite
+	charTiles  [2][256]CharTile
+	colorDepth colorDepth
 
 	name, nameBase uint16
 	tileSize       [2]OBTileSize
@@ -15,15 +16,18 @@ type Objects struct {
 }
 
 func newObjects(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Objects {
-	ret := &Objects{ds: ds,
+	obj := &Objects{
+		ds:           ds,
 		currentEpoch: epochPtr,
 		layerId:      layer,
+		colorDepth:   bpp4,
 	}
 	for i := range 128 {
-		ret.Sprites[i].ob = ret
-		ret.Sprites[i].id = i
+		obj.Sprites[i].ob = obj
+		obj.Sprites[i].id = i
 	}
-	return ret
+
+	return obj
 }
 
 func (ob *Objects) setupOBSEL(value byte) {
@@ -32,14 +36,25 @@ func (ob *Objects) setupOBSEL(value byte) {
 	ob.nameBase = uint16(value&0x7) << 13
 }
 
-func (ob *Objects) Invalidate(addr uint16) {
-	addressBase := ob.nameBase & 0x7FFF
+func (ob *Objects) GetLayerSourceEpoch() *uint64 {
+	return ob.currentEpoch
+}
 
-	if addr >= addressBase {
-		tileIndex := (addr - addressBase) >> 4
-		if t := ob.charTiles[addressBase+(tileIndex<<4)]; t != nil {
-			t.isValid = false
-			//fmt.Println("invlidation")
+func (ob *Objects) Invalidate(addr uint16) {
+	baseAddress := ob.nameBase & 0x7FFF
+
+	offsetAddress := (ob.nameBase + ob.name) & 0x7FFF
+
+	if addr >= baseAddress && addr < baseAddress+0x1000 {
+		tileIndex := (addr - baseAddress) >> 4
+		if tileIndex < 256 {
+			ob.charTiles[0][tileIndex].isValid = false
+		}
+
+	} else if addr >= offsetAddress && addr < offsetAddress+0x1000 {
+		tileIndex := (addr - offsetAddress) >> 4
+		if tileIndex < 256 {
+			ob.charTiles[1][tileIndex].isValid = false
 		}
 	}
 }
@@ -101,6 +116,8 @@ type Sprite struct {
 
 	isFlippedHorizontally, isFlippedVertically bool
 	size                                       byte
+
+	isValid bool
 }
 
 func (sprite *Sprite) setup() {
