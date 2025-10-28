@@ -14,6 +14,48 @@ var charTileSizeLUT = [2]struct{ W, H, divMask, modMask uint16 }{
 
 var charMapIdToOffsetLUT = [4]uint16{0, 1, 0x10, 0x11}
 
+type OBTileSize struct {
+	W, H                        uint16
+	divMaskW, divMaskH          uint16
+	modMaskW, modMaskH          uint16
+	tilesPerRow, tilesPerColumn uint16
+}
+
+var obTileSizeLUT = [8][2]OBTileSize{
+	{
+		{W: 8, H: 8, divMaskW: 3, divMaskH: 3, modMaskW: 7, modMaskH: 7, tilesPerRow: 1, tilesPerColumn: 1},
+		{W: 16, H: 16, divMaskW: 4, divMaskH: 4, modMaskW: 15, modMaskH: 15, tilesPerRow: 2, tilesPerColumn: 2},
+	},
+	{
+		{W: 8, H: 8, divMaskW: 3, divMaskH: 3, modMaskW: 7, modMaskH: 7, tilesPerRow: 1, tilesPerColumn: 1},
+		{W: 32, H: 32, divMaskW: 5, divMaskH: 5, modMaskW: 31, modMaskH: 31, tilesPerRow: 4, tilesPerColumn: 4},
+	},
+	{
+		{W: 8, H: 8, divMaskW: 3, divMaskH: 3, modMaskW: 7, modMaskH: 7, tilesPerRow: 1, tilesPerColumn: 1},
+		{W: 64, H: 64, divMaskW: 6, divMaskH: 6, modMaskW: 63, modMaskH: 63, tilesPerRow: 8, tilesPerColumn: 8},
+	},
+	{
+		{W: 16, H: 16, divMaskW: 4, divMaskH: 4, modMaskW: 15, modMaskH: 15, tilesPerRow: 2, tilesPerColumn: 2},
+		{W: 32, H: 32, divMaskW: 5, divMaskH: 5, modMaskW: 31, modMaskH: 31, tilesPerRow: 4, tilesPerColumn: 4},
+	},
+	{
+		{W: 16, H: 16, divMaskW: 4, divMaskH: 4, modMaskW: 15, modMaskH: 15, tilesPerRow: 2, tilesPerColumn: 2},
+		{W: 64, H: 64, divMaskW: 6, divMaskH: 6, modMaskW: 63, modMaskH: 63, tilesPerRow: 8, tilesPerColumn: 8},
+	},
+	{
+		{W: 32, H: 32, divMaskW: 5, divMaskH: 5, modMaskW: 31, modMaskH: 31, tilesPerRow: 4, tilesPerColumn: 4},
+		{W: 64, H: 64, divMaskW: 6, divMaskH: 6, modMaskW: 63, modMaskH: 63, tilesPerRow: 8, tilesPerColumn: 8},
+	},
+	{
+		{W: 16, H: 32, divMaskW: 3, divMaskH: 4, modMaskW: 15, modMaskH: 31, tilesPerRow: 2, tilesPerColumn: 4},
+		{W: 32, H: 64, divMaskW: 5, divMaskH: 6, modMaskW: 31, modMaskH: 63, tilesPerRow: 4, tilesPerColumn: 8},
+	},
+	{
+		{W: 16, H: 32, divMaskW: 3, divMaskH: 4, modMaskW: 15, modMaskH: 31, tilesPerRow: 2, tilesPerColumn: 4},
+		{W: 32, H: 32, divMaskW: 5, divMaskH: 5, modMaskW: 31, modMaskH: 31, tilesPerRow: 4, tilesPerColumn: 4},
+	},
+}
+
 var tileFlipXLUT [4][8]byte
 var tileFlipYLUT [4][8]byte
 var compositeFlipLUT [4][4]byte

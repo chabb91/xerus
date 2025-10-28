@@ -32,6 +32,8 @@ type PPU struct {
 	Bg2     *Background
 	BGxnOFS *BGxnOFS
 
+	Obj *Objects
+
 	FBlank, VBlank, HBlank bool
 	brightness             byte
 
@@ -54,6 +56,7 @@ func NewPPU() *PPU {
 	}
 	ppu.Bg1 = NewBackground1(ppu, &ppu.bgEpochs[bg1], bg1)
 	ppu.Bg2 = NewBackground1(ppu, &ppu.bgEpochs[bg2], bg2)
+	ppu.Obj = newObjects(ppu)
 	ppu.VRAM = NewVRAM(ppu)
 	return ppu
 }
@@ -87,7 +90,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 			ppu.OAM.InvalidateInternalIndex()
 		}
 	case 0x2101:
-		ppu.OAM.obsel.Setup(value)
+		ppu.Obj.setupOBSEL(value)
 	case 0x2102:
 		ppu.OAM.SetAddWordLow(value)
 	case 0x2103:
