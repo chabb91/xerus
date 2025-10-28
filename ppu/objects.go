@@ -27,6 +27,14 @@ func newObjects(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Objects {
 		obj.Sprites[i].id = i
 	}
 
+	for i := range 2 {
+		for j := range 256 {
+			obj.charTiles[i][j].layerEpoch = obj
+			obj.charTiles[i][j].ds = obj.ds
+			obj.charTiles[i][j].isValid = false
+		}
+	}
+
 	return obj
 }
 
@@ -83,10 +91,14 @@ func (ob *Objects) drawASprite(value byte, H, V uint16) uint16 {
 		tileIndex := tileRow<<4 | tileColumn
 		wordIndex := sprite.GetVramTileWordIndex(tileIndex)
 
-		var resolvedData [8][8]byte
-		RenderTile4bppLUT(ob.ds.getVRAM(), uint16(wordIndex), &resolvedData)
 		px := x & 7
 		r := y & 7
+
+		//var resolvedData [8][8]byte
+		//RenderTile4bppLUT(ob.ds.getVRAM(), uint16(wordIndex), &resolvedData)
+
+		char := &ob.charTiles[sprite.nameTable][tileIndex]
+		char.tileAddress = uint16(wordIndex)
 
 		//fmt.Println(x, y)
 		//fmt.Println(px, r)
@@ -95,7 +107,8 @@ func (ob *Objects) drawASprite(value byte, H, V uint16) uint16 {
 		//fmt.Println(wordIndex)
 		//fmt.Println(resolvedData[px][r])
 		//return ob.ds.getCGRAM()[sprite.GetCgramIndex(int(resolvedData[r][px]))]
-		return uint16(sprite.GetCgramIndex(int(resolvedData[r][px])))
+		//return uint16(sprite.GetCgramIndex(int(resolvedData[r][px])))
+		return uint16(sprite.GetCgramIndex(int(char.getPixelAt(ob.colorDepth, byte(px), byte(r)))))
 	}
 	//return ob.ds.getCGRAM()[0]
 	return 0
