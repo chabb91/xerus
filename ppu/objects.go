@@ -3,14 +3,22 @@ package ppu
 type Objects struct {
 	ds tileDataSource
 
-	Sprites [128]Sprite
+	Sprites   [128]Sprite
+	charTiles [0x8000]*CharTile
 
-	name, nameBase byte
+	name, nameBase uint16
 	tileSize       [2]OBTileSize
+
+	currentEpoch *uint64
+
+	layerId ppuLayer
 }
 
-func newObjects(ds tileDataSource) *Objects {
-	ret := &Objects{ds: ds}
+func newObjects(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Objects {
+	ret := &Objects{ds: ds,
+		currentEpoch: epochPtr,
+		layerId:      layer,
+	}
 	for i := range 128 {
 		ret.Sprites[i].ob = ret
 		ret.Sprites[i].id = i
@@ -20,8 +28,20 @@ func newObjects(ds tileDataSource) *Objects {
 
 func (ob *Objects) setupOBSEL(value byte) {
 	ob.tileSize = obTileSizeLUT[(value>>5)&0x7]
-	ob.name = (value >> 3) & 0x3
-	ob.nameBase = value & 0x7
+	ob.name = (uint16((value>>3)&0x3) + 1) << 12
+	ob.nameBase = uint16(value&0x7) << 13
+}
+
+func (ob *Objects) Invalidate(addr uint16) {
+	addressBase := ob.nameBase & 0x7FFF
+
+	if addr >= addressBase {
+		tileIndex := (addr - addressBase) >> 4
+		if t := ob.charTiles[addressBase+(tileIndex<<4)]; t != nil {
+			t.isValid = false
+			//fmt.Println("invlidation")
+		}
+	}
 }
 
 func (ob *Objects) draw8sprites(H, V uint16) uint16 {
@@ -104,24 +124,24 @@ func (sprite *Sprite) setup() {
 
 // converts the local palette index (0-15) to CGRAM index
 func (sprite *Sprite) GetCgramIndex(localIndex int) int {
-	localIndex %= 16
-	return int(128 + sprite.paletteNum*16 + byte(localIndex))
+	localIndex &= 15
+	return int(128 + sprite.paletteNum<<4 + byte(localIndex))
 }
 
 // finds the first tile index belonging to this sprite in the VRAM
 func (sprite *Sprite) GetVramFirstTileWordIndex() int {
 	if sprite.nameTable == 0 {
-		return int(((uint16(sprite.ob.nameBase) << 13) + (uint16(sprite.tileIndex) << 4)) & 0x7FFF)
+		return int((sprite.ob.nameBase + (uint16(sprite.tileIndex) << 4)) & 0x7FFF)
 	} else {
-		return int(((uint16(sprite.ob.nameBase) << 13) + (uint16(sprite.tileIndex) << 4) + ((uint16(sprite.ob.name) + 1) << 12)) & 0x7FFF)
+		return int((sprite.ob.nameBase + (uint16(sprite.tileIndex) << 4) + sprite.ob.name) & 0x7FFF)
 	}
 }
 
 func (sprite *Sprite) GetVramTileWordIndex(tileIndex byte) int {
 	if sprite.nameTable == 0 {
-		return int(((uint16(sprite.ob.nameBase) << 13) + (uint16(tileIndex) << 4)) & 0x7FFF)
+		return int((sprite.ob.nameBase + (uint16(tileIndex) << 4)) & 0x7FFF)
 	} else {
-		return int(((uint16(sprite.ob.nameBase) << 13) + (uint16(tileIndex) << 4) + ((uint16(sprite.ob.name) + 1) << 12)) & 0x7FFF)
+		return int((sprite.ob.nameBase + (uint16(tileIndex) << 4) + sprite.ob.name) & 0x7FFF)
 	}
 }
 

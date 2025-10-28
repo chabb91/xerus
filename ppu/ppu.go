@@ -39,7 +39,7 @@ type PPU struct {
 
 	H, V int
 
-	bgEpochs [5]uint64 //1 2 3 4 and mode7
+	bgEpochs [6]uint64 //1 2 3 4 mode7 and obj
 
 	InterruptScheduler InterruptScheduler
 	HdmaScheduler      HdmaScheduler
@@ -56,7 +56,7 @@ func NewPPU() *PPU {
 	}
 	ppu.Bg1 = NewBackground1(ppu, &ppu.bgEpochs[bg1], bg1)
 	ppu.Bg2 = NewBackground1(ppu, &ppu.bgEpochs[bg2], bg2)
-	ppu.Obj = newObjects(ppu)
+	ppu.Obj = newObjects(ppu, &ppu.bgEpochs[obj], obj)
 	ppu.VRAM = NewVRAM(ppu)
 	return ppu
 }

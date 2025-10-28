@@ -23,8 +23,8 @@ type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
 type optResolver func(ppuLayer, uint16, uint16) (uint16, uint16)
 
 // The PPU provides access to the epoch relevant to a specific BG layer
-type BGEpochSource interface {
-	GetBGSourceEpoch() *uint64
+type LayerEpochSource interface {
+	GetLayerSourceEpoch() *uint64
 }
 
 type BackgroundI interface {
@@ -85,6 +85,10 @@ func NewBackground1(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Backgr
 
 func (bg *Background) InvalidateScrollCache() {
 	bg.scrollEpoch++
+}
+
+func (bg *Background) GetLayerSourceEpoch() *uint64 {
+	return bg.currentEpoch
 }
 
 func (bg *Background) Invalidate(addr uint16) {
@@ -164,7 +168,7 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 	charAddress := ((tile.charIndex+charMapIdToOffsetLUT[charMapID])*uint16(bg.colorDepth<<2) + bg.charTileAddressBase) & 0x7FFF
 	char := bg.charTiles[charAddress]
 	if char == nil {
-		char = &CharTile{isValid: false, ds: bg.ds, tileAddress: charAddress, bg: bg}
+		char = &CharTile{isValid: false, ds: bg.ds, tileAddress: charAddress, layerEpoch: bg}
 		bg.charTiles[charAddress] = char
 	}
 
@@ -289,7 +293,7 @@ type CharTile struct {
 	ds          tileDataSource
 
 	lastRenderEpoch uint64
-	bg              *Background
+	layerEpoch      LayerEpochSource
 }
 
 func (ct *CharTile) setup(bitPlanes colorDepth) {
@@ -307,7 +311,7 @@ func (ct *CharTile) setup(bitPlanes colorDepth) {
 }
 
 func (ct *CharTile) getPixelAt(bitplanes colorDepth, px, row byte) byte {
-	currentEpoch := *ct.bg.currentEpoch
+	currentEpoch := *ct.layerEpoch.GetLayerSourceEpoch()
 	if ct.lastRenderEpoch != currentEpoch {
 		goto RENDER_AND_CACHE
 	}
