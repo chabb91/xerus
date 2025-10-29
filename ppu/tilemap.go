@@ -282,7 +282,11 @@ func (bt *BgTile) setup(tileIndex uint16) {
 	bt.lastRenderEpoch = currentEpoch
 }
 
-type VRAMAddressCalculator func() uint16
+func (tile *BgTile) GetVramTileWordIndex(tileIndex byte) uint16 {
+	return ((tile.charIndex+charMapIdToOffsetLUT[tileIndex])*uint16(tile.bg.colorDepth<<2) + tile.bg.charTileAddressBase) & 0x7FFF
+}
+
+type VRAMAddressCalculator func(tileIndex byte) uint16
 
 // TODO chartile needs to be able to handle 16x16 tiles later on too
 type CharTile struct {

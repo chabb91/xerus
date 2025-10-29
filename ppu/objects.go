@@ -125,9 +125,9 @@ func (ob *Objects) drawASpriteByRef(sprite *Sprite, H, V uint16) uint16 {
 	r := y & 7
 
 	char := &ob.charTiles[sprite.nameTable][tileIndex]
-	char.tileAddress = uint16(wordIndex)
+	char.tileAddress = wordIndex
 
-	return uint16(sprite.GetCgramIndex(int(char.getPixelAt(ob.colorDepth, byte(px), byte(r)))))
+	return uint16(sprite.GetCgramIndex(char.getPixelAt(ob.colorDepth, byte(px), byte(r))))
 
 }
 
@@ -153,7 +153,7 @@ func (ob *Objects) drawASprite(value byte, H, V uint16) uint16 {
 		//RenderTile4bppLUT(ob.ds.getVRAM(), uint16(wordIndex), &resolvedData)
 
 		char := &ob.charTiles[sprite.nameTable][tileIndex]
-		char.tileAddress = uint16(wordIndex)
+		char.tileAddress = wordIndex
 
 		//fmt.Println(x, y)
 		//fmt.Println(px, r)
@@ -163,7 +163,7 @@ func (ob *Objects) drawASprite(value byte, H, V uint16) uint16 {
 		//fmt.Println(resolvedData[px][r])
 		//return ob.ds.getCGRAM()[sprite.GetCgramIndex(int(resolvedData[r][px]))]
 		//return uint16(sprite.GetCgramIndex(int(resolvedData[r][px])))
-		return uint16(sprite.GetCgramIndex(int(char.getPixelAt(ob.colorDepth, byte(px), byte(r)))))
+		return uint16(sprite.GetCgramIndex(char.getPixelAt(ob.colorDepth, byte(px), byte(r))))
 	}
 	//return ob.ds.getCGRAM()[0]
 	return 0
@@ -215,9 +215,9 @@ func (sprite *Sprite) setup() {
 }
 
 // converts the local palette index (0-15) to CGRAM index
-func (sprite *Sprite) GetCgramIndex(localIndex int) int {
+func (sprite *Sprite) GetCgramIndex(localIndex byte) byte {
 	localIndex &= 15
-	return int(128 + sprite.paletteNum<<4 + byte(localIndex))
+	return 128 + sprite.paletteNum<<4 + localIndex
 }
 
 // finds the first tile index belonging to this sprite in the VRAM
@@ -229,11 +229,11 @@ func (sprite *Sprite) GetVramFirstTileWordIndex() int {
 	}
 }
 
-func (sprite *Sprite) GetVramTileWordIndex(tileIndex byte) int {
+func (sprite *Sprite) GetVramTileWordIndex(tileIndex byte) uint16 {
 	if sprite.nameTable == 0 {
-		return int((sprite.ob.nameBase + (uint16(tileIndex) << 4)) & 0x7FFF)
+		return (sprite.ob.nameBase + (uint16(tileIndex) << 4)) & 0x7FFF
 	} else {
-		return int((sprite.ob.nameBase + (uint16(tileIndex) << 4) + sprite.ob.name) & 0x7FFF)
+		return (sprite.ob.nameBase + (uint16(tileIndex) << 4) + sprite.ob.name) & 0x7FFF
 	}
 }
 
