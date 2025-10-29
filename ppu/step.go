@@ -40,11 +40,10 @@ func (ppu *PPU) Step() {
 			if ppu.WINDOWS.isDotMasked(bg1, false, draw.H) {
 				ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.CGRAM.CGRAM[0], ppu.brightness)
 			} else {
-				if ok := ppu.Obj.draw8sprites(draw.H, draw.V); ok > 128 {
+				if ok := ppu.Obj.drawASpriteByRef(ppu.Obj.spritesOnScanLine[draw.H], draw.H, draw.V); ok > 128 {
 					ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.CGRAM.CGRAM[ok], ppu.brightness)
 				} else {
 					ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.Bg1.GetDotAt(draw.H, draw.V), ppu.brightness)
-
 				}
 				//ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.Obj.draw8sprites(draw.H, draw.V), ppu.brightness)
 				//ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.Bg1.GetDotAt(draw.H, draw.V), ppu.brightness)
@@ -103,5 +102,7 @@ func (ppu *PPU) performAction(action PPUAction) {
 	case ActionSetNmi:
 	case ActionJoypadReadStart:
 	case ActionCpuRefresh:
+	case ActionPrepareScanline:
+		ppu.Obj.prepareScanLine(uint16(ppu.V))
 	}
 }

@@ -3,7 +3,9 @@ package ppu
 type Objects struct {
 	ds tileDataSource
 
-	Sprites    [128]Sprite
+	Sprites           [128]Sprite
+	spritesOnScanLine [256]*Sprite
+
 	charTiles  [2][256]CharTile
 	colorDepth colorDepth
 
@@ -68,6 +70,33 @@ func (ob *Objects) Invalidate(addr uint16) {
 	}
 }
 
+// TODO work in progress. its not detecting the correct sprite prio, it doesnt count tiles rendered it counts X and Y wrong
+// lots to do with this one
+func (ob *Objects) prepareScanLine(V uint16) {
+	spriteCnt := 0
+	writes := 0
+	for i := range 256 {
+		ob.spritesOnScanLine[i] = nil
+	}
+	for i, _ := range ob.Sprites {
+		sprite := &ob.Sprites[i]
+		sprite.setup()
+		dimensions := ob.tileSize[sprite.size]
+		if uint16(sprite.posY) <= V && uint16(sprite.posY)+dimensions.H > V {
+			for j := range byte(dimensions.W) {
+				if sprite.posX > 0 && ob.spritesOnScanLine[byte(sprite.posX)+j] == nil {
+					ob.spritesOnScanLine[byte(sprite.posX)+j] = sprite
+					writes++
+				}
+			}
+			spriteCnt++
+			if spriteCnt == 32 || writes == 256 {
+				break
+			}
+		}
+	}
+}
+
 func (ob *Objects) draw8sprites(H, V uint16) uint16 {
 	for i := range byte(8) {
 		if ret := ob.drawASprite(i, H, V); ret != 0 {
@@ -75,6 +104,29 @@ func (ob *Objects) draw8sprites(H, V uint16) uint16 {
 		}
 	}
 	return 0
+}
+
+func (ob *Objects) drawASpriteByRef(sprite *Sprite, H, V uint16) uint16 {
+	if sprite == nil {
+		return 0
+	}
+	x := H - uint16(sprite.posX)
+	y := V - uint16(sprite.posY)
+	row := y >> 3
+	column := x >> 3
+	tileRow := ((sprite.tileIndex >> 4) + byte(row)) & 0xF
+	tileColumn := (sprite.tileIndex + byte(column)) & 0xF
+	tileIndex := tileRow<<4 | tileColumn
+	wordIndex := sprite.GetVramTileWordIndex(tileIndex)
+
+	px := x & 7
+	r := y & 7
+
+	char := &ob.charTiles[sprite.nameTable][tileIndex]
+	char.tileAddress = uint16(wordIndex)
+
+	return uint16(sprite.GetCgramIndex(int(char.getPixelAt(ob.colorDepth, byte(px), byte(r)))))
+
 }
 
 func (ob *Objects) drawASprite(value byte, H, V uint16) uint16 {
