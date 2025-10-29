@@ -1,12 +1,14 @@
 package ppu
 
+const OBJ_CHAR_PER_TABLE = 256
+
 type Objects struct {
 	ds tileDataSource
 
 	Sprites           [128]Sprite
-	spritesOnScanLine [256]*Sprite
+	spritesOnScanLine [SCREEN_WIDTH]*Sprite
 
-	charTiles  [2][256]CharTile
+	charTiles  [2][OBJ_CHAR_PER_TABLE]CharTile
 	colorDepth colorDepth
 
 	name, nameBase uint16
@@ -31,7 +33,7 @@ func newObjects(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Objects {
 	}
 
 	for i := range 2 {
-		for j := range 256 {
+		for j := range OBJ_CHAR_PER_TABLE {
 			obj.charTiles[i][j].layerEpoch = obj
 			obj.charTiles[i][j].ds = obj.ds
 			obj.charTiles[i][j].isValid = false
@@ -58,13 +60,13 @@ func (ob *Objects) Invalidate(addr uint16) {
 
 	if addr >= baseAddress && addr < baseAddress+0x1000 {
 		tileIndex := (addr - baseAddress) >> 4
-		if tileIndex < 256 {
+		if tileIndex < OBJ_CHAR_PER_TABLE {
 			ob.charTiles[0][tileIndex].isValid = false
 		}
 
 	} else if addr >= offsetAddress && addr < offsetAddress+0x1000 {
 		tileIndex := (addr - offsetAddress) >> 4
-		if tileIndex < 256 {
+		if tileIndex < OBJ_CHAR_PER_TABLE {
 			ob.charTiles[1][tileIndex].isValid = false
 		}
 	}
@@ -75,7 +77,7 @@ func (ob *Objects) Invalidate(addr uint16) {
 func (ob *Objects) prepareScanLine(V uint16) {
 	spriteCnt := 0
 	writes := 0
-	for i := range 256 {
+	for i := range SCREEN_WIDTH {
 		ob.spritesOnScanLine[i] = nil
 	}
 	for i, _ := range ob.Sprites {
@@ -90,7 +92,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 				}
 			}
 			spriteCnt++
-			if spriteCnt == 32 || writes == 256 {
+			if spriteCnt == 32 || writes == SCREEN_WIDTH {
 				break
 			}
 		}
