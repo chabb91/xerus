@@ -189,27 +189,29 @@ type Sprite struct {
 }
 
 func (sprite *Sprite) setup() {
-	if !sprite.isValid {
-		//apparently this thing is GIGA heavy
-		id := sprite.id
-		lowTable := sprite.ob.ds.getOAMLow()
-
-		hi := (sprite.ob.ds.getOAMHigh()[id>>2] >> (byte(id&3) << 1)) & 0x03
-		id <<= 2
-		lo3 := lowTable[id+3]
-
-		sprite.posX = signExtend9(uint16(hi&1)<<8 | uint16(lowTable[id]))
-		sprite.posY = lowTable[id+1]
-		sprite.tileIndex = lowTable[id+2]
-		sprite.nameTable = lo3 & 1
-		sprite.paletteNum = (lo3 >> 1) & 0x7
-		sprite.priority = (lo3 >> 4) & 0x3
-		sprite.isFlippedVertically = (lo3>>7)&1 == 1
-		sprite.isFlippedHorizontally = (lo3>>6)&1 == 1
-		sprite.size = (hi >> 1) & 1
-
-		sprite.isValid = true
+	if sprite.isValid {
+		return
 	}
+
+	//apparently this thing is GIGA heavy
+	id := sprite.id
+	lowTable := sprite.ob.ds.getOAMLow()
+
+	hi := (sprite.ob.ds.getOAMHigh()[id>>2] >> (byte(id&3) << 1)) & 0x03
+	id <<= 2
+	lo3 := lowTable[id+3]
+
+	sprite.posX = signExtend9(uint16(hi&1)<<8 | uint16(lowTable[id]))
+	sprite.posY = lowTable[id+1]
+	sprite.tileIndex = lowTable[id+2]
+	sprite.nameTable = lo3 & 1
+	sprite.paletteNum = (lo3 >> 1) & 0x7
+	sprite.priority = (lo3 >> 4) & 0x3
+	sprite.isFlippedVertically = (lo3>>7)&1 == 1
+	sprite.isFlippedHorizontally = (lo3>>6)&1 == 1
+	sprite.size = (hi >> 1) & 1
+
+	sprite.isValid = true
 }
 
 // converts the local palette index (0-15) to CGRAM index

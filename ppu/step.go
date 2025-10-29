@@ -103,6 +103,6 @@ func (ppu *PPU) performAction(action PPUAction) {
 	case ActionJoypadReadStart:
 	case ActionCpuRefresh:
 	case ActionPrepareScanline:
-		ppu.Obj.prepareScanLine(uint16(ppu.V))
+		ppu.Obj.prepareScanLine(uint16(ppu.V - 1))
 	}
 }

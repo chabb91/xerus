@@ -282,6 +282,8 @@ func (bt *BgTile) setup(tileIndex uint16) {
 	bt.lastRenderEpoch = currentEpoch
 }
 
+type VRAMAddressCalculator func() uint16
+
 // TODO chartile needs to be able to handle 16x16 tiles later on too
 type CharTile struct {
 	isValid bool
