@@ -86,6 +86,7 @@ func (ob *Objects) Invalidate(addr uint16) {
 
 // TODO work in progress. its not detecting the correct sprite prio, it doesnt count tiles rendered it counts X and Y wrong
 // lots to do with this one
+// TODO if OAM didnt change between frames all this can be cached. need a mechanism for that
 func (ob *Objects) prepareScanLine(V uint16) {
 	spriteCnt := 0
 	tileCnt := int16(0)
@@ -109,7 +110,21 @@ func (ob *Objects) prepareScanLine(V uint16) {
 			}
 		}
 	}
+	//this isnt 100% accurate because it can render more than 34 tiles but the flag is correctly set
+	//and its going to behave roughly the same IF ITS NOT BUGGED
 	visibleSprites := ob.participatingOnScanLine[:spriteCnt]
+	spriteCnt = 0
+	for i := len(visibleSprites) - 1; i >= 0; i-- {
+		sprite := visibleSprites[i]
+		dimensions := ob.tileSize[sprite.size]
+		tileCnt += (min(SCREEN_WIDTH, sprite.posX+int16(dimensions.W)) - max(-8, sprite.posX)) >> 3
+		spriteCnt++
+		if tileCnt > 34 {
+			//TODO set $213E
+			break
+		}
+	}
+	visibleSprites = visibleSprites[len(visibleSprites)-spriteCnt:]
 	for _, sprite := range visibleSprites {
 		dimensions := ob.tileSize[sprite.size]
 		for j := range int16(dimensions.W) {
@@ -123,11 +138,6 @@ func (ob *Objects) prepareScanLine(V uint16) {
 				}
 			}
 		}
-		tileCnt += (min(SCREEN_WIDTH, sprite.posX+int16(dimensions.W)) - max(-8, sprite.posX)) >> 3
-	}
-
-	if tileCnt > 34 {
-		//TODO set $213E
 	}
 }
 
