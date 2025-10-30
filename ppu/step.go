@@ -40,8 +40,8 @@ func (ppu *PPU) Step() {
 			if ppu.WINDOWS.isDotMasked(bg1, false, draw.H) {
 				ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.CGRAM.CGRAM[0], ppu.brightness)
 			} else {
-				if ok := ppu.Obj.drawASpriteByRef(ppu.Obj.spritesOnScanLine[draw.H], draw.H, draw.V); ok > OBJ_BACKDROP_COLOR {
-					ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.CGRAM.CGRAM[ok], ppu.brightness)
+				if c := ppu.Obj.spritesOnScanLine[draw.H].colorId; c > OBJ_BACKDROP_COLOR {
+					ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.CGRAM.CGRAM[c], ppu.brightness)
 				} else {
 					ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.Bg1.GetDotAt(draw.H, draw.V), ppu.brightness)
 				}
@@ -53,7 +53,7 @@ func (ppu *PPU) Step() {
 	}
 
 	if draw.Action != ActionNone {
-		ppu.performAction(draw.Action)
+		ppu.performAction(draw)
 	}
 }
 
@@ -69,8 +69,8 @@ type HdmaScheduler interface {
 	DoTransfer()
 }
 
-func (ppu *PPU) performAction(action PPUAction) {
-	switch action {
+func (ppu *PPU) performAction(draw VisibilityEntry) {
+	switch draw.Action {
 	case ActionVBlankStart:
 		ppu.VBlank = true
 		ppu.InterruptScheduler.FireNmi()
@@ -103,6 +103,6 @@ func (ppu *PPU) performAction(action PPUAction) {
 	case ActionJoypadReadStart:
 	case ActionCpuRefresh:
 	case ActionPrepareScanline:
-		ppu.Obj.prepareScanLine(uint16(ppu.V - 1))
+		ppu.Obj.prepareScanLine(draw.V)
 	}
 }

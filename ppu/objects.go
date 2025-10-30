@@ -6,11 +6,18 @@ const (
 	OBJ_BACKDROP_COLOR = 128
 )
 
+type renderedSpriteOnDot struct {
+	colorId             byte
+	partakesInColorMath bool
+}
+
 type Objects struct {
 	ds tileDataSource
 
-	Sprites           [128]Sprite
-	spritesOnScanLine [SCREEN_WIDTH]*Sprite
+	Sprites [128]Sprite
+
+	spritesOnScanLine       [SCREEN_WIDTH]renderedSpriteOnDot
+	participatingOnScanLine []*Sprite
 
 	charTiles  [2][OBJ_CHAR_PER_TABLE]CharTile
 	colorDepth colorDepth
@@ -25,10 +32,11 @@ type Objects struct {
 
 func newObjects(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Objects {
 	obj := &Objects{
-		ds:           ds,
-		currentEpoch: epochPtr,
-		layerId:      layer,
-		colorDepth:   bpp4,
+		ds:                      ds,
+		currentEpoch:            epochPtr,
+		layerId:                 layer,
+		colorDepth:              bpp4,
+		participatingOnScanLine: make([]*Sprite, 32),
 	}
 	for i := range len(obj.Sprites) {
 		obj.Sprites[i].ob = obj
@@ -80,44 +88,60 @@ func (ob *Objects) Invalidate(addr uint16) {
 // lots to do with this one
 func (ob *Objects) prepareScanLine(V uint16) {
 	spriteCnt := 0
-	writes := 0
+	tileCnt := int16(0)
 	for i := range SCREEN_WIDTH {
-		ob.spritesOnScanLine[i] = nil
+		ob.spritesOnScanLine[i].colorId = OBJ_BACKDROP_COLOR
 	}
-	for i, _ := range ob.Sprites {
+	for i := range ob.Sprites {
 		sprite := &ob.Sprites[i]
 		sprite.setup()
 		dimensions := ob.tileSize[sprite.size]
-		if uint16(sprite.posY) <= V && uint16(sprite.posY)+dimensions.H > V {
-			for j := range byte(dimensions.W) {
-				if sprite.posX > 0 && ob.spritesOnScanLine[byte(sprite.posX)+j] == nil {
-					ob.spritesOnScanLine[byte(sprite.posX)+j] = sprite
-					writes++
+		//cast to byte so it wraps meaning high Y big sprites can wrap to the top
+		if uint16(sprite.posY) <= V && uint16(sprite.posY+byte(dimensions.H)) > V {
+			if (-1*int16(dimensions.W) < sprite.posX && sprite.posX < SCREEN_WIDTH) || sprite.posX == -256 {
+				if spriteCnt == 32 {
+					//TODO set $213E
+					break
+				}
+
+				ob.participatingOnScanLine[spriteCnt] = sprite
+				spriteCnt++
+			}
+		}
+	}
+	visibleSprites := ob.participatingOnScanLine[:spriteCnt]
+	for _, sprite := range visibleSprites {
+		dimensions := ob.tileSize[sprite.size]
+		for j := range int16(dimensions.W) {
+			screenPos := sprite.posX + j
+			//TODO this should be replaced by the screen window check
+			//prolly at the sprite count evaluation too
+			if screenPos < int16(SCREEN_WIDTH) && screenPos >= 0 {
+				if renderDot := &ob.spritesOnScanLine[screenPos]; renderDot.colorId == OBJ_BACKDROP_COLOR {
+					renderDot.colorId = ob.drawASpriteByRef(sprite, uint16(screenPos), V)
+					renderDot.partakesInColorMath = sprite.paletteNum >= 4
 				}
 			}
-			spriteCnt++
-			if spriteCnt == 32 || writes == SCREEN_WIDTH {
-				break
-			}
 		}
+		tileCnt += (min(SCREEN_WIDTH, sprite.posX+int16(dimensions.W)) - max(-8, sprite.posX)) >> 3
+	}
+
+	if tileCnt > 34 {
+		//TODO set $213E
 	}
 }
 
-func (ob *Objects) draw8sprites(H, V uint16) uint16 {
-	for i := range byte(8) {
-		if ret := ob.drawASprite(i, H, V); ret != 0 {
-			return ret
-		}
-	}
-	return 0
-}
-
-func (ob *Objects) drawASpriteByRef(sprite *Sprite, H, V uint16) uint16 {
-	if sprite == nil {
-		return 0
-	}
+func (ob *Objects) drawASpriteByRef(sprite *Sprite, H, V uint16) byte {
 	x := H - uint16(sprite.posX)
-	y := V - uint16(sprite.posY)
+
+	//trying to handle wrapping of big sprites
+	y := uint16(sprite.posY)
+	if V >= y {
+		y = V - y
+	} else {
+		y = (256 - y) + V
+	}
+
 	row := y >> 3
 	column := x >> 3
 	tileRow := ((sprite.tileIndex >> 4) + byte(row)) & 0xF
@@ -129,7 +153,7 @@ func (ob *Objects) drawASpriteByRef(sprite *Sprite, H, V uint16) uint16 {
 
 	char := &ob.charTiles[sprite.nameTable][tileIndex]
 
-	return uint16(sprite.GetCgramIndex(char.getPixelAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, byte(px), byte(r))))
+	return sprite.GetCgramIndex(char.getPixelAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, byte(px), byte(r)))
 
 }
 
