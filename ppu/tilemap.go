@@ -49,7 +49,7 @@ type Background struct {
 	tileMapAddress uint16
 	tileMapSize    uint16
 
-	charTiles           [0x8000]*CharTile
+	charTiles           [0x1000]CharTile //VRAM is 0x8000 words. 2bpp takes 8 words to store. there are 0x1000 char tiles max
 	charTileAddressBase uint16
 	charTileSize        byte
 	colorDepth          colorDepth
@@ -80,6 +80,12 @@ func NewBackground1(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Backgr
 		bg.tileMap[i].bg = bg
 	}
 
+	for i := range len(bg.charTiles) {
+		bg.charTiles[i].layerEpoch = bg
+		bg.charTiles[i].ds = bg.ds
+		bg.charTiles[i].isValid = false
+	}
+
 	return bg
 }
 
@@ -102,10 +108,10 @@ func (bg *Background) Invalidate(addr uint16) {
 	}
 
 	if addr >= bg.charTileAddressBase {
-		wordsPerTile := uint16(bg.colorDepth) * 4
+		wordsPerTile := uint16(bg.colorDepth) << 2
 		tileIndex := (addr - bg.charTileAddressBase) / wordsPerTile
-		if t := bg.charTiles[bg.charTileAddressBase+(tileIndex*wordsPerTile)]; t != nil {
-			t.isValid = false
+		if tileIndex < uint16(len(bg.charTiles)) {
+			bg.charTiles[tileIndex].isValid = false
 			//fmt.Println("invlidation")
 		}
 	}
@@ -164,15 +170,10 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 		charMapID += compositeFlipLUT[charMapID][tile.flipIndex]
 	}
 
-	//TODO charaddress can also be cached in the bgtile. this is a pointless calculation
-	charAddress := ((tile.charIndex+charMapIdToOffsetLUT[charMapID])*uint16(bg.colorDepth<<2) + bg.charTileAddressBase) & 0x7FFF
-	char := bg.charTiles[charAddress]
-	if char == nil {
-		char = &CharTile{isValid: false, ds: bg.ds, tileAddress: charAddress, layerEpoch: bg}
-		bg.charTiles[charAddress] = char
-	}
+	charIndex := tile.charIndex + charMapIdToOffsetLUT[charMapID]
 
-	return bg.ds.getCGRAM()[char.getPixelAt(bg.colorDepth, px, row)+tile.paletteNum<<bg.colorDepth]
+	return bg.ds.getCGRAM()[bg.charTiles[charIndex].getPixelAt(
+		bg.colorDepth, tile.GetVramTileWordIndex, charMapID, px, row)+tile.paletteNum<<bg.colorDepth]
 }
 
 // my best guess for OPT. will test it in a year when i can run games LUL
@@ -316,9 +317,10 @@ func (ct *CharTile) setup(bitPlanes colorDepth) {
 	}
 }
 
-func (ct *CharTile) getPixelAt(bitplanes colorDepth, px, row byte) byte {
+func (ct *CharTile) getPixelAt(bitplanes colorDepth, addr VRAMAddressCalculator, tileId, px, row byte) byte {
 	currentEpoch := *ct.layerEpoch.GetLayerSourceEpoch()
 	if ct.lastRenderEpoch != currentEpoch {
+		ct.tileAddress = addr(tileId)
 		goto RENDER_AND_CACHE
 	}
 

@@ -119,15 +119,13 @@ func (ob *Objects) drawASpriteByRef(sprite *Sprite, H, V uint16) uint16 {
 	tileRow := ((sprite.tileIndex >> 4) + byte(row)) & 0xF
 	tileColumn := (sprite.tileIndex + byte(column)) & 0xF
 	tileIndex := tileRow<<4 | tileColumn
-	wordIndex := sprite.GetVramTileWordIndex(tileIndex)
 
 	px := x & 7
 	r := y & 7
 
 	char := &ob.charTiles[sprite.nameTable][tileIndex]
-	char.tileAddress = wordIndex
 
-	return uint16(sprite.GetCgramIndex(char.getPixelAt(ob.colorDepth, byte(px), byte(r))))
+	return uint16(sprite.GetCgramIndex(char.getPixelAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, byte(px), byte(r))))
 
 }
 
@@ -144,7 +142,6 @@ func (ob *Objects) drawASprite(value byte, H, V uint16) uint16 {
 		tileRow := ((sprite.tileIndex >> 4) + byte(row)) & 0xF
 		tileColumn := (sprite.tileIndex + byte(column)) & 0xF
 		tileIndex := tileRow<<4 | tileColumn
-		wordIndex := sprite.GetVramTileWordIndex(tileIndex)
 
 		px := x & 7
 		r := y & 7
@@ -153,7 +150,6 @@ func (ob *Objects) drawASprite(value byte, H, V uint16) uint16 {
 		//RenderTile4bppLUT(ob.ds.getVRAM(), uint16(wordIndex), &resolvedData)
 
 		char := &ob.charTiles[sprite.nameTable][tileIndex]
-		char.tileAddress = wordIndex
 
 		//fmt.Println(x, y)
 		//fmt.Println(px, r)
@@ -163,7 +159,7 @@ func (ob *Objects) drawASprite(value byte, H, V uint16) uint16 {
 		//fmt.Println(resolvedData[px][r])
 		//return ob.ds.getCGRAM()[sprite.GetCgramIndex(int(resolvedData[r][px]))]
 		//return uint16(sprite.GetCgramIndex(int(resolvedData[r][px])))
-		return uint16(sprite.GetCgramIndex(char.getPixelAt(ob.colorDepth, byte(px), byte(r))))
+		return uint16(sprite.GetCgramIndex(char.getPixelAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, byte(px), byte(r))))
 	}
 	//return ob.ds.getCGRAM()[0]
 	return 0
