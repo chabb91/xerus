@@ -1,6 +1,10 @@
 package ppu
 
 const OBJ_CHAR_PER_TABLE = 256
+const (
+	BG_BACKDROP_COLOR  = 0
+	OBJ_BACKDROP_COLOR = 128
+)
 
 type Objects struct {
 	ds tileDataSource
@@ -26,7 +30,7 @@ func newObjects(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Objects {
 		layerId:      layer,
 		colorDepth:   bpp4,
 	}
-	for i := range 128 {
+	for i := range len(obj.Sprites) {
 		obj.Sprites[i].ob = obj
 		obj.Sprites[i].id = i
 		obj.Sprites[i].isValid = false
@@ -213,7 +217,7 @@ func (sprite *Sprite) setup() {
 // converts the local palette index (0-15) to CGRAM index
 func (sprite *Sprite) GetCgramIndex(localIndex byte) byte {
 	localIndex &= 15
-	return 128 + sprite.paletteNum<<4 + localIndex
+	return OBJ_BACKDROP_COLOR + sprite.paletteNum<<4 + localIndex
 }
 
 // finds the first tile index belonging to this sprite in the VRAM
