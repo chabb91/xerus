@@ -342,9 +342,9 @@ func (wc *WindowController) isDotInColorMask(H uint16) bool {
 	return false
 }
 
-func (wc *WindowController) performColorMath(mainColor uint16, subColor uint16, layer ppuLayer, H uint16) uint16 {
-	inColorMask := wc.isDotInColorMask(H)
+func (wc *WindowController) performColorMath(mainColor, subColor, H uint16, layer ppuLayer) uint16 {
 	colorMath := &wc.ColorMath
+	inColorMask := wc.isDotInColorMask(H)
 	if colorMath.clipToBlack(inColorMask) {
 		mainColor = 0
 	}
