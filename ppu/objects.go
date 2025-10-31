@@ -93,11 +93,12 @@ func (ob *Objects) getSpritePriority() byte {
 func (ob *Objects) prepareScanLine(V uint16) {
 	spriteCnt := 0
 	tileCnt := int16(0)
+	priority := ob.ds.getPriorityRotation()
 	for i := range SCREEN_WIDTH {
 		ob.resolvedDotsOnScanLine[i].colorId = OBJ_BACKDROP_COLOR
 	}
 	for i := range ob.Sprites {
-		sprite := &ob.Sprites[i]
+		sprite := &ob.Sprites[(priority+byte(i))&0x7F]
 		sprite.setup()
 		dimensions := ob.tileSize[sprite.size]
 		//cast to byte so it wraps meaning high Y big sprites can wrap to the top

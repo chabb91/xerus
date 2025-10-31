@@ -84,3 +84,13 @@ func wrapOAMHighTableIndex(index uint16) uint16 {
 func wrapOAMLowTableIndex(index uint16) uint16 {
 	return index & 0x1FF
 }
+
+func (oam *OAMController) GetSpritePriority() byte {
+	//TODO not sure if this is correct. i store my indexes in bytes so have to convert em to words first
+	//also skipped a MAJOR oddity for now.
+	if oam.priorityRotation {
+		return byte(((oam.ByteIndex >> 1) & 0xFE) >> 1)
+	} else {
+		return 0
+	}
+}

@@ -10,6 +10,7 @@ type tileDataSource interface {
 	getOAMHigh() []byte
 	getVRAM() []uint16
 	getCGRAM() []uint16
+	getPriorityRotation() byte
 }
 
 type tileValidator interface {
@@ -222,6 +223,10 @@ func (ppu *PPU) getVRAM() []uint16 {
 
 func (ppu *PPU) getCGRAM() []uint16 {
 	return ppu.CGRAM.CGRAM
+}
+
+func (ppu *PPU) getPriorityRotation() byte {
+	return ppu.OAM.GetSpritePriority()
 }
 
 func (ppu *PPU) tryInvalidate(addr uint16) {
