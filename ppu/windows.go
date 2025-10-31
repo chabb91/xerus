@@ -15,9 +15,8 @@ type WindowController struct {
 	w1LeftPos, w1RightPos byte
 	w2LeftPos, w2RightPos byte
 
-	//TODO color math shouldnt be bunched together with the rest.
-	//it needs to be a separate struct.
-	layers [6]LayerWindowData
+	layers    [6]LayerWindowData
+	ColorMath ColorMath
 }
 
 func setupLayerMasks(layer *LayerWindowData, value byte) {
@@ -87,7 +86,7 @@ func (wc *WindowController) W34SEL(value byte) {
 
 func (wc *WindowController) WOBJSEL(value byte) {
 	setupLayerMasks(&wc.layers[obj], value)
-	setupLayerMasks(&wc.layers[colorWindow], value>>4)
+	setupLayerMasks(&wc.ColorMath.colorWindowData, value>>4)
 }
 
 func (wc *WindowController) WBGLOG(value byte) {
@@ -99,7 +98,7 @@ func (wc *WindowController) WBGLOG(value byte) {
 
 func (wc *WindowController) WOBJLOG(value byte) {
 	wc.layers[obj].wMaskLogic = getWMaskLogic(value)
-	wc.layers[colorWindow].wMaskLogic = getWMaskLogic(value >> 2)
+	wc.ColorMath.colorWindowData.wMaskLogic = getWMaskLogic(value >> 2)
 }
 
 func (wc *WindowController) TMW(value byte) {
@@ -237,6 +236,18 @@ func (wc *WindowController) isDotMasked(layer ppuLayer, isSubscreen bool, H uint
 	return false
 }
 
+func (wc *WindowController) setCGADSUB(value byte) {
+	wc.ColorMath.addColors = value&0x80 != 0x80
+	wc.ColorMath.halfColor = value&0x40 == 0x40
+	//TODO remember mode 7
+	wc.layers[bg1].colorMathActive = value&1 != 0
+	wc.layers[bg2].colorMathActive = value&2 != 0
+	wc.layers[bg3].colorMathActive = value&4 != 0
+	wc.layers[bg4].colorMathActive = value&8 != 0
+	wc.layers[obj].colorMathActive = value&0x10 != 0
+	wc.ColorMath.isBackdropColorMathActive = value&0x20 != 0
+}
+
 type ColorMath struct {
 	fixedColor  uint16
 	addColors   bool
@@ -246,9 +257,14 @@ type ColorMath struct {
 
 	preventMath byte
 	clipToBlack byte
+
+	isBackdropColorMathActive bool
+
+	//has unused params. was meant for layers, makes setup easy
+	colorWindowData LayerWindowData
 }
 
-func (cm *ColorMath) setColData(value byte) {
+func (cm *ColorMath) setCOLDATA(value byte) {
 	if value&0x80 != 0 { //blue
 		cm.fixedColor = (cm.fixedColor & 0x3FF) | (uint16(value&0x1F) << 10)
 	}
@@ -259,4 +275,12 @@ func (cm *ColorMath) setColData(value byte) {
 		cm.fixedColor = (cm.fixedColor & 0xFFE0) | (uint16(value & 0x1F))
 	}
 	cm.fixedColor &= 0x7FFF
+}
+
+// TODO placeholder
+func (cm *ColorMath) setCGWSEL(value byte) {
+	cm.clipToBlack = (value >> 6) & 3
+	cm.preventMath = (value >> 4) & 3
+	cm.isSubscren = value&2 != 0
+	cm.directColor = value&1 != 0
 }
