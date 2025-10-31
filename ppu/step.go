@@ -42,8 +42,10 @@ func (ppu *PPU) Step() {
 			} else {
 				if c := ppu.Obj.resolvedDotsOnScanLine[draw.H].colorId; c > OBJ_BACKDROP_COLOR {
 					ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.CGRAM.CGRAM[c], ppu.brightness)
+				} else if dot := ppu.Bg1.GetDotAt(draw.H, draw.V); dot > BG_BACKDROP_COLOR {
+					ppu.Framebuffer.Back[draw.H][draw.V].SetColor(dot, ppu.brightness)
 				} else {
-					ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.Bg1.GetDotAt(draw.H, draw.V), ppu.brightness)
+					ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.Bg3.GetDotAt(draw.H, draw.V), ppu.brightness)
 				}
 				//ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.Obj.draw8sprites(draw.H, draw.V), ppu.brightness)
 				//ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.Bg1.GetDotAt(draw.H, draw.V), ppu.brightness)

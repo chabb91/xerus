@@ -6,6 +6,7 @@ type LayerWindowData struct {
 	w1Active, w2Active                bool
 	w1Inverted, w2Inverted            bool
 	mainScreenMasked, subScreenMasked bool
+	colorMathActive                   bool
 
 	wMaskLogic wMaskLogic
 }
@@ -16,7 +17,7 @@ type WindowController struct {
 
 	//TODO color math shouldnt be bunched together with the rest.
 	//it needs to be a separate struct.
-	layers [7]LayerWindowData
+	layers [6]LayerWindowData
 }
 
 func setupLayerMasks(layer *LayerWindowData, value byte) {
@@ -234,4 +235,28 @@ func (wc *WindowController) isDotMasked(layer ppuLayer, isSubscreen bool, H uint
 	}
 
 	return false
+}
+
+type ColorMath struct {
+	fixedColor  uint16
+	addColors   bool
+	halfColor   bool
+	directColor bool
+	isSubscren  bool
+
+	preventMath byte
+	clipToBlack byte
+}
+
+func (cm *ColorMath) setColData(value byte) {
+	if value&0x80 != 0 { //blue
+		cm.fixedColor = (cm.fixedColor & 0x3FF) | (uint16(value&0x1F) << 10)
+	}
+	if value&0x40 != 0 { //green
+		cm.fixedColor = (cm.fixedColor & 0xFC1F) | (uint16(value&0x1F) << 5)
+	}
+	if value&0x20 != 0 { //red
+		cm.fixedColor = (cm.fixedColor & 0xFFE0) | (uint16(value & 0x1F))
+	}
+	cm.fixedColor &= 0x7FFF
 }

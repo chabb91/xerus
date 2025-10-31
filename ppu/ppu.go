@@ -36,6 +36,7 @@ type PPU struct {
 
 	Bg1     *Background
 	Bg2     *Background
+	Bg3     *Background
 	BGxnOFS *BGxnOFS
 
 	Obj *Objects
@@ -59,8 +60,9 @@ func NewPPU() *PPU {
 		BGxnOFS: &BGxnOFS{},
 		SETINI:  NewSETINI(PAL_TIMING),
 	}
-	ppu.Bg1 = NewBackground1(ppu, &ppu.bgEpochs[bg1], bg1)
-	ppu.Bg2 = NewBackground1(ppu, &ppu.bgEpochs[bg2], bg2)
+	ppu.Bg1 = NewBackground(ppu, &ppu.bgEpochs[bg1], bg1)
+	ppu.Bg2 = NewBackground(ppu, &ppu.bgEpochs[bg2], bg2)
+	ppu.Bg3 = NewBackground(ppu, &ppu.bgEpochs[bg3], bg3)
 	ppu.Obj = newObjects(ppu, &ppu.bgEpochs[obj], obj)
 	ppu.VRAM = NewVRAM(ppu)
 	ppu.OAM = NewOAM(ppu)
@@ -111,11 +113,16 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 
 		ppu.Bg2.charTileSize = (value >> 5) & 1
 		ppu.Bg2.colorDepth = bpp4
+
+		ppu.Bg3.charTileSize = (value >> 6) & 1
+		ppu.Bg3.colorDepth = bpp2
 		//TODO should invalidate everything
 		ppu.InvalidateLayer(bg1)
 		ppu.Bg1.InvalidateScrollCache()
 		ppu.InvalidateLayer(bg2)
 		ppu.Bg2.InvalidateScrollCache()
+		ppu.InvalidateLayer(bg3)
+		ppu.Bg3.InvalidateScrollCache()
 		ppu.InvalidateLayer(obj)
 	case 0x2107:
 		fmt.Println("BG1SC: ", value)
@@ -131,6 +138,10 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.Bg2.InvalidateScrollCache()
 	case 0x2109:
 		fmt.Println("BG3SC: ", value)
+		ppu.Bg3.tileMapSize = uint16(value & 0x3)
+		ppu.Bg3.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
+		ppu.InvalidateLayer(bg3)
+		ppu.Bg3.InvalidateScrollCache()
 	case 0x210B:
 		fmt.Println("BG12NBA: ", value)
 		ppu.Bg1.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
@@ -139,6 +150,10 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.InvalidateLayer(bg2)
 	case 0x210C:
 		fmt.Println("BG34NBA: ", value)
+		ppu.Bg3.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
+		//ppu.Bg4.charTileAddressBase = (uint16((value>>4)&0xF) << 12) & 0x7FFF
+		ppu.InvalidateLayer(bg3)
+		//ppu.InvalidateLayer(bg4)
 	//TODO add mode 7 scrolling
 	case 0x210D:
 		ppu.Bg1.hScroll = ppu.BGxnOFS.hFormula(value)
@@ -152,6 +167,12 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2110:
 		ppu.Bg2.vScroll = ppu.BGxnOFS.vFormula(value)
 		ppu.Bg2.InvalidateScrollCache()
+	case 0x2111:
+		ppu.Bg3.hScroll = ppu.BGxnOFS.hFormula(value)
+		ppu.Bg3.InvalidateScrollCache()
+	case 0x2112:
+		ppu.Bg3.vScroll = ppu.BGxnOFS.vFormula(value)
+		ppu.Bg3.InvalidateScrollCache()
 	case 0x2115:
 		ppu.VRAM.vmain.Setup(value)
 		fmt.Println("VMAIN: ", value)
@@ -233,6 +254,7 @@ func (ppu *PPU) tryInvalidate(addr uint16) {
 	//maybe return true or something if theres a hit so it can stop checking the rest of the bgs
 	ppu.Bg1.Invalidate(addr)
 	ppu.Bg2.Invalidate(addr)
+	ppu.Bg3.Invalidate(addr)
 	ppu.Obj.Invalidate(addr)
 }
 

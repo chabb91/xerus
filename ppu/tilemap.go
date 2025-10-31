@@ -4,13 +4,12 @@ type colorDepth uint16
 type ppuLayer uint16
 
 const (
-	bg1         ppuLayer = 0
-	bg2         ppuLayer = 1
-	bg3         ppuLayer = 2
-	bg4         ppuLayer = 3
-	bgMode7     ppuLayer = 4
-	obj         ppuLayer = 5
-	colorWindow ppuLayer = 6
+	bg1     ppuLayer = 0
+	bg2     ppuLayer = 1
+	bg3     ppuLayer = 2
+	bg4     ppuLayer = 3
+	bgMode7 ppuLayer = 4
+	obj     ppuLayer = 5
 )
 
 const (
@@ -68,7 +67,7 @@ type Background struct {
 	optFunc optResolver
 }
 
-func NewBackground1(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Background {
+func NewBackground(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Background {
 	bg := &Background{
 		ds:           ds,
 		currentEpoch: epochPtr,
@@ -172,6 +171,7 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 
 	charIndex := tile.charIndex + charMapIdToOffsetLUT[charMapID]
 
+	//TODO in direct color mode we need a check here ds.isdirectolor && colorDepth==bpp8
 	return bg.ds.getCGRAM()[bg.charTiles[charIndex].getPixelAt(
 		bg.colorDepth, tile.GetVramTileWordIndex, charMapID, px, row)+tile.paletteNum<<bg.colorDepth]
 }
