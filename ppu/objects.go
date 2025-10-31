@@ -16,8 +16,8 @@ type Objects struct {
 
 	Sprites [128]Sprite
 
-	spritesOnScanLine       [SCREEN_WIDTH]renderedSpriteOnDot
-	participatingOnScanLine []*Sprite
+	resolvedDotsOnScanLine         [SCREEN_WIDTH]renderedSpriteOnDot
+	spritesParticipatingOnScanLine []*Sprite
 
 	charTiles  [2][OBJ_CHAR_PER_TABLE]CharTile
 	colorDepth colorDepth
@@ -32,11 +32,11 @@ type Objects struct {
 
 func newObjects(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Objects {
 	obj := &Objects{
-		ds:                      ds,
-		currentEpoch:            epochPtr,
-		layerId:                 layer,
-		colorDepth:              bpp4,
-		participatingOnScanLine: make([]*Sprite, 32),
+		ds:                             ds,
+		currentEpoch:                   epochPtr,
+		layerId:                        layer,
+		colorDepth:                     bpp4,
+		spritesParticipatingOnScanLine: make([]*Sprite, 32),
 	}
 	for i := range len(obj.Sprites) {
 		obj.Sprites[i].ob = obj
@@ -83,6 +83,9 @@ func (ob *Objects) Invalidate(addr uint16) {
 		}
 	}
 }
+func (ob *Objects) getSpritePriority() byte {
+	return ob.spritesParticipatingOnScanLine[0].priority
+}
 
 // TODO work in progress. its not detecting the correct sprite prio, it doesnt count tiles rendered it counts X and Y wrong
 // lots to do with this one
@@ -91,7 +94,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 	spriteCnt := 0
 	tileCnt := int16(0)
 	for i := range SCREEN_WIDTH {
-		ob.spritesOnScanLine[i].colorId = OBJ_BACKDROP_COLOR
+		ob.resolvedDotsOnScanLine[i].colorId = OBJ_BACKDROP_COLOR
 	}
 	for i := range ob.Sprites {
 		sprite := &ob.Sprites[i]
@@ -105,14 +108,14 @@ func (ob *Objects) prepareScanLine(V uint16) {
 					break
 				}
 
-				ob.participatingOnScanLine[spriteCnt] = sprite
+				ob.spritesParticipatingOnScanLine[spriteCnt] = sprite
 				spriteCnt++
 			}
 		}
 	}
 	//this isnt 100% accurate because it can render more than 34 tiles but the flag is correctly set
 	//and its going to behave roughly the same IF ITS NOT BUGGED
-	visibleSprites := ob.participatingOnScanLine[:spriteCnt]
+	visibleSprites := ob.spritesParticipatingOnScanLine[:spriteCnt]
 	spriteCnt = 0
 	for i := len(visibleSprites) - 1; i >= 0; i-- {
 		sprite := visibleSprites[i]
@@ -132,7 +135,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 			//TODO this should be replaced by the screen window check
 			//prolly at the sprite count evaluation too
 			if screenPos < int16(SCREEN_WIDTH) && screenPos >= 0 {
-				if renderDot := &ob.spritesOnScanLine[screenPos]; renderDot.colorId == OBJ_BACKDROP_COLOR {
+				if renderDot := &ob.resolvedDotsOnScanLine[screenPos]; renderDot.colorId == OBJ_BACKDROP_COLOR {
 					renderDot.colorId = ob.drawASpriteByRef(sprite, dimensions, uint16(screenPos), V)
 					renderDot.partakesInColorMath = sprite.paletteNum >= 4
 				}

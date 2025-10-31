@@ -40,7 +40,7 @@ func (ppu *PPU) Step() {
 			if ppu.WINDOWS.isDotMasked(bg1, false, draw.H) {
 				ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.CGRAM.CGRAM[0], ppu.brightness)
 			} else {
-				if c := ppu.Obj.spritesOnScanLine[draw.H].colorId; c > OBJ_BACKDROP_COLOR {
+				if c := ppu.Obj.resolvedDotsOnScanLine[draw.H].colorId; c > OBJ_BACKDROP_COLOR {
 					ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.CGRAM.CGRAM[c], ppu.brightness)
 				} else {
 					ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.Bg1.GetDotAt(draw.H, draw.V), ppu.brightness)
