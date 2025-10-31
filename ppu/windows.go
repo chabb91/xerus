@@ -15,7 +15,7 @@ type WindowController struct {
 	w1LeftPos, w1RightPos byte
 	w2LeftPos, w2RightPos byte
 
-	layers    [6]LayerWindowData
+	layers    [7]LayerWindowData
 	ColorMath ColorMath
 }
 
@@ -237,7 +237,11 @@ func (wc *WindowController) isDotMasked(layer ppuLayer, isSubscreen bool, H uint
 }
 
 func (wc *WindowController) setCGADSUB(value byte) {
-	wc.ColorMath.addColors = value&0x80 != 0x80
+	if value&0x80 != 0x80 {
+		wc.ColorMath.colorFunction = addColors
+	} else {
+		wc.ColorMath.colorFunction = subColors
+	}
 	wc.ColorMath.halfColor = value&0x40 == 0x40
 	//TODO remember mode 7
 	wc.layers[bg1].colorMathActive = value&1 != 0
@@ -245,20 +249,19 @@ func (wc *WindowController) setCGADSUB(value byte) {
 	wc.layers[bg3].colorMathActive = value&4 != 0
 	wc.layers[bg4].colorMathActive = value&8 != 0
 	wc.layers[obj].colorMathActive = value&0x10 != 0
-	wc.ColorMath.isBackdropColorMathActive = value&0x20 != 0
+	wc.layers[backdrop].colorMathActive = value&0x20 != 0
 }
 
 type ColorMath struct {
-	fixedColor  uint16
-	addColors   bool
-	halfColor   bool
+	fixedColor    uint16
+	colorFunction colorMathFunction
+	halfColor     bool
+	isSubscren    bool
+
 	directColor bool
-	isSubscren  bool
 
-	preventMath byte
-	clipToBlack byte
-
-	isBackdropColorMathActive bool
+	preventMath clipOrPreventMathFunction
+	clipToBlack clipOrPreventMathFunction
 
 	//has unused params. was meant for layers, makes setup easy
 	colorWindowData LayerWindowData
@@ -277,10 +280,87 @@ func (cm *ColorMath) setCOLDATA(value byte) {
 	cm.fixedColor &= 0x7FFF
 }
 
-// TODO placeholder
 func (cm *ColorMath) setCGWSEL(value byte) {
-	cm.clipToBlack = (value >> 6) & 3
-	cm.preventMath = (value >> 4) & 3
+	cm.clipToBlack = getColorClipOrPreventMathMode((value >> 6) & 3)
+	cm.preventMath = getColorClipOrPreventMathMode((value >> 4) & 3)
 	cm.isSubscren = value&2 != 0
 	cm.directColor = value&1 != 0
+}
+
+type clipOrPreventMathFunction func(bool) bool
+type colorMathFunction func(main, sub uint16, halve bool) uint16
+
+func colorClipOrPreventMathNever(_ bool) bool {
+	return false
+}
+
+func colorClipOrPreventMathOutsideWindow(inColorWindow bool) bool {
+	return !inColorWindow
+}
+
+func colorClipOrPreventMathInsideWindow(inColorWindow bool) bool {
+	return inColorWindow
+}
+
+func colorClipOrPreventMathAlways(_ bool) bool {
+	return true
+}
+
+func getColorClipOrPreventMathMode(value byte) clipOrPreventMathFunction {
+	switch value & 0x3 {
+	case 0:
+		return colorClipOrPreventMathAlways
+	case 1:
+		return colorClipOrPreventMathOutsideWindow
+	case 2:
+		return colorClipOrPreventMathInsideWindow
+	case 3:
+		return colorClipOrPreventMathAlways
+	}
+
+	//should never happen
+	return colorClipOrPreventMathAlways
+}
+
+func (wc *WindowController) isDotInColorMask(H uint16) bool {
+	lwd := wc.ColorMath.colorWindowData
+	if lwd.w1Active && !lwd.w2Active {
+		return wc.isDotInMask1Range(lwd.w1Inverted, H)
+	}
+	if !lwd.w1Active && lwd.w2Active {
+		return wc.isDotInMask2Range(lwd.w2Inverted, H)
+	}
+	if lwd.w1Active && lwd.w2Active {
+		w1 := wc.isDotInMask1Range(lwd.w1Inverted, H)
+		w2 := wc.isDotInMask2Range(lwd.w2Inverted, H)
+		return lwd.wMaskLogic(w1, w2)
+	}
+	if !lwd.w1Active && !lwd.w2Active {
+		return false
+	}
+
+	return false
+}
+
+func (wc *WindowController) performColorMath(mainColor uint16, subColor uint16, layer ppuLayer, H uint16) uint16 {
+	inColorMask := wc.isDotInColorMask(H)
+	colorMath := &wc.ColorMath
+	if colorMath.clipToBlack(inColorMask) {
+		mainColor = 0
+	}
+	if colorMath.preventMath(inColorMask) {
+		return mainColor
+	}
+	if !wc.layers[layer].colorMathActive {
+		return mainColor
+	}
+
+	var blendColor uint16
+	if colorMath.isSubscren {
+		blendColor = subColor
+	} else {
+		blendColor = colorMath.fixedColor
+	}
+
+	return colorMath.colorFunction(mainColor, blendColor, colorMath.halfColor)
 }

@@ -4,12 +4,13 @@ type colorDepth uint16
 type ppuLayer uint16
 
 const (
-	bg1     ppuLayer = 0
-	bg2     ppuLayer = 1
-	bg3     ppuLayer = 2
-	bg4     ppuLayer = 3
-	bgMode7 ppuLayer = 4
-	obj     ppuLayer = 5
+	bg1      ppuLayer = 0
+	bg2      ppuLayer = 1
+	bg3      ppuLayer = 2
+	bg4      ppuLayer = 3
+	bgMode7  ppuLayer = 4
+	obj      ppuLayer = 5
+	backdrop ppuLayer = 6
 )
 
 const (
