@@ -133,7 +133,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 			//prolly at the sprite count evaluation too
 			if screenPos < int16(SCREEN_WIDTH) && screenPos >= 0 {
 				if renderDot := &ob.spritesOnScanLine[screenPos]; renderDot.colorId == OBJ_BACKDROP_COLOR {
-					renderDot.colorId = ob.drawASpriteByRef(sprite, uint16(screenPos), V)
+					renderDot.colorId = ob.drawASpriteByRef(sprite, dimensions, uint16(screenPos), V)
 					renderDot.partakesInColorMath = sprite.paletteNum >= 4
 				}
 			}
@@ -141,10 +141,9 @@ func (ob *Objects) prepareScanLine(V uint16) {
 	}
 }
 
-func (ob *Objects) drawASpriteByRef(sprite *Sprite, H, V uint16) byte {
+func (ob *Objects) drawASpriteByRef(sprite *Sprite, dimensions OBTileSize, H, V uint16) byte {
 	x := H - uint16(sprite.posX)
-
-	//trying to handle wrapping of big sprites
+	//trying to handle wrapping of big sprites, UNTESTED
 	y := uint16(sprite.posY)
 	if V >= y {
 		y = V - y
@@ -154,54 +153,23 @@ func (ob *Objects) drawASpriteByRef(sprite *Sprite, H, V uint16) byte {
 
 	row := y >> 3
 	column := x >> 3
+	//TODO doesnt flip accurately for the rectangular sprites but i couldnt care less at this moment
+	if sprite.isFlippedHorizontally {
+		column = dimensions.tilesPerRow - 1 - column
+	}
+	if sprite.isFlippedVertically {
+		row = dimensions.tilesPerColumn - 1 - row
+	}
 	tileRow := ((sprite.tileIndex >> 4) + byte(row)) & 0xF
 	tileColumn := (sprite.tileIndex + byte(column)) & 0xF
 	tileIndex := tileRow<<4 | tileColumn
 
-	px := x & 7
-	r := y & 7
+	px := tileFlipXLUT[sprite.flipIndex][x&7]
+	r := tileFlipYLUT[sprite.flipIndex][y&7]
 
 	char := &ob.charTiles[sprite.nameTable][tileIndex]
 
-	return sprite.GetCgramIndex(char.getPixelAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, byte(px), byte(r)))
-
-}
-
-func (ob *Objects) drawASprite(value byte, H, V uint16) uint16 {
-	sprite := &ob.Sprites[value&127]
-	sprite.setup()
-	dimensions := ob.tileSize[sprite.size]
-	if sprite.posX <= int16(H) && uint16(sprite.posY) <= V &&
-		sprite.posX+int16(dimensions.W) > int16(H) && uint16(sprite.posY)+dimensions.H > V {
-		x := H - uint16(sprite.posX)
-		y := V - uint16(sprite.posY)
-		row := y >> 3
-		column := x >> 3
-		tileRow := ((sprite.tileIndex >> 4) + byte(row)) & 0xF
-		tileColumn := (sprite.tileIndex + byte(column)) & 0xF
-		tileIndex := tileRow<<4 | tileColumn
-
-		px := x & 7
-		r := y & 7
-
-		//var resolvedData [8][8]byte
-		//RenderTile4bppLUT(ob.ds.getVRAM(), uint16(wordIndex), &resolvedData)
-
-		char := &ob.charTiles[sprite.nameTable][tileIndex]
-
-		//fmt.Println(x, y)
-		//fmt.Println(px, r)
-		//fmt.Println(sprite)
-		//fmt.Println(tileIndex)
-		//fmt.Println(wordIndex)
-		//fmt.Println(resolvedData[px][r])
-		//return ob.ds.getCGRAM()[sprite.GetCgramIndex(int(resolvedData[r][px]))]
-		//return uint16(sprite.GetCgramIndex(int(resolvedData[r][px])))
-		return uint16(sprite.GetCgramIndex(char.getPixelAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, byte(px), byte(r))))
-	}
-	//return ob.ds.getCGRAM()[0]
-	return 0
-
+	return sprite.GetCgramIndex(char.getPixelAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, px, r))
 }
 
 type Sprite struct {
@@ -216,6 +184,7 @@ type Sprite struct {
 	paletteNum byte
 	priority   byte
 
+	flipIndex                                  byte
 	isFlippedHorizontally, isFlippedVertically bool
 	size                                       byte
 
@@ -243,6 +212,7 @@ func (sprite *Sprite) setup() {
 	sprite.priority = (lo3 >> 4) & 0x3
 	sprite.isFlippedVertically = (lo3>>7)&1 == 1
 	sprite.isFlippedHorizontally = (lo3>>6)&1 == 1
+	sprite.flipIndex = (lo3 >> 6) & 3
 	sprite.size = (hi >> 1) & 1
 
 	sprite.isValid = true
