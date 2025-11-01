@@ -49,6 +49,11 @@ type PPU struct {
 
 	H, V int
 
+	renderPipelineGenerator renderPipelineGeneratorFunc
+	modePriority            []pipelineTemplate
+	mainRenderPipeline      []pipelineTemplate
+	subRenderPipeline       []pipelineTemplate
+
 	bgEpochs [6]uint64 //1 2 3 4 mode7 and obj
 
 	InterruptScheduler InterruptScheduler
