@@ -34,9 +34,12 @@ type PPU struct {
 
 	WINDOWS WindowController
 
+	BGMODE byte
+
 	Bg1     *Background
 	Bg2     *Background
 	Bg3     *Background
+	Bg4     *Background
 	BGxnOFS *BGxnOFS
 
 	Obj *Objects
@@ -63,6 +66,7 @@ func NewPPU() *PPU {
 	ppu.Bg1 = NewBackground(ppu, &ppu.bgEpochs[bg1], bg1)
 	ppu.Bg2 = NewBackground(ppu, &ppu.bgEpochs[bg2], bg2)
 	ppu.Bg3 = NewBackground(ppu, &ppu.bgEpochs[bg3], bg3)
+	ppu.Bg4 = NewBackground(ppu, &ppu.bgEpochs[bg4], bg4)
 	ppu.Obj = newObjects(ppu, &ppu.bgEpochs[obj], obj)
 	ppu.VRAM = NewVRAM(ppu)
 	ppu.OAM = NewOAM(ppu)
@@ -108,22 +112,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.OAM.WriteOAMData(value)
 	case 0x2105:
 		//fmt.Println("BGMODE: ", value)
-		ppu.Bg1.charTileSize = (value >> 4) & 1
-		ppu.Bg1.colorDepth = bpp8
-
-		ppu.Bg2.charTileSize = (value >> 5) & 1
-		ppu.Bg2.colorDepth = bpp4
-
-		ppu.Bg3.charTileSize = (value >> 6) & 1
-		ppu.Bg3.colorDepth = bpp2
-		//TODO should invalidate everything
-		ppu.InvalidateLayer(bg1)
-		ppu.Bg1.InvalidateScrollCache()
-		ppu.InvalidateLayer(bg2)
-		ppu.Bg2.InvalidateScrollCache()
-		ppu.InvalidateLayer(bg3)
-		ppu.Bg3.InvalidateScrollCache()
-		ppu.InvalidateLayer(obj)
+		ppu.setBGMODE(value)
 	case 0x2107:
 		fmt.Println("BG1SC: ", value)
 		ppu.Bg1.tileMapSize = uint16(value & 0x3)
@@ -142,6 +131,12 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.Bg3.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.InvalidateLayer(bg3)
 		ppu.Bg3.InvalidateScrollCache()
+	case 0x210A:
+		fmt.Println("BG4SC: ", value)
+		ppu.Bg4.tileMapSize = uint16(value & 0x3)
+		ppu.Bg4.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
+		ppu.InvalidateLayer(bg4)
+		ppu.Bg4.InvalidateScrollCache()
 	case 0x210B:
 		fmt.Println("BG12NBA: ", value)
 		ppu.Bg1.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
@@ -151,9 +146,9 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x210C:
 		fmt.Println("BG34NBA: ", value)
 		ppu.Bg3.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
-		//ppu.Bg4.charTileAddressBase = (uint16((value>>4)&0xF) << 12) & 0x7FFF
+		ppu.Bg4.charTileAddressBase = (uint16((value>>4)&0xF) << 12) & 0x7FFF
 		ppu.InvalidateLayer(bg3)
-		//ppu.InvalidateLayer(bg4)
+		ppu.InvalidateLayer(bg4)
 	//TODO add mode 7 scrolling
 	case 0x210D:
 		ppu.Bg1.hScroll = ppu.BGxnOFS.hFormula(value)
@@ -173,6 +168,12 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2112:
 		ppu.Bg3.vScroll = ppu.BGxnOFS.vFormula(value)
 		ppu.Bg3.InvalidateScrollCache()
+	case 0x2113:
+		ppu.Bg4.hScroll = ppu.BGxnOFS.hFormula(value)
+		ppu.Bg4.InvalidateScrollCache()
+	case 0x2114:
+		ppu.Bg4.vScroll = ppu.BGxnOFS.vFormula(value)
+		ppu.Bg4.InvalidateScrollCache()
 	case 0x2115:
 		ppu.VRAM.vmain.Setup(value)
 		fmt.Println("VMAIN: ", value)
@@ -261,6 +262,7 @@ func (ppu *PPU) tryInvalidate(addr uint16) {
 	ppu.Bg1.Invalidate(addr)
 	ppu.Bg2.Invalidate(addr)
 	ppu.Bg3.Invalidate(addr)
+	ppu.Bg4.Invalidate(addr)
 	ppu.Obj.Invalidate(addr)
 }
 
@@ -279,4 +281,30 @@ func (ppu *PPU) invalidateSpriteHi(id uint16) {
 	for i := range uint16(4) {
 		ppu.Obj.Sprites[id+i].isValid = false
 	}
+}
+
+func (ppu *PPU) setBGMODE(value byte) {
+	ppu.BGMODE = value & 7
+
+	ppu.Bg1.charTileSize = (value >> 4) & 1
+	ppu.Bg1.colorDepth = bpp8
+
+	ppu.Bg2.charTileSize = (value >> 5) & 1
+	ppu.Bg2.colorDepth = bpp4
+
+	ppu.Bg3.charTileSize = (value >> 6) & 1
+	ppu.Bg3.colorDepth = bpp2
+
+	ppu.Bg4.charTileSize = (value >> 7) & 1
+	ppu.Bg4.colorDepth = bpp2
+
+	ppu.InvalidateLayer(bg1)
+	ppu.Bg1.InvalidateScrollCache()
+	ppu.InvalidateLayer(bg2)
+	ppu.Bg2.InvalidateScrollCache()
+	ppu.InvalidateLayer(bg3)
+	ppu.Bg3.InvalidateScrollCache()
+	ppu.InvalidateLayer(bg4)
+	ppu.Bg4.InvalidateScrollCache()
+	ppu.InvalidateLayer(obj)
 }

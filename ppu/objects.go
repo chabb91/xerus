@@ -28,6 +28,8 @@ type Objects struct {
 	currentEpoch *uint64
 
 	layerId ppuLayer
+
+	enabledOnMainScreen, enabledOnSubScreen bool
 }
 
 func newObjects(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Objects {
@@ -53,6 +55,10 @@ func newObjects(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Objects {
 	}
 
 	return obj
+}
+
+func (ob *Objects) isActive() bool {
+	return ob.enabledOnMainScreen || ob.enabledOnSubScreen
 }
 
 func (ob *Objects) setupOBSEL(value byte) {

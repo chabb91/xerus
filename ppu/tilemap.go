@@ -67,6 +67,8 @@ type Background struct {
 
 	OPTMap  *Background
 	optFunc optResolver
+
+	enabledOnMainScreen, enabledOnSubScreen bool
 }
 
 func NewBackground(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Background {
@@ -92,6 +94,10 @@ func NewBackground(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Backgro
 
 func (bg *Background) InvalidateScrollCache() {
 	bg.scrollEpoch++
+}
+
+func (bg *Background) isActive() bool {
+	return bg.enabledOnMainScreen || bg.enabledOnSubScreen
 }
 
 func (bg *Background) GetLayerSourceEpoch() *uint64 {
