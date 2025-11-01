@@ -40,16 +40,23 @@ func (ppu *PPU) Step() {
 			if ppu.WINDOWS.isDotMasked(bg1, false, draw.H) {
 				ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.CGRAM.CGRAM[0], ppu.brightness)
 			} else {
-				if c := ppu.Obj.resolvedDotsOnScanLine[draw.H].colorId; c > OBJ_BACKDROP_COLOR {
-					ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.CGRAM.CGRAM[c], ppu.brightness)
-				} else if dot := ppu.Bg1.GetDotAt(draw.H, draw.V); dot > BG_BACKDROP_COLOR {
-					ppu.Framebuffer.Back[draw.H][draw.V].SetColor(dot, ppu.brightness)
-				} else {
-					ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.Bg3.GetDotAt(draw.H, draw.V), ppu.brightness)
-				}
+				/*	if c := ppu.Obj.resolvedDotsOnScanLine[draw.H].colorId; c > OBJ_BACKDROP_COLOR {
+						ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.CGRAM.CGRAM[c], ppu.brightness)
+					} else if dot := ppu.Bg1.GetDotAt(draw.H, draw.V); dot > BG_BACKDROP_COLOR {
+						ppu.Framebuffer.Back[draw.H][draw.V].SetColor(dot, ppu.brightness)
+					} else {
+						ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.Bg3.GetDotAt(draw.H, draw.V), ppu.brightness)
+					}*/
 				//ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.Obj.draw8sprites(draw.H, draw.V), ppu.brightness)
 				//ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.Bg1.GetDotAt(draw.H, draw.V), ppu.brightness)
-				//ppu.Framebuffer.Back[draw.H][draw.V] = addColors(ppu.Bg1.GetDotAt(draw.H, draw.V), ppu.Bg2.GetDotAt(draw.H, draw.V), false)
+
+				bbg2 := ppu.Bg2.GetDotAt(draw.H, draw.V)
+				bbg1 := ppu.Bg1.GetDotAt(draw.H, draw.V)
+				layer := bg1
+				if bbg1 == BG_BACKDROP_COLOR {
+					layer = backdrop
+				}
+				ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.WINDOWS.performColorMath(bbg1, bbg2, draw.H, layer), ppu.brightness)
 			}
 		}
 	}
@@ -89,6 +96,7 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 		ppu.InterruptScheduler.SetHvbjoyH(true)
 	case ActionHBlankEnd:
 		ppu.HBlank = false
+		//TODO HVBJoY troggers on a slightly different timer
 		ppu.InterruptScheduler.SetHvbjoyH(false)
 	case ActionHBlankEndInterlaceFieldToggle:
 		ppu.HBlank = false

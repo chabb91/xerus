@@ -23,7 +23,7 @@ type SoC struct {
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/Breakout.sfc")
+	romData, err := cartridge.Load("/home/chabb/Downloads/HiColor3840.sfc")
 	if err != nil {
 		panic(err)
 	}

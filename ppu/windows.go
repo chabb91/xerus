@@ -309,7 +309,7 @@ func colorClipOrPreventMathAlways(_ bool) bool {
 func getColorClipOrPreventMathMode(value byte) clipOrPreventMathFunction {
 	switch value & 0x3 {
 	case 0:
-		return colorClipOrPreventMathAlways
+		return colorClipOrPreventMathNever
 	case 1:
 		return colorClipOrPreventMathOutsideWindow
 	case 2:
