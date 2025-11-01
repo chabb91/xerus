@@ -160,7 +160,7 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 		}
 	}
 
-	tile := bg.tileMap[tileIndex]
+	tile := &bg.tileMap[tileIndex]
 	tile.setup(tileIndex)
 
 	px = tileFlipXLUT[tile.flipIndex][px]
@@ -173,16 +173,7 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 	charIndex := tile.charIndex + charMapIdToOffsetLUT[charMapID]
 
 	charData := bg.charTiles[charIndex].getPixelAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, px, row)
-	if bg.colorDepth == bpp8 && bg.ds.isDirectColor() {
-		if charData == 0 {
-			return 0
-		} else {
-			red := (charData&7)<<2 | ((tile.paletteNum & 1) << 1)
-			green := (charData&0x1C)>>1 | (tile.paletteNum & 2)
-			blue := (charData&0xC0)>>3 | (tile.paletteNum & 4)
-			return uint16(blue)<<10 | uint16(green)<<5 | uint16(red)
-		}
-	}
+
 	return bg.ds.getCGRAM()[charData+tile.paletteNum<<bg.colorDepth]
 }
 
