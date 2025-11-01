@@ -53,6 +53,7 @@ type Background struct {
 	charTileAddressBase uint16
 	charTileSize        byte
 	colorDepth          colorDepth
+	isDirectColor       bool
 
 	vScroll     uint16
 	hScroll     uint16
@@ -161,7 +162,9 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 	}
 
 	tile := &bg.tileMap[tileIndex]
-	tile.setup(tileIndex)
+	if currentEpoch := *bg.currentEpoch; !tile.isValid || tile.lastRenderEpoch != currentEpoch {
+		tile.setup(tileIndex, currentEpoch)
+	}
 
 	px = tileFlipXLUT[tile.flipIndex][px]
 	row = tileFlipYLUT[tile.flipIndex][row]
@@ -173,7 +176,7 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 	charIndex := tile.charIndex + charMapIdToOffsetLUT[charMapID]
 
 	charData := bg.charTiles[charIndex].getPixelAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, px, row)
-	if bg.colorDepth == bpp8 && bg.ds.isDirectColor() {
+	if bg.layerId == bg1 && bg.colorDepth == bpp8 && bg.isDirectColor {
 		if charData == 0 {
 			return 0
 		} else {
@@ -277,12 +280,7 @@ type BgTile struct {
 	bg              *Background
 }
 
-func (bt *BgTile) setup(tileIndex uint16) {
-	currentEpoch := *bt.bg.currentEpoch
-	if bt.isValid && bt.lastRenderEpoch == currentEpoch {
-		return
-	}
-
+func (bt *BgTile) setup(tileIndex uint16, currentEpoch uint64) {
 	params := bt.bg.ds.getVRAM()[bt.bg.tileMapAddress+tileIndex]
 	bt.flipIndex = byte((params >> 14) & 3)
 	bt.priority = byte(params>>13) & 1

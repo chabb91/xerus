@@ -258,8 +258,6 @@ type ColorMath struct {
 	halfColor     bool
 	isSubscren    bool
 
-	directColor bool
-
 	preventMath clipOrPreventMathFunction
 	clipToBlack clipOrPreventMathFunction
 
@@ -280,11 +278,14 @@ func (cm *ColorMath) setCOLDATA(value byte) {
 	cm.fixedColor &= 0x7FFF
 }
 
-func (cm *ColorMath) setCGWSEL(value byte) {
+func (cm *ColorMath) setCGWSEL(value byte, directColor *bool) {
 	cm.clipToBlack = getColorClipOrPreventMathMode((value >> 6) & 3)
 	cm.preventMath = getColorClipOrPreventMathMode((value >> 4) & 3)
 	cm.isSubscren = value&2 != 0
-	cm.directColor = value&1 != 0
+	//assign the value directly to bg1 so there is no lookup delay later
+	if directColor != nil {
+		*directColor = value&1 != 0
+	}
 }
 
 type clipOrPreventMathFunction func(bool) bool

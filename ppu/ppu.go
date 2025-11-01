@@ -11,7 +11,6 @@ type tileDataSource interface {
 	getVRAM() []uint16
 	getCGRAM() []uint16
 	getPriorityRotation() byte
-	isDirectColor() bool
 }
 
 type tileValidator interface {
@@ -219,7 +218,8 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.WINDOWS.TSW(value)
 	case 0x2130:
 		fmt.Println("CGWSEL", value)
-		ppu.WINDOWS.ColorMath.setCGWSEL(value)
+		//TODO remember mode7
+		ppu.WINDOWS.ColorMath.setCGWSEL(value, &ppu.Bg1.isDirectColor)
 	case 0x2131:
 		fmt.Println("CGADSUB", value)
 		ppu.WINDOWS.setCGADSUB(value)
@@ -254,10 +254,6 @@ func (ppu *PPU) getCGRAM() []uint16 {
 
 func (ppu *PPU) getPriorityRotation() byte {
 	return ppu.OAM.GetSpritePriority()
-}
-
-func (ppu *PPU) isDirectColor() bool {
-	return ppu.WINDOWS.ColorMath.directColor
 }
 
 func (ppu *PPU) tryInvalidate(addr uint16) {
