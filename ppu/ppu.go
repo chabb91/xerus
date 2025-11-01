@@ -49,10 +49,9 @@ type PPU struct {
 
 	H, V int
 
-	renderPipelineGenerator renderPipelineGeneratorFunc
-	modePriority            []pipelineTemplate
-	mainRenderPipeline      []pipelineTemplate
-	subRenderPipeline       []pipelineTemplate
+	modePriority       []pipelineTemplate
+	mainRenderPipeline []pipelineTemplate
+	subRenderPipeline  []pipelineTemplate
 
 	bgEpochs [6]uint64 //1 2 3 4 mode7 and obj
 
@@ -68,6 +67,9 @@ func NewPPU() *PPU {
 		BGxnOFS: &BGxnOFS{},
 		SETINI:  NewSETINI(PAL_TIMING),
 	}
+	ppu.mainRenderPipeline = make([]pipelineTemplate, 0, 12)
+	ppu.subRenderPipeline = make([]pipelineTemplate, 0, 12)
+
 	ppu.Bg1 = NewBackground(ppu, &ppu.bgEpochs[bg1], bg1)
 	ppu.Bg2 = NewBackground(ppu, &ppu.bgEpochs[bg2], bg2)
 	ppu.Bg3 = NewBackground(ppu, &ppu.bgEpochs[bg3], bg3)
@@ -215,9 +217,13 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x212B:
 		ppu.WINDOWS.WOBJLOG(value)
 	case 0x212C:
-		fmt.Println("TM: ", value)
+		fmt.Println("MainPIPELINE ", ppu.mainRenderPipeline)
+		ppu.setTM(value)
+		ppu.regenerateMainPipeline()
 	case 0x212D:
-		fmt.Println("TS: ", value)
+		fmt.Println("SUBPIPELINE ", ppu.subRenderPipeline)
+		ppu.setTS(value)
+		ppu.regenerateSubPipeline()
 	case 0x212E:
 		ppu.WINDOWS.TMW(value)
 	case 0x212F:
@@ -286,30 +292,4 @@ func (ppu *PPU) invalidateSpriteHi(id uint16) {
 	for i := range uint16(4) {
 		ppu.Obj.Sprites[id+i].isValid = false
 	}
-}
-
-func (ppu *PPU) setBGMODE(value byte) {
-	ppu.BGMODE = value & 7
-
-	ppu.Bg1.charTileSize = (value >> 4) & 1
-	ppu.Bg1.colorDepth = bpp8
-
-	ppu.Bg2.charTileSize = (value >> 5) & 1
-	ppu.Bg2.colorDepth = bpp4
-
-	ppu.Bg3.charTileSize = (value >> 6) & 1
-	ppu.Bg3.colorDepth = bpp2
-
-	ppu.Bg4.charTileSize = (value >> 7) & 1
-	ppu.Bg4.colorDepth = bpp2
-
-	ppu.InvalidateLayer(bg1)
-	ppu.Bg1.InvalidateScrollCache()
-	ppu.InvalidateLayer(bg2)
-	ppu.Bg2.InvalidateScrollCache()
-	ppu.InvalidateLayer(bg3)
-	ppu.Bg3.InvalidateScrollCache()
-	ppu.InvalidateLayer(bg4)
-	ppu.Bg4.InvalidateScrollCache()
-	ppu.InvalidateLayer(obj)
 }

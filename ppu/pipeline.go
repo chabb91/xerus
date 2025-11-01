@@ -1,7 +1,6 @@
 package ppu
 
 type bgModeSetter func(ppu *PPU, mode1Prio, isExtBg bool)
-type renderPipelineGeneratorFunc func(ppu *PPU, isSubscreen bool)
 
 type pipelineTemplate struct {
 	layer    ppuLayer
@@ -113,7 +112,16 @@ var modePriorityOrder = map[byte][]pipelineTemplate{
 	},
 }
 
-var bgModeLUT [8]bgModeSetter
+var bgModeLUT = [8]bgModeSetter{
+	setMode0,
+	setMode1,
+	setMode2,
+	setMode3,
+	setMode4,
+	setMode5,
+	setMode6,
+	setMode7,
+}
 
 func setMode0(ppu *PPU, _, _ bool) {
 	ppu.Bg1.colorDepth = bpp2
@@ -246,6 +254,30 @@ func (ppu *PPU) regeneratePipelines() {
 	}
 }
 
+func (ppu *PPU) regenerateMainPipeline() {
+	template := ppu.modePriority
+
+	ppu.mainRenderPipeline = ppu.mainRenderPipeline[:0]
+
+	for _, step := range template {
+		if ppu.isEnabledOnMain(step.layer) {
+			ppu.mainRenderPipeline = append(ppu.mainRenderPipeline, step)
+		}
+	}
+}
+
+func (ppu *PPU) regenerateSubPipeline() {
+	template := ppu.modePriority
+
+	ppu.subRenderPipeline = ppu.subRenderPipeline[:0]
+
+	for _, step := range template {
+		if ppu.isEnabledOnSub(step.layer) {
+			ppu.subRenderPipeline = append(ppu.subRenderPipeline, step)
+		}
+	}
+}
+
 func (ppu *PPU) isEnabledOnMain(layer ppuLayer) bool {
 	switch layer {
 	case bg1:
@@ -276,4 +308,88 @@ func (ppu *PPU) isEnabledOnSub(layer ppuLayer) bool {
 		return ppu.Obj.enabledOnSubScreen
 	}
 	return false
+}
+
+func (ppu *PPU) setBGMODE(value byte) {
+	ppu.BGMODE = value & 7
+
+	ppu.Bg1.charTileSize = (value >> 4) & 1
+	ppu.Bg2.charTileSize = (value >> 5) & 1
+	ppu.Bg3.charTileSize = (value >> 6) & 1
+	ppu.Bg4.charTileSize = (value >> 7) & 1
+
+	ppu.InvalidateLayer(bg1)
+	ppu.Bg1.InvalidateScrollCache()
+	ppu.InvalidateLayer(bg2)
+	ppu.Bg2.InvalidateScrollCache()
+	ppu.InvalidateLayer(bg3)
+	ppu.Bg3.InvalidateScrollCache()
+	ppu.InvalidateLayer(bg4)
+	ppu.Bg4.InvalidateScrollCache()
+	ppu.InvalidateLayer(obj)
+
+	bgModeLUT[value&7](ppu, (value&8) != 0, ppu.SETINI.m7EXTBG)
+
+	ppu.regeneratePipelines()
+}
+
+func (ppu *PPU) setTM(value byte) {
+	if value&1 != 0 {
+		ppu.Bg1.enabledOnMainScreen = true
+	} else {
+		ppu.Bg1.enabledOnMainScreen = false
+	}
+	if value&2 != 0 {
+		ppu.Bg2.enabledOnMainScreen = true
+	} else {
+		ppu.Bg2.enabledOnMainScreen = false
+	}
+
+	if value&4 != 0 {
+		ppu.Bg3.enabledOnMainScreen = true
+	} else {
+		ppu.Bg3.enabledOnMainScreen = false
+	}
+
+	if value&8 != 0 {
+		ppu.Bg4.enabledOnMainScreen = true
+	} else {
+		ppu.Bg4.enabledOnMainScreen = false
+	}
+
+	if value&0x10 != 0 {
+		ppu.Obj.enabledOnMainScreen = true
+	} else {
+		ppu.Obj.enabledOnMainScreen = false
+	}
+}
+func (ppu *PPU) setTS(value byte) {
+	if value&1 != 0 {
+		ppu.Bg1.enabledOnSubScreen = true
+	} else {
+		ppu.Bg1.enabledOnSubScreen = false
+	}
+	if value&2 != 0 {
+		ppu.Bg2.enabledOnSubScreen = true
+	} else {
+		ppu.Bg2.enabledOnSubScreen = false
+	}
+
+	if value&4 != 0 {
+		ppu.Bg3.enabledOnSubScreen = true
+	} else {
+		ppu.Bg3.enabledOnSubScreen = false
+	}
+
+	if value&8 != 0 {
+		ppu.Bg4.enabledOnSubScreen = true
+	} else {
+		ppu.Bg4.enabledOnSubScreen = false
+	}
+
+	if value&0x10 != 0 {
+		ppu.Obj.enabledOnSubScreen = true
+	} else {
+		ppu.Obj.enabledOnSubScreen = false
+	}
 }
