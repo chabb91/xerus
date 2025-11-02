@@ -3,6 +3,8 @@ package ppu
 type colorDepth uint16
 type ppuLayer uint16
 
+const BG_BACKDROP_COLOR = 0
+
 const (
 	bg1      ppuLayer = 0
 	bg2      ppuLayer = 1
@@ -147,7 +149,7 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 // save the char address in the chartile
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
-func (bg *Background) GetDotAt(H, V uint16) byte {
+func (bg *Background) GetDotAt(H, V uint16) uint16 {
 	cache := &bg.tileMapLookupCacke[H][V]
 	if bg.scrollEpoch != cache.entryEpoch {
 		//TODO add a nested for loop that set up all 8x8 dots of the tile with this data
@@ -185,7 +187,7 @@ func (bg *Background) GetDotAt(H, V uint16) byte {
 	charIndex := tile.charIndex + charMapIdToOffsetLUT[charMapID]
 
 	charData := bg.charTiles[charIndex].getPixelAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, px, row)
-	/*if bg.layerId == bg1 && bg.colorDepth == bpp8 && bg.isDirectColor {
+	if bg.layerId == bg1 && bg.colorDepth == bpp8 && bg.isDirectColor {
 		if charData == 0 {
 			return 0
 		} else {
@@ -194,8 +196,8 @@ func (bg *Background) GetDotAt(H, V uint16) byte {
 			blue := (charData&0xC0)>>3 | (tile.paletteNum & 4)
 			return uint16(blue)<<10 | uint16(green)<<5 | uint16(red)
 		}
-	}*/
-	return charData + bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum)
+	}
+	return bg.ds.getCGRAM()[charData+bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum)]
 }
 
 // my best guess for OPT. will test it in a year when i can run games LUL

@@ -1,13 +1,10 @@
 package ppu
 
 const OBJ_CHAR_PER_TABLE = 256
-const (
-	BG_BACKDROP_COLOR  = 0
-	OBJ_BACKDROP_COLOR = 128
-)
 
 type renderedSpriteOnDot struct {
-	colorId             byte
+	color               uint16
+	priority            byte
 	partakesInColorMath bool
 }
 
@@ -89,9 +86,6 @@ func (ob *Objects) Invalidate(addr uint16) {
 		}
 	}
 }
-func (ob *Objects) getSpritePriority() byte {
-	return ob.spritesParticipatingOnScanLine[0].priority
-}
 
 // TODO work in progress. its not detecting the correct sprite prio, it doesnt count tiles rendered it counts X and Y wrong
 // lots to do with this one
@@ -101,7 +95,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 	tileCnt := int16(0)
 	priority := ob.ds.getPriorityRotation()
 	for i := range SCREEN_WIDTH {
-		ob.resolvedDotsOnScanLine[i].colorId = OBJ_BACKDROP_COLOR
+		ob.resolvedDotsOnScanLine[i].color = BG_BACKDROP_COLOR
 	}
 	for i := range ob.Sprites {
 		sprite := &ob.Sprites[(priority+byte(i))&0x7F]
@@ -142,8 +136,8 @@ func (ob *Objects) prepareScanLine(V uint16) {
 			//TODO this should be replaced by the screen window check
 			//prolly at the sprite count evaluation too
 			if screenPos < int16(SCREEN_WIDTH) && screenPos >= 0 {
-				if renderDot := &ob.resolvedDotsOnScanLine[screenPos]; renderDot.colorId == OBJ_BACKDROP_COLOR {
-					renderDot.colorId = ob.drawASpriteByRef(sprite, dimensions, uint16(screenPos), V)
+				if renderDot := &ob.resolvedDotsOnScanLine[screenPos]; renderDot.color == BG_BACKDROP_COLOR {
+					renderDot.color, renderDot.priority = ob.drawASpriteByRef(sprite, dimensions, uint16(screenPos), V)
 					renderDot.partakesInColorMath = sprite.paletteNum >= 4
 				}
 			}
@@ -151,7 +145,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 	}
 }
 
-func (ob *Objects) drawASpriteByRef(sprite *Sprite, dimensions OBTileSize, H, V uint16) byte {
+func (ob *Objects) drawASpriteByRef(sprite *Sprite, dimensions OBTileSize, H, V uint16) (uint16, byte) {
 	x := H - uint16(sprite.posX)
 	//trying to handle wrapping of big sprites, UNTESTED
 	y := uint16(sprite.posY)
@@ -178,8 +172,13 @@ func (ob *Objects) drawASpriteByRef(sprite *Sprite, dimensions OBTileSize, H, V 
 	r := tileFlipYLUT[sprite.flipIndex][y&7]
 
 	char := &ob.charTiles[sprite.nameTable][tileIndex]
+	colorIndex := sprite.GetCgramIndex(char.getPixelAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, px, r))
 
-	return sprite.GetCgramIndex(char.getPixelAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, px, r))
+	if colorIndex&0xF == 0 {
+		return BG_BACKDROP_COLOR, sprite.priority
+	} else {
+		return ob.ds.getCGRAM()[colorIndex], sprite.priority
+	}
 }
 
 type Sprite struct {
@@ -231,7 +230,7 @@ func (sprite *Sprite) setup() {
 // converts the local palette index (0-15) to CGRAM index
 func (sprite *Sprite) GetCgramIndex(localIndex byte) byte {
 	localIndex &= 15
-	return OBJ_BACKDROP_COLOR + sprite.paletteNum<<4 + localIndex
+	return 128 + sprite.paletteNum<<4 + localIndex
 }
 
 // finds the first tile index belonging to this sprite in the VRAM

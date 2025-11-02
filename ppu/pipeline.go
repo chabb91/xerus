@@ -86,15 +86,15 @@ var modePriorityOrder = map[byte][]pipelineTemplate{
 		{obj, 3},
 		{obj, 2},
 		{obj, 1},
-		{bg1, 0},
+		{bgMode7, 0},
 		{obj, 0},
 	},
 	8: {
 		{obj, 3},
 		{obj, 2},
-		{bg2, 1},
+		{bg2, 1}, //TODO i believe bg2 is bg1 and bg1 is mode7
 		{obj, 1},
-		{bg1, 0},
+		{bgMode7, 0},
 		{obj, 0},
 		{bg2, 0},
 	},
@@ -344,16 +344,6 @@ func (ppu *PPU) setBGMODE(value byte) {
 	ppu.Bg3.charTileSize = (value >> 6) & 1
 	ppu.Bg4.charTileSize = (value >> 7) & 1
 
-	ppu.InvalidateLayer(bg1)
-	ppu.Bg1.InvalidateScrollCache()
-	ppu.InvalidateLayer(bg2)
-	ppu.Bg2.InvalidateScrollCache()
-	ppu.InvalidateLayer(bg3)
-	ppu.Bg3.InvalidateScrollCache()
-	ppu.InvalidateLayer(bg4)
-	ppu.Bg4.InvalidateScrollCache()
-	ppu.InvalidateLayer(obj)
-
 	bgModeLUT[value&7](ppu, (value&8) != 0, ppu.SETINI.m7EXTBG)
 
 	ppu.regeneratePipelines()
@@ -420,7 +410,7 @@ func (ppu *PPU) setTS(value byte) {
 	}
 }
 
-func (ppu *PPU) getLayerDot(layer ppuLayer, H, V uint16) byte {
+func (ppu *PPU) getLayerDot(layer ppuLayer, H, V uint16) uint16 {
 	switch layer {
 	case bg1:
 		return ppu.Bg1.GetDotAt(H, V)
@@ -431,43 +421,37 @@ func (ppu *PPU) getLayerDot(layer ppuLayer, H, V uint16) byte {
 	case bg4:
 		return ppu.Bg4.GetDotAt(H, V)
 	case obj:
-		return ppu.Obj.resolvedDotsOnScanLine[H].colorId
+		return ppu.Obj.resolvedDotsOnScanLine[H].color
 	}
 	return 0
 }
 
 func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer) {
-	var val byte
+	var val uint16
 	for _, v := range ppu.mainRenderPipeline {
 		if ppu.WINDOWS.isDotMasked(v.layer, false, H) {
 			continue
 		}
 		val = ppu.getLayerDot(v.layer, H, V)
-		if v.layer == obj && (val&0x0F) == 0 {
+		if val == BG_BACKDROP_COLOR {
 			continue
 		}
-		if ppu.CGRAM.CGRAM[val] == BG_BACKDROP_COLOR && v.layer != obj {
-			continue
-		}
-		return ppu.CGRAM.CGRAM[val], v.layer
+		return val, v.layer
 	}
 	return ppu.CGRAM.CGRAM[BG_BACKDROP_COLOR], backdrop
 }
 
 func (ppu *PPU) renderSubScreen(H, V uint16) (uint16, ppuLayer) {
-	var val byte
+	var val uint16
 	for _, v := range ppu.subRenderPipeline {
 		if ppu.WINDOWS.isDotMasked(v.layer, false, H) {
 			continue
 		}
 		val = ppu.getLayerDot(v.layer, H, V)
-		if v.layer == obj && (val&0x0F) == 0 {
+		if val == BG_BACKDROP_COLOR {
 			continue
 		}
-		if ppu.CGRAM.CGRAM[val] == BG_BACKDROP_COLOR && v.layer != obj {
-			continue
-		}
-		return ppu.CGRAM.CGRAM[val], v.layer
+		return val, v.layer
 	}
 	return ppu.CGRAM.CGRAM[BG_BACKDROP_COLOR], backdrop
 }

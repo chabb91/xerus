@@ -15,9 +15,8 @@ type tileDataSource interface {
 
 type tileValidator interface {
 	tryInvalidate(addr uint16)
-	//TODO
-	//invalidateBgTiles(bg Background)
-	//invalidateEverything()
+	invalidateLayer(layerIndex ppuLayer)
+	invalidateAllLayers()
 }
 
 type spriteValidator interface {
@@ -110,7 +109,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		}
 	case 0x2101:
 		ppu.Obj.setupOBSEL(value)
-		ppu.InvalidateLayer(obj)
+		ppu.invalidateLayer(obj)
 	case 0x2102:
 		ppu.OAM.SetAddWordLow(value)
 	case 0x2103:
@@ -120,42 +119,43 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2105:
 		//fmt.Println("BGMODE: ", value)
 		ppu.setBGMODE(value)
+		ppu.invalidateAllLayers()
 	case 0x2107:
 		fmt.Println("BG1SC: ", value)
 		ppu.Bg1.tileMapSize = uint16(value & 0x3)
 		ppu.Bg1.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
-		ppu.InvalidateLayer(bg1)
+		ppu.invalidateLayer(bg1)
 		ppu.Bg1.InvalidateScrollCache()
 	case 0x2108:
 		fmt.Println("BG2SC: ", value)
 		ppu.Bg2.tileMapSize = uint16(value & 0x3)
 		ppu.Bg2.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
-		ppu.InvalidateLayer(bg2)
+		ppu.invalidateLayer(bg2)
 		ppu.Bg2.InvalidateScrollCache()
 	case 0x2109:
 		fmt.Println("BG3SC: ", value)
 		ppu.Bg3.tileMapSize = uint16(value & 0x3)
 		ppu.Bg3.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
-		ppu.InvalidateLayer(bg3)
+		ppu.invalidateLayer(bg3)
 		ppu.Bg3.InvalidateScrollCache()
 	case 0x210A:
 		fmt.Println("BG4SC: ", value)
 		ppu.Bg4.tileMapSize = uint16(value & 0x3)
 		ppu.Bg4.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
-		ppu.InvalidateLayer(bg4)
+		ppu.invalidateLayer(bg4)
 		ppu.Bg4.InvalidateScrollCache()
 	case 0x210B:
 		fmt.Println("BG12NBA: ", value)
 		ppu.Bg1.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
 		ppu.Bg2.charTileAddressBase = (uint16((value>>4)&0xF) << 12) & 0x7FFF
-		ppu.InvalidateLayer(bg1)
-		ppu.InvalidateLayer(bg2)
+		ppu.invalidateLayer(bg1)
+		ppu.invalidateLayer(bg2)
 	case 0x210C:
 		fmt.Println("BG34NBA: ", value)
 		ppu.Bg3.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
 		ppu.Bg4.charTileAddressBase = (uint16((value>>4)&0xF) << 12) & 0x7FFF
-		ppu.InvalidateLayer(bg3)
-		ppu.InvalidateLayer(bg4)
+		ppu.invalidateLayer(bg3)
+		ppu.invalidateLayer(bg4)
 	//TODO add mode 7 scrolling
 	case 0x210D:
 		ppu.Bg1.hScroll = ppu.BGxnOFS.hFormula(value)
@@ -220,11 +220,13 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		fmt.Println("TM: ", value)
 		ppu.setTM(value)
 		ppu.regenerateMainPipeline()
+		ppu.invalidateAllLayers()
 		fmt.Println("MainPIPELINE ", ppu.mainRenderPipeline)
 	case 0x212D:
 		fmt.Println("TS: ", value)
 		ppu.setTS(value)
 		ppu.regenerateSubPipeline()
+		ppu.invalidateAllLayers()
 		fmt.Println("SUBPIPELINE ", ppu.subRenderPipeline)
 	case 0x212E:
 		ppu.WINDOWS.TMW(value)
@@ -271,20 +273,42 @@ func (ppu *PPU) getPriorityRotation() byte {
 }
 
 func (ppu *PPU) tryInvalidate(addr uint16) {
-	//maybe return true or something if theres a hit so it can stop checking the rest of the bgs
-	ppu.Bg1.Invalidate(addr)
-	ppu.Bg2.Invalidate(addr)
-	ppu.Bg3.Invalidate(addr)
-	ppu.Bg4.Invalidate(addr)
-	ppu.Obj.Invalidate(addr)
+	//only check locally if the layer is enabled
+	if ppu.Bg1.isActive() {
+		ppu.Bg1.Invalidate(addr)
+	}
+	if ppu.Bg2.isActive() {
+		ppu.Bg2.Invalidate(addr)
+	}
+	if ppu.Bg3.isActive() {
+		ppu.Bg3.Invalidate(addr)
+	}
+	if ppu.Bg4.isActive() {
+		ppu.Bg4.Invalidate(addr)
+	}
+	if ppu.Obj.isActive() {
+		ppu.Obj.Invalidate(addr)
+	}
 }
 
-func (ppu *PPU) InvalidateLayer(layerIndex ppuLayer) {
+func (ppu *PPU) invalidateLayer(layerIndex ppuLayer) {
 	if layerIndex >= 0 && layerIndex < ppuLayer(len(ppu.bgEpochs)) {
 		ppu.bgEpochs[layerIndex]++
 	}
 }
 
+func (ppu *PPU) invalidateAllLayers() {
+	for i := range ppu.bgEpochs {
+		ppu.bgEpochs[i]++
+	}
+
+	ppu.Bg1.InvalidateScrollCache()
+	ppu.Bg2.InvalidateScrollCache()
+	ppu.Bg3.InvalidateScrollCache()
+	ppu.Bg4.InvalidateScrollCache()
+}
+
+// sprites are only being invalidated locally because if a rom doesnt enable them oam is not interacted with
 func (ppu *PPU) invalidateSpriteLo(id uint16) {
 	ppu.Obj.Sprites[(id>>2)&127].isValid = false
 }

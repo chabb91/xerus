@@ -95,6 +95,8 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 	case ActionJoypadReadStart:
 	case ActionCpuRefresh:
 	case ActionPrepareScanline:
-		ppu.Obj.prepareScanLine(draw.V)
+		if ppu.Obj.isActive() {
+			ppu.Obj.prepareScanLine(draw.V)
+		}
 	}
 }
