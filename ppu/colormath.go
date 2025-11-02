@@ -41,3 +41,15 @@ func subColors(main, sub uint16, halve bool) uint16 {
 
 	return uint16((r & 31 << 10) | (g & 31 << 5) | b&31)
 }
+
+func mode0ColorIndex(layer ppuLayer, _ colorDepth, palette byte) byte {
+	return palette<<2 + byte(layer<<5)
+}
+
+func modeNormalColorNo8bppIndex(_ ppuLayer, colorDepth colorDepth, palette byte) byte {
+	return palette << colorDepth
+}
+
+func modeNormalColor8BppIndex(_ ppuLayer, _ colorDepth, _ byte) byte {
+	return 0
+}

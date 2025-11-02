@@ -21,6 +21,8 @@ const (
 
 type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
 type optResolver func(ppuLayer, uint16, uint16) (uint16, uint16)
+type VRAMAddressCalculator func(tileIndex byte) uint16
+type colorIndex func(ppuLayer, colorDepth, byte) byte
 
 // The PPU provides access to the epoch relevant to a specific BG layer
 type LayerEpochSource interface {
@@ -53,6 +55,7 @@ type Background struct {
 	charTileAddressBase uint16
 	charTileSize        byte
 	colorDepth          colorDepth
+	getPaletteIndex     colorIndex
 	isDirectColor       bool
 
 	vScroll     uint16
@@ -144,7 +147,7 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 // save the char address in the chartile
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
-func (bg *Background) GetDotAt(H, V uint16) uint16 {
+func (bg *Background) GetDotAt(H, V uint16) byte {
 	cache := &bg.tileMapLookupCacke[H][V]
 	if bg.scrollEpoch != cache.entryEpoch {
 		//TODO add a nested for loop that set up all 8x8 dots of the tile with this data
@@ -182,7 +185,7 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 	charIndex := tile.charIndex + charMapIdToOffsetLUT[charMapID]
 
 	charData := bg.charTiles[charIndex].getPixelAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, px, row)
-	if bg.layerId == bg1 && bg.colorDepth == bpp8 && bg.isDirectColor {
+	/*if bg.layerId == bg1 && bg.colorDepth == bpp8 && bg.isDirectColor {
 		if charData == 0 {
 			return 0
 		} else {
@@ -191,8 +194,8 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 			blue := (charData&0xC0)>>3 | (tile.paletteNum & 4)
 			return uint16(blue)<<10 | uint16(green)<<5 | uint16(red)
 		}
-	}
-	return bg.ds.getCGRAM()[charData+tile.paletteNum<<bg.colorDepth]
+	}*/
+	return charData + bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum)
 }
 
 // my best guess for OPT. will test it in a year when i can run games LUL
@@ -300,8 +303,6 @@ func (bt *BgTile) setup(tileIndex uint16, currentEpoch uint64) {
 func (tile *BgTile) GetVramTileWordIndex(tileIndex byte) uint16 {
 	return ((tile.charIndex+charMapIdToOffsetLUT[tileIndex])*uint16(tile.bg.colorDepth<<2) + tile.bg.charTileAddressBase) & 0x7FFF
 }
-
-type VRAMAddressCalculator func(tileIndex byte) uint16
 
 // TODO chartile needs to be able to handle 16x16 tiles later on too
 type CharTile struct {

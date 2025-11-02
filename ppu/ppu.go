@@ -217,13 +217,15 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x212B:
 		ppu.WINDOWS.WOBJLOG(value)
 	case 0x212C:
-		fmt.Println("MainPIPELINE ", ppu.mainRenderPipeline)
+		fmt.Println("TM: ", value)
 		ppu.setTM(value)
 		ppu.regenerateMainPipeline()
+		fmt.Println("MainPIPELINE ", ppu.mainRenderPipeline)
 	case 0x212D:
-		fmt.Println("SUBPIPELINE ", ppu.subRenderPipeline)
+		fmt.Println("TS: ", value)
 		ppu.setTS(value)
 		ppu.regenerateSubPipeline()
+		fmt.Println("SUBPIPELINE ", ppu.subRenderPipeline)
 	case 0x212E:
 		ppu.WINDOWS.TMW(value)
 	case 0x212F:
