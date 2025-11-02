@@ -22,7 +22,7 @@ const (
 )
 
 type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
-type optResolver func(ppuLayer, uint16, uint16) (uint16, uint16)
+type optResolver func(*Background, uint16, uint16) (uint16, uint16)
 type VRAMAddressCalculator func(tileIndex byte) uint16
 type colorIndex func(ppuLayer, colorDepth, byte) byte
 
@@ -167,7 +167,7 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 	if bg.OPTMap != nil {
 		if tileColumn := (H + uint16(7-cache.px)) >> 3; tileColumn > 0 {
 			//I THINK this is the correct logic tho i cant verify yet so it is what it is.
-			hScroll, vScroll := bg.optFunc(bg.layerId, H, V)
+			hScroll, vScroll := bg.optFunc(bg, H, V)
 			px, row, charMapID, tileIndex = getTileIndexAndPixelCoordinates(bg.tileMapSize, bg.charTileSize, hScroll, vScroll)
 		}
 	}
@@ -189,7 +189,7 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 	charData := bg.charTiles[charIndex].getPixelAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, px, row)
 	if bg.layerId == bg1 && bg.colorDepth == bpp8 && bg.isDirectColor {
 		if charData == 0 {
-			return 0
+			return BG_BACKDROP_COLOR
 		} else {
 			red := (charData&7)<<2 | ((tile.paletteNum & 1) << 1)
 			green := (charData&0x1C)>>1 | (tile.paletteNum & 2)
@@ -201,10 +201,12 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 }
 
 // my best guess for OPT. will test it in a year when i can run games LUL
-func (bg *Background) resolveOPTMode26(layer ppuLayer, H, V uint16) (uint16, uint16) {
+// TODO once i know this works it should be heavily optimized
+func resolveOPTMode26(bg *Background, H, V uint16) (uint16, uint16) {
 	HOFS := bg.hScroll + H
 	VOFS := bg.vScroll + V
 
+	layer := bg.layerId
 	if layer != bg1 && layer != bg2 {
 		return HOFS, VOFS
 	}
@@ -236,10 +238,11 @@ func (bg *Background) resolveOPTMode26(layer ppuLayer, H, V uint16) (uint16, uin
 	return HOFS, VOFS
 }
 
-func (bg *Background) resolveOPTMode4(layer ppuLayer, H, V uint16) (uint16, uint16) {
+func resolveOPTMode4(bg *Background, H, V uint16) (uint16, uint16) {
 	HOFS := bg.hScroll + H
 	VOFS := bg.vScroll + V
 
+	layer := bg.layerId
 	if layer != bg1 && layer != bg2 {
 		return HOFS, VOFS
 	}

@@ -133,8 +133,6 @@ func (ob *Objects) prepareScanLine(V uint16) {
 		dimensions := ob.tileSize[sprite.size]
 		for j := range int16(dimensions.W) {
 			screenPos := sprite.posX + j
-			//TODO this should be replaced by the screen window check
-			//prolly at the sprite count evaluation too
 			if screenPos < int16(SCREEN_WIDTH) && screenPos >= 0 {
 				if renderDot := &ob.resolvedDotsOnScanLine[screenPos]; renderDot.color == BG_BACKDROP_COLOR {
 					renderDot.color, renderDot.priority = ob.drawASpriteByRef(sprite, dimensions, uint16(screenPos), V)

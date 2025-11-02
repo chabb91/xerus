@@ -174,10 +174,10 @@ func setMode2(ppu *PPU, _, _ bool) {
 
 	ppu.modePriority = modePriorityOrder[2]
 
-	ppu.Bg1.optFunc = ppu.Bg1.resolveOPTMode26
+	ppu.Bg1.optFunc = resolveOPTMode26
 	ppu.Bg1.OPTMap = ppu.Bg3
 
-	ppu.Bg2.optFunc = ppu.Bg2.resolveOPTMode26
+	ppu.Bg2.optFunc = resolveOPTMode26
 	ppu.Bg2.OPTMap = ppu.Bg3
 }
 
@@ -206,10 +206,10 @@ func setMode4(ppu *PPU, _, _ bool) {
 
 	ppu.modePriority = modePriorityOrder[4]
 
-	ppu.Bg1.optFunc = ppu.Bg1.resolveOPTMode4
+	ppu.Bg1.optFunc = resolveOPTMode4
 	ppu.Bg1.OPTMap = ppu.Bg3
 
-	ppu.Bg2.optFunc = ppu.Bg2.resolveOPTMode4
+	ppu.Bg2.optFunc = resolveOPTMode4
 	ppu.Bg2.OPTMap = ppu.Bg3
 }
 
@@ -236,7 +236,7 @@ func setMode6(ppu *PPU, _, _ bool) {
 
 	ppu.modePriority = modePriorityOrder[6]
 
-	ppu.Bg1.optFunc = ppu.Bg1.resolveOPTMode26
+	ppu.Bg1.optFunc = resolveOPTMode26
 	ppu.Bg1.OPTMap = ppu.Bg3
 
 	ppu.Bg2.optFunc = nil
