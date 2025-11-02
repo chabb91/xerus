@@ -37,8 +37,11 @@ func (ppu *PPU) Step() {
 	draw := ppu.SETINI.TimingLUT[ppu.V*H_TOTAL+ppu.H]
 	if !ppu.FBlank {
 		if draw.IsVisible {
-			ms, l1 := ppu.renderMainScreen(draw.H, draw.V)
-			ss, _ := ppu.renderSubScreen(draw.H, draw.V)
+			ms, l1, math := ppu.renderMainScreen(draw.H, draw.V)
+			if !math {
+				ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ms, ppu.brightness)
+			}
+			ss, _, _ := ppu.renderSubScreen(draw.H, draw.V)
 			ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.WINDOWS.performColorMath(ms, ss, draw.H, l1), ppu.brightness)
 		}
 	}

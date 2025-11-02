@@ -46,6 +46,12 @@ type tileAndPixelCacheEntry struct {
 	entryEpoch         uint64
 }
 
+type renderedDotCache struct {
+	color    uint16
+	priority byte
+	H        uint16
+}
+
 type Background struct {
 	ds tileDataSource
 
@@ -74,6 +80,8 @@ type Background struct {
 	optFunc optResolver
 
 	enabledOnMainScreen, enabledOnSubScreen bool
+
+	renderedDotCache renderedDotCache
 }
 
 func NewBackground(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Background {
@@ -93,6 +101,8 @@ func NewBackground(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Backgro
 		bg.charTiles[i].ds = bg.ds
 		bg.charTiles[i].isValid = false
 	}
+
+	bg.renderedDotCache.H = 0xFFFF
 
 	return bg
 }
@@ -149,7 +159,11 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 // save the char address in the chartile
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
-func (bg *Background) GetDotAt(H, V uint16) uint16 {
+func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
+	if bg.renderedDotCache.H == H {
+		ret := bg.renderedDotCache
+		return ret.color, ret.priority, true
+	}
 	cache := &bg.tileMapLookupCacke[H][V]
 	if bg.scrollEpoch != cache.entryEpoch {
 		//TODO add a nested for loop that set up all 8x8 dots of the tile with this data
@@ -187,17 +201,26 @@ func (bg *Background) GetDotAt(H, V uint16) uint16 {
 	charIndex := tile.charIndex + charMapIdToOffsetLUT[charMapID]
 
 	charData := bg.charTiles[charIndex].getPixelAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, px, row)
-	if bg.layerId == bg1 && bg.colorDepth == bpp8 && bg.isDirectColor {
+
+	bg.renderedDotCache.priority = tile.priority
+	bg.renderedDotCache.H = H
+
+	if bg.colorDepth == bpp8 && bg.isDirectColor {
 		if charData == 0 {
-			return BG_BACKDROP_COLOR
+			bg.renderedDotCache.color = BG_BACKDROP_COLOR
+			return BG_BACKDROP_COLOR, tile.priority, true
 		} else {
 			red := (charData&7)<<2 | ((tile.paletteNum & 1) << 1)
 			green := (charData&0x1C)>>1 | (tile.paletteNum & 2)
 			blue := (charData&0xC0)>>3 | (tile.paletteNum & 4)
-			return uint16(blue)<<10 | uint16(green)<<5 | uint16(red)
+			ret := uint16(blue)<<10 | uint16(green)<<5 | uint16(red)
+			bg.renderedDotCache.color = ret
+			return ret, tile.priority, true
 		}
 	}
-	return bg.ds.getCGRAM()[charData+bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum)]
+	ret := bg.ds.getCGRAM()[charData+bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum)]
+	bg.renderedDotCache.color = ret
+	return ret, tile.priority, true
 }
 
 // my best guess for OPT. will test it in a year when i can run games LUL

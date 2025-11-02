@@ -410,7 +410,7 @@ func (ppu *PPU) setTS(value byte) {
 	}
 }
 
-func (ppu *PPU) getLayerDot(layer ppuLayer, H, V uint16) uint16 {
+func (ppu *PPU) getLayerDot(layer ppuLayer, H, V uint16) (uint16, byte, bool) {
 	switch layer {
 	case bg1:
 		return ppu.Bg1.GetDotAt(H, V)
@@ -421,37 +421,42 @@ func (ppu *PPU) getLayerDot(layer ppuLayer, H, V uint16) uint16 {
 	case bg4:
 		return ppu.Bg4.GetDotAt(H, V)
 	case obj:
-		return ppu.Obj.resolvedDotsOnScanLine[H].color
+		ret := ppu.Obj.resolvedDotsOnScanLine[H]
+		return ret.color, ret.priority, ret.partakesInColorMath
 	}
-	return 0
+	return 0, 0, false
 }
 
-func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer) {
+func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer, bool) {
 	var val uint16
+	var prio byte
+	var math bool
 	for _, v := range ppu.mainRenderPipeline {
 		if ppu.WINDOWS.isDotMasked(v.layer, false, H) {
 			continue
 		}
-		val = ppu.getLayerDot(v.layer, H, V)
-		if val == BG_BACKDROP_COLOR {
+		val, prio, math = ppu.getLayerDot(v.layer, H, V)
+		if val == BG_BACKDROP_COLOR || prio != v.priority {
 			continue
 		}
-		return val, v.layer
+		return val, v.layer, math
 	}
-	return ppu.CGRAM.CGRAM[BG_BACKDROP_COLOR], backdrop
+	return ppu.CGRAM.CGRAM[BG_BACKDROP_COLOR], backdrop, true
 }
 
-func (ppu *PPU) renderSubScreen(H, V uint16) (uint16, ppuLayer) {
+func (ppu *PPU) renderSubScreen(H, V uint16) (uint16, ppuLayer, bool) {
 	var val uint16
+	var prio byte
+	var math bool
 	for _, v := range ppu.subRenderPipeline {
 		if ppu.WINDOWS.isDotMasked(v.layer, false, H) {
 			continue
 		}
-		val = ppu.getLayerDot(v.layer, H, V)
-		if val == BG_BACKDROP_COLOR {
+		val, prio, math = ppu.getLayerDot(v.layer, H, V)
+		if val == BG_BACKDROP_COLOR || prio != v.priority {
 			continue
 		}
-		return val, v.layer
+		return val, v.layer, math
 	}
-	return ppu.CGRAM.CGRAM[BG_BACKDROP_COLOR], backdrop
+	return ppu.CGRAM.CGRAM[BG_BACKDROP_COLOR], backdrop, true
 }
