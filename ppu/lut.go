@@ -59,9 +59,6 @@ var obTileSizeLUT = [8][2]OBTileSize{
 var tileFlipXLUT [4][8]byte
 var tileFlipYLUT [4][8]byte
 var compositeFlipLUT [4][4]byte
-var baseTileFlipOffsets = [4]struct{ H, V int8 }{
-	{1, 2}, {-1, 1}, {1, -2}, {-1, -2},
-}
 
 func init() {
 	initBitplaneLUT()
@@ -87,20 +84,20 @@ func initBitplaneLUT() {
 func initCompositeFlipLUT() {
 	for charMapID := range 4 {
 		for flipIndex := range 4 {
-
 			hFlip := (flipIndex & 0b01) != 0
 			vFlip := (flipIndex & 0b10) != 0
 
-			finalOffset := int8(charMapID)
+			row := charMapID >> 1
+			col := charMapID & 1
 
 			if hFlip {
-				finalOffset += baseTileFlipOffsets[charMapID].H
+				col = 1 - col
 			}
 			if vFlip {
-				finalOffset += baseTileFlipOffsets[charMapID].V
+				row = 1 - row
 			}
 
-			compositeFlipLUT[charMapID][flipIndex] = byte(finalOffset)
+			compositeFlipLUT[charMapID][flipIndex] = byte(row<<1 | col)
 		}
 	}
 }

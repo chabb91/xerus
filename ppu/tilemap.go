@@ -148,7 +148,12 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 	tileMapID := (rowCnt>>5)*tileDimensions.mapsPerRow + columnCnt>>5
 	row := byte(V & charDimensions.modMask)
 	px := byte(H & charDimensions.modMask)
+	if charDimensions.modMask == 7 {
+		return px, row, 0, (rowCnt&31)<<5 + columnCnt&31
+	}
 	charMapID := (row>>3)<<1 + (px >> 3)
+	row &= 7
+	px &= 7
 	tileIndex := tileMapID*0x400 + (rowCnt&31)<<5 + columnCnt&31
 
 	return px, row, charMapID, tileIndex
@@ -194,11 +199,11 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 	px = tileFlipXLUT[tile.flipIndex][px]
 	row = tileFlipYLUT[tile.flipIndex][row]
 
+	charIndex := tile.charIndex
 	if bg.charTileSize == 1 {
-		charMapID += compositeFlipLUT[charMapID][tile.flipIndex]
+		charMapID = compositeFlipLUT[charMapID][tile.flipIndex]
+		charIndex += charMapIdToOffsetLUT[charMapID]
 	}
-
-	charIndex := tile.charIndex + charMapIdToOffsetLUT[charMapID]
 
 	charData := bg.charTiles[charIndex].getPixelAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, px, row)
 
