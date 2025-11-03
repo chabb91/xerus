@@ -101,8 +101,13 @@ func (ob *Objects) prepareScanLine(V uint16) {
 		sprite := &ob.Sprites[(priority+byte(i))&0x7F]
 		sprite.setup()
 		dimensions := ob.tileSize[sprite.size]
-		//cast to byte so it wraps meaning high Y big sprites can wrap to the top
-		if uint16(sprite.posY) <= V && uint16(sprite.posY+byte(dimensions.H)) > V {
+		wrapped := false
+		posY := uint16(sprite.posY) + dimensions.H
+		if posY > 255 {
+			wrapped = true
+		}
+		posY &= 0xFF
+		if (uint16(sprite.posY) <= V && posY > V) || (posY > V && wrapped) {
 			if (-1*int16(dimensions.W) < sprite.posX && sprite.posX < SCREEN_WIDTH) || sprite.posX == -256 {
 				if spriteCnt == 32 {
 					//TODO set $213E
