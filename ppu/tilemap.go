@@ -146,15 +146,15 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 	rowCnt := (V >> charDimensions.divMask) & tileDimensions.modMaskH
 	columnCnt := (H >> charDimensions.divMask) & tileDimensions.modMaskW
 	tileMapID := (rowCnt>>5)*tileDimensions.mapsPerRow + columnCnt>>5
+	tileIndex := tileMapID*0x400 + (rowCnt&31)<<5 + columnCnt&31
 	row := byte(V & charDimensions.modMask)
 	px := byte(H & charDimensions.modMask)
-	if charDimensions.modMask == 7 {
-		return px, row, 0, (rowCnt&31)<<5 + columnCnt&31
+	if charTileSize == 0 {
+		return px, row, 0, tileIndex
 	}
 	charMapID := (row>>3)<<1 + (px >> 3)
 	row &= 7
 	px &= 7
-	tileIndex := tileMapID*0x400 + (rowCnt&31)<<5 + columnCnt&31
 
 	return px, row, charMapID, tileIndex
 }
@@ -239,16 +239,19 @@ func resolveOPTMode26(bg *Background, H, V uint16) (uint16, uint16) {
 		return HOFS, VOFS
 	}
 
-	hLookup := HOFS&7 | (((H - 8) & 0xFFF8) + (bg.OPTMap.hScroll & 0xFFF8))
-	vLookup := bg.OPTMap.vScroll
+	optM := bg.OPTMap
+	vram := bg.ds.getVRAM()
+
+	hLookup := HOFS&7 | (((H - 8) & 0xFFF8) + (optM.hScroll & 0xFFF8))
+	vLookup := optM.vScroll
 
 	_, _, _, hTileIndex := getTileIndexAndPixelCoordinates(
-		bg.OPTMap.tileMapSize, bg.OPTMap.charTileSize, hLookup, vLookup)
+		optM.tileMapSize, optM.charTileSize, hLookup, vLookup)
 	_, _, _, vTileIndex := getTileIndexAndPixelCoordinates(
-		bg.OPTMap.tileMapSize, bg.OPTMap.charTileSize, hLookup, vLookup+8)
+		optM.tileMapSize, optM.charTileSize, hLookup, vLookup+8)
 
-	hScrollData := bg.ds.getVRAM()[bg.OPTMap.tileMapAddress+hTileIndex]
-	vScrollData := bg.ds.getVRAM()[bg.OPTMap.tileMapAddress+vTileIndex]
+	hScrollData := vram[optM.tileMapAddress+hTileIndex]
+	vScrollData := vram[optM.tileMapAddress+vTileIndex]
 
 	checkBit := uint16(0x2000) // BG1
 	if layer == bg2 {
@@ -275,13 +278,15 @@ func resolveOPTMode4(bg *Background, H, V uint16) (uint16, uint16) {
 		return HOFS, VOFS
 	}
 
-	hLookup := HOFS&7 | (((H - 8) & 0xFFF8) + (bg.OPTMap.hScroll & 0xFFF8))
-	vLookup := bg.OPTMap.vScroll
+	optM := bg.OPTMap
+
+	hLookup := HOFS&7 | (((H - 8) & 0xFFF8) + (optM.hScroll & 0xFFF8))
+	vLookup := optM.vScroll
 
 	_, _, _, tileIndex := getTileIndexAndPixelCoordinates(
-		bg.OPTMap.tileMapSize, bg.OPTMap.charTileSize, hLookup, vLookup)
+		optM.tileMapSize, optM.charTileSize, hLookup, vLookup)
 
-	scrollData := bg.ds.getVRAM()[bg.OPTMap.tileMapAddress+tileIndex]
+	scrollData := bg.ds.getVRAM()[optM.tileMapAddress+tileIndex]
 
 	var hScrollData, vScrollData uint16
 
