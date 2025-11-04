@@ -253,10 +253,7 @@ func resolveOPTMode26(bg *Background, H, V uint16) (uint16, uint16) {
 	hScrollData := vram[optM.tileMapAddress+hTileIndex]
 	vScrollData := vram[optM.tileMapAddress+vTileIndex]
 
-	checkBit := uint16(0x2000) // BG1
-	if layer == bg2 {
-		checkBit = 0x4000 // BG2
-	}
+	checkBit := uint16(1 << (13 + layer))
 
 	if hScrollData&checkBit != 0 {
 		HOFS = (HOFS & 7) | (H & 0xFFF8) + (hScrollData & 0x3F8) // 0000001111111000
@@ -288,27 +285,13 @@ func resolveOPTMode4(bg *Background, H, V uint16) (uint16, uint16) {
 
 	scrollData := bg.ds.getVRAM()[optM.tileMapAddress+tileIndex]
 
-	var hScrollData, vScrollData uint16
-
-	if scrollData&0x8000 != 0 {
-		hScrollData = 0
-		vScrollData = scrollData
-	} else {
-		hScrollData = scrollData
-		vScrollData = 0
-	}
-
-	checkBit := uint16(0x2000) // BG1
-	if layer == bg2 {
-		checkBit = 0x4000 // BG2
-	}
-
-	if hScrollData&checkBit != 0 {
-		HOFS = (HOFS & 7) | (H & 0xFFF8) + (hScrollData & 0x3F8) // 0000001111111000
-	}
-
-	if vScrollData&checkBit != 0 {
-		VOFS = vScrollData&0x3FF + V
+	checkBit := uint16(1 << (13 + layer))
+	if scrollData&checkBit != 0 {
+		if scrollData&0x8000 != 0 {
+			VOFS = V + scrollData
+		} else {
+			HOFS = (HOFS & 7) | (H & 0xFFF8) + (scrollData & 0x3F8) // 0000001111111000
+		}
 	}
 
 	return HOFS, VOFS

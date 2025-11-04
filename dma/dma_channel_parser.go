@@ -2,6 +2,7 @@ package dma
 
 import (
 	"SNES_emulator/memory"
+	"fmt"
 )
 
 const (
@@ -176,6 +177,7 @@ func (op *HdmaOperation) reload(channel DmaChannel) {
 	op.addr1 = uint32(channel.a1b)<<16 | uint32(channel.a1th)<<8 | uint32(channel.a1tl)
 	ntlrx := op.bus.ReadByte(op.addr1)
 	op.lineCounter = ntlrx & 0x7F
+	fmt.Println(op.lineCounter)
 	op.repeat = ntlrx&0x80 != 0
 	op.addr1++
 	op.doTransfer = true
@@ -222,8 +224,9 @@ func (op *HdmaOperation) setup(channel DmaChannel) {
 
 func (op *HdmaOperation) stepCycle() bool {
 	if op.transferIndex < op.transferUnitSize {
-		transfer(op.transferMode, op.transferIndex, op.addr1+uint32(op.transferIndex), op.busB, op.direction, op.bus)
+		transfer(op.transferMode, op.transferIndex, op.addr1, op.busB, op.direction, op.bus)
 		op.transferIndex++
+		op.addr1++
 	}
 	if op.transferIndex == op.transferUnitSize {
 		op.doTransfer = op.repeat
@@ -238,7 +241,6 @@ func (op *HdmaOperation) stepCycle() bool {
 func (op *HdmaOperation) stepLineCounter() {
 	op.lineCounter--
 	if op.lineCounter == 0 {
-		op.addr1 += uint32(op.transferUnitSize)
 		ntlrx := op.bus.ReadByte(op.addr1)
 		op.lineCounter = ntlrx & 0x7F
 		op.repeat = ntlrx&0x80 != 0

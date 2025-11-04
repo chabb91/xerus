@@ -5,20 +5,9 @@ import (
 	"time"
 )
 
-const TargetFrameDuration = time.Millisecond * 1000
-
 var frameStartTime time.Time
 
 func (ppu *PPU) Step() {
-	ppu.H++
-	if ppu.H >= H_TOTAL {
-		ppu.H = 0
-		ppu.V++
-		if ppu.V >= ppu.SETINI.Timing.TotalScanlines {
-			ppu.V = 0
-		}
-	}
-
 	if ppu.V == 0 && ppu.H == 0 {
 		frameStartTime = time.Now()
 	}
@@ -48,6 +37,15 @@ func (ppu *PPU) Step() {
 
 	if draw.Action != ActionNone {
 		ppu.performAction(draw)
+	}
+
+	ppu.H++
+	if ppu.H >= H_TOTAL {
+		ppu.H = 0
+		ppu.V++
+		if ppu.V >= ppu.SETINI.Timing.TotalScanlines {
+			ppu.V = 0
+		}
 	}
 }
 

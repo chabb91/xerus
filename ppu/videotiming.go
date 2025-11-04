@@ -121,7 +121,7 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 			if (v >= 0 && v <= vActive) && h == 278 {
 				action = ActionHDMAStart
 			}
-			if (v >= 0 && v <= vActive) && h == H_BLANK_START-1 {
+			if (v >= 1 && v <= vActive) && h == H_BLANK_START-1 {
 				action = ActionPrepareScanline
 			}
 			if h == 1 {
