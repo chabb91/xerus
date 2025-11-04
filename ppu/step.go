@@ -8,20 +8,7 @@ import (
 var frameStartTime time.Time
 
 func (ppu *PPU) Step() {
-	if ppu.V == 0 && ppu.H == 0 {
-		frameStartTime = time.Now()
-	}
-	if ppu.V == ppu.SETINI.Timing.TotalScanlines-1 && ppu.H == H_TOTAL-1 {
-
-		elapsed := time.Since(frameStartTime)
-		fmt.Println(elapsed)
-
-		waitDuration := time.Duration(ppu.SETINI.Timing.TargetFrameMS) - elapsed
-
-		if waitDuration > 0 {
-			time.Sleep(waitDuration)
-		}
-	}
+	timing := ppu.SETINI.Timing
 
 	draw := ppu.SETINI.TimingLUT[ppu.V*H_TOTAL+ppu.H]
 	if !ppu.FBlank {
@@ -43,8 +30,18 @@ func (ppu *PPU) Step() {
 	if ppu.H >= H_TOTAL {
 		ppu.H = 0
 		ppu.V++
-		if ppu.V >= ppu.SETINI.Timing.TotalScanlines {
+		if ppu.V >= timing.TotalScanlines {
 			ppu.V = 0
+
+			elapsed := time.Since(frameStartTime)
+			fmt.Println(elapsed)
+
+			waitDuration := time.Duration(timing.TargetFrameMS) - elapsed
+
+			if waitDuration > 0 {
+				time.Sleep(waitDuration)
+			}
+			frameStartTime = time.Now()
 		}
 	}
 }

@@ -238,6 +238,7 @@ func (op *HdmaOperation) stepCycle() bool {
 }
 
 func (op *HdmaOperation) stepLineCounter() {
+	op.lineCounter--
 	if op.lineCounter == 0 {
 		ntlrx := op.bus.ReadByte(op.addr1)
 		op.lineCounter = ntlrx & 0x7F
@@ -246,5 +247,4 @@ func (op *HdmaOperation) stepLineCounter() {
 		op.doTransfer = true
 		op.isTerminated = ntlrx == 0
 	}
-	op.lineCounter--
 }

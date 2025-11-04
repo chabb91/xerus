@@ -96,6 +96,8 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 	}
 }
 
+// TODO some of these heavy register operations should be deferred to the next scanline for accuracy
+// its called mode latch delay
 func (ppu *PPU) Write(addr uint16, value byte) error {
 	switch addr {
 	case 0x2100:
@@ -119,7 +121,6 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2105:
 		//fmt.Println("BGMODE: ", value)
 		ppu.setBGMODE(value)
-		ppu.invalidateAllLayers()
 	case 0x2107:
 		fmt.Println("BG1SC: ", value)
 		ppu.Bg1.tileMapSize = uint16(value & 0x3)
@@ -221,13 +222,13 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.setTM(value)
 		ppu.regenerateMainPipeline()
 		ppu.invalidateAllLayers()
-		fmt.Println("MainPIPELINE ", ppu.mainRenderPipeline)
+		//fmt.Println("MainPIPELINE ", ppu.mainRenderPipeline)
 	case 0x212D:
 		fmt.Println("TS: ", value)
 		ppu.setTS(value)
 		ppu.regenerateSubPipeline()
 		ppu.invalidateAllLayers()
-		fmt.Println("SUBPIPELINE ", ppu.subRenderPipeline)
+		//fmt.Println("SUBPIPELINE ", ppu.subRenderPipeline)
 	case 0x212E:
 		ppu.WINDOWS.TMW(value)
 	case 0x212F:
@@ -301,6 +302,18 @@ func (ppu *PPU) invalidateAllLayers() {
 	for i := range ppu.bgEpochs {
 		ppu.bgEpochs[i]++
 	}
+
+	ppu.Bg1.InvalidateScrollCache()
+	ppu.Bg2.InvalidateScrollCache()
+	ppu.Bg3.InvalidateScrollCache()
+	ppu.Bg4.InvalidateScrollCache()
+}
+
+func (ppu *PPU) invalidateAllBackgrounds() {
+	ppu.bgEpochs[bg1]++
+	ppu.bgEpochs[bg2]++
+	ppu.bgEpochs[bg3]++
+	ppu.bgEpochs[bg4]++
 
 	ppu.Bg1.InvalidateScrollCache()
 	ppu.Bg2.InvalidateScrollCache()

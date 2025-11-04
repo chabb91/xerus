@@ -347,6 +347,7 @@ func (ppu *PPU) setBGMODE(value byte) {
 	bgModeLUT[value&7](ppu, (value&8) != 0, ppu.SETINI.m7EXTBG)
 
 	ppu.regeneratePipelines()
+	ppu.invalidateAllBackgrounds()
 }
 
 func (ppu *PPU) setTM(value byte) {
