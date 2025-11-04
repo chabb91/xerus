@@ -215,9 +215,9 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 			bg.renderedDotCache.color = BG_BACKDROP_COLOR
 			return BG_BACKDROP_COLOR, tile.priority, true
 		} else {
-			red := (charData&7)<<2 | ((tile.paletteNum & 1) << 1)
-			green := (charData&0x1C)>>1 | (tile.paletteNum & 2)
-			blue := (charData&0xC0)>>3 | (tile.paletteNum & 4)
+			red := ((charData & 0x07) << 2) | ((tile.paletteNum & 0x01) << 1)
+			green := ((charData & 0x38) >> 1) | ((tile.paletteNum & 0x02) << 2)
+			blue := ((charData & 0xC0) >> 2) | ((tile.paletteNum & 0x04) << 2)
 			ret := uint16(blue)<<10 | uint16(green)<<5 | uint16(red)
 			bg.renderedDotCache.color = ret
 			return ret, tile.priority, true

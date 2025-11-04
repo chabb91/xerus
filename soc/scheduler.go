@@ -30,6 +30,5 @@ func (soc SoC) Run() {
 			cnt = 0
 			continue
 		}
-
 	}
 }
