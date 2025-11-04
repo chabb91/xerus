@@ -9,6 +9,10 @@ type LayerWindowData struct {
 	colorMathActive                   bool
 
 	wMaskLogic wMaskLogic
+	//TODO rewrite this so it has three more fields
+	//isTainted and subcahce []bool and maincache []bool
+	//when register write happens mark tainted and recompute the all 256 values for both slices
+	//use lookup mask value in there for massive gains
 }
 
 type WindowController struct {
