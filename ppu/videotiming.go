@@ -19,7 +19,7 @@ const (
 	ActionSetNmi
 	ActionSetRdnmi
 	ActionJoypadReadStart
-	//ActionJoypadReadEnd
+	ActionJoypadReadEnd
 	ActionCpuRefresh
 	ActionPrepareScanline //arbitrary action to pre calculate stuff for every scanline
 )
@@ -114,6 +114,9 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 			}
 			if v == vActive+1 && h == 33 {
 				action = ActionJoypadReadStart
+			}
+			if v == vActive+4 && h == 66 {
+				action = ActionJoypadReadEnd
 			}
 			if v == 0 && h == 6 {
 				action = ActionHDMAReload

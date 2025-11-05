@@ -12,7 +12,7 @@ type InterruptController struct {
 	rdnmi        byte
 	Timeup       byte
 	//todo this is just part of the ppu fr fr
-	Hvbjoy byte
+	hvbjoy byte
 
 	cpu *cpu.CPU
 	//TODO this also has access to joypad and ppu but of course those dont exist yet.
@@ -23,6 +23,11 @@ type InterruptController struct {
 	nmi bool
 	irq irqMode
 
+	JOY1 uint16
+	JOY2 uint16
+	JOY3 uint16
+	JOY4 uint16
+
 	bus memory.Bus
 }
 
@@ -31,7 +36,7 @@ func NewInterruptController(bus memory.Bus, cpu *cpu.CPU) *InterruptController {
 		cpu:    cpu,
 		bus:    bus,
 		rdnmi:  0x02,
-		Hvbjoy: 0x0,
+		hvbjoy: 0x0,
 	}
 }
 
@@ -43,17 +48,49 @@ func (ic *InterruptController) FireNmi() {
 
 func (ic *InterruptController) SetHvbjoyV(on bool) {
 	if on {
-		ic.Hvbjoy |= 0x80
+		ic.hvbjoy |= 0x80
 	} else {
-		ic.Hvbjoy &= 0x7F
+		ic.hvbjoy &= 0x7F
 	}
 }
 
 func (ic *InterruptController) SetHvbjoyH(on bool) {
 	if on {
-		ic.Hvbjoy |= 0x40
+		ic.hvbjoy |= 0x40
 	} else {
-		ic.Hvbjoy &= 0xBF
+		ic.hvbjoy &= 0xBF
+	}
+}
+
+func (ic *InterruptController) SetHvbjoyA(inProgress bool) {
+	if ic.autoJoypad {
+		if inProgress {
+			ic.hvbjoy |= 1
+			ic.performAutoJoypadRead()
+		} else {
+			ic.hvbjoy &= 0xFE
+		}
+	}
+}
+
+func (ic *InterruptController) ReadHvbjoy() byte {
+	return (ic.bus.GetOpenBus() & 0x3E) | ic.hvbjoy
+}
+
+// TODO this should be done periodically over 1056 dots or 4 times of that master cycles
+func (ic *InterruptController) performAutoJoypadRead() {
+	ic.bus.WriteByte(0x4016, 1)
+	ic.bus.WriteByte(0x4016, 0)
+
+	ic.JOY1, ic.JOY2, ic.JOY3, ic.JOY4 = 0, 0, 0, 0
+
+	for i := range 16 {
+		ca := uint16(ic.bus.ReadByte(0x4016))
+		db := uint16(ic.bus.ReadByte(0x4017))
+		ic.JOY1 |= (ca & 1) << i
+		ic.JOY3 |= ((ca >> 1) & 1) << i
+		ic.JOY2 |= (db & 1) << i
+		ic.JOY4 |= ((db >> 1) & 1) << i
 	}
 }
 

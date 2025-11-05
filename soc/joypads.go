@@ -26,7 +26,7 @@ func (jdh *JoypadDataHandler) ReadNextKey(state int) byte {
 	}
 	var ret byte
 	if jdh.joypad == nil {
-		ret = 1
+		ret = 0
 	} else {
 		ret = byte((jdh.latchedValues >> jdh.positionCnt) & 1)
 	}
@@ -70,10 +70,10 @@ func (jc *JoypadController) Attach(number int, joypad Joypad) {
 func (jc *JoypadController) Read(addr uint16) (byte, error) {
 	switch addr {
 	case 0x4016:
-		port := jc.joypads[0]
+		port := &jc.joypads[0]
 		return (jc.bus.GetOpenBus() & 0xFC) | (port[1].ReadNextKey(jc.state) << 1) | port[0].ReadNextKey(jc.state), nil
 	case 0x4017:
-		port := jc.joypads[1]
+		port := &jc.joypads[1]
 		return (jc.bus.GetOpenBus() & 0xE0) | 0x1C | (port[1].ReadNextKey(jc.state) << 1) | port[0].ReadNextKey(jc.state), nil
 	default:
 		return 0, fmt.Errorf("invalid internal Joypad register read at $%04X", addr)

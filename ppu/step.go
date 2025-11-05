@@ -51,6 +51,7 @@ type InterruptScheduler interface {
 	SetRdnmi(bool)
 	SetHvbjoyV(bool)
 	SetHvbjoyH(bool)
+	SetHvbjoyA(bool)
 	FireNmi()
 }
 
@@ -92,6 +93,9 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 	case ActionLongLine:
 	case ActionSetNmi:
 	case ActionJoypadReadStart:
+		ppu.InterruptScheduler.SetHvbjoyA(true)
+	case ActionJoypadReadEnd:
+		ppu.InterruptScheduler.SetHvbjoyA(false)
 	case ActionCpuRefresh:
 	case ActionPrepareScanline:
 		if ppu.Obj.isActive() {

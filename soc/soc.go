@@ -13,8 +13,9 @@ import (
 )
 
 type SoC struct {
-	MulDiv              *muldivchip.MulDiv
+	JoypadController    *JoypadController
 	InterruptController *interruptchip.InterruptController
+	MulDiv              *muldivchip.MulDiv
 	Dma                 *dma.Dma
 	Cpu                 *cpu.CPU
 	Ppu                 *ppu.PPU
@@ -23,7 +24,7 @@ type SoC struct {
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/ppubusact.sfc")
+	romData, err := cartridge.Load("/home/chabb/Downloads/Rings.sfc")
 	if err != nil {
 		panic(err)
 	}
@@ -35,13 +36,15 @@ func NewSoC(framebuffer *ui.Framebuffer) *SoC {
 		Ppu:    ppu.NewPPU(),
 		bus:    bus,
 	}
+	soc.JoypadController = NewJoypadController(bus)
 	soc.InterruptController = interruptchip.NewInterruptController(bus, soc.Cpu)
 	soc.Ppu.InterruptScheduler = soc.InterruptController
 	soc.Ppu.HdmaScheduler = soc.Dma
 	soc.Ppu.Framebuffer = framebuffer
 
-	bus.RegisterRange(0x4200, 0x4217, soc, "internal CPU")
+	bus.RegisterRange(0x4200, 0x421F, soc, "internal CPU")
 	bus.RegisterRange(0x2100, 0x213F, soc.Ppu, "PPU")
+	bus.RegisterRange(0x4016, 0x4017, soc.JoypadController, "Joypad")
 
 	return soc
 }
@@ -49,13 +52,9 @@ func NewSoC(framebuffer *ui.Framebuffer) *SoC {
 func (soc *SoC) Read(addr uint16) (byte, error) {
 	switch addr {
 	case 0x4210:
-		//return 0x82, fmt.Errorf("internal CPU register $%04X is unimplemented", addr)
-		ret := soc.InterruptController.ReadRdnmi()
-		return ret, nil
+		return soc.InterruptController.ReadRdnmi(), nil
 	case 0x4212:
-		//TODO the JOY part of this is not implemented and its missing the specific timings in the ppu
-		//just using the general hblank/vblank for now
-		return soc.InterruptController.Hvbjoy, nil
+		return soc.InterruptController.ReadHvbjoy(), nil
 	case 0x4214:
 		return soc.MulDiv.Rddivl, nil
 	case 0x4215:
@@ -64,6 +63,22 @@ func (soc *SoC) Read(addr uint16) (byte, error) {
 		return soc.MulDiv.Rdmpyl, nil
 	case 0x4217:
 		return soc.MulDiv.Rdmpyh, nil
+	case 0x4218:
+		return byte(soc.InterruptController.JOY1), nil
+	case 0x4219:
+		return byte(soc.InterruptController.JOY1 >> 8), nil
+	case 0x421A:
+		return byte(soc.InterruptController.JOY2), nil
+	case 0x421B:
+		return byte(soc.InterruptController.JOY2 >> 8), nil
+	case 0x421C:
+		return byte(soc.InterruptController.JOY3), nil
+	case 0x421D:
+		return byte(soc.InterruptController.JOY3 >> 8), nil
+	case 0x421E:
+		return byte(soc.InterruptController.JOY4), nil
+	case 0x421F:
+		return byte(soc.InterruptController.JOY4 >> 8), nil
 	default:
 		return 0, fmt.Errorf("invalid internal CPU register read at $%04X", addr)
 	}
