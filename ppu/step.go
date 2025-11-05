@@ -14,11 +14,12 @@ func (ppu *PPU) Step() {
 	if !ppu.FBlank {
 		if draw.IsVisible {
 			ms, l1, math := ppu.renderMainScreen(draw.H, draw.V)
-			if !math {
+			if math {
+				ss, _, _ := ppu.renderSubScreen(draw.H, draw.V)
+				ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.WINDOWS.performColorMath(ms, ss, draw.H, l1), ppu.brightness)
+			} else {
 				ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ms, ppu.brightness)
 			}
-			ss, _, _ := ppu.renderSubScreen(draw.H, draw.V)
-			ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.WINDOWS.performColorMath(ms, ss, draw.H, l1), ppu.brightness)
 		}
 	}
 
