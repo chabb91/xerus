@@ -76,6 +76,7 @@ func NewPPU() *PPU {
 	ppu.Obj = newObjects(ppu, &ppu.bgEpochs[obj], obj)
 	ppu.VRAM = NewVRAM(ppu)
 	ppu.OAM = NewOAM(ppu)
+
 	return ppu
 }
 
@@ -207,12 +208,16 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.WINDOWS.WOBJSEL(value)
 	case 0x2126:
 		ppu.WINDOWS.w1LeftPos = value
+		ppu.markActiveWindowsDirty()
 	case 0x2127:
 		ppu.WINDOWS.w1RightPos = value
+		ppu.markActiveWindowsDirty()
 	case 0x2128:
 		ppu.WINDOWS.w2LeftPos = value
+		ppu.markActiveWindowsDirty()
 	case 0x2129:
 		ppu.WINDOWS.w2RightPos = value
+		ppu.markActiveWindowsDirty()
 	case 0x212A:
 		ppu.WINDOWS.WBGLOG(value)
 	case 0x212B:
@@ -222,13 +227,13 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.setTM(value)
 		ppu.regenerateMainPipeline()
 		ppu.invalidateAllLayers()
-		//fmt.Println("MainPIPELINE ", ppu.mainRenderPipeline)
+		ppu.markActiveWindowsDirty()
 	case 0x212D:
 		fmt.Println("TS: ", value)
 		ppu.setTS(value)
 		ppu.regenerateSubPipeline()
 		ppu.invalidateAllLayers()
-		//fmt.Println("SUBPIPELINE ", ppu.subRenderPipeline)
+		ppu.markActiveWindowsDirty()
 	case 0x212E:
 		ppu.WINDOWS.TMW(value)
 	case 0x212F:
@@ -289,6 +294,24 @@ func (ppu *PPU) tryInvalidate(addr uint16) {
 	}
 	if ppu.Obj.isActive() {
 		ppu.Obj.Invalidate(addr)
+	}
+}
+
+func (ppu *PPU) markActiveWindowsDirty() {
+	if ppu.Bg1.isActive() {
+		ppu.WINDOWS.markLayerDirty(bg1)
+	}
+	if ppu.Bg2.isActive() {
+		ppu.WINDOWS.markLayerDirty(bg2)
+	}
+	if ppu.Bg3.isActive() {
+		ppu.WINDOWS.markLayerDirty(bg3)
+	}
+	if ppu.Bg4.isActive() {
+		ppu.WINDOWS.markLayerDirty(bg4)
+	}
+	if ppu.Obj.isActive() {
+		ppu.WINDOWS.markLayerDirty(obj)
 	}
 }
 

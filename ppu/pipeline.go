@@ -5,110 +5,113 @@ type bgModeSetter func(ppu *PPU, mode1Prio, isExtBg bool)
 type pipelineTemplate struct {
 	layer    ppuLayer
 	priority byte
+
+	mainScreenMask *[SCREEN_WIDTH]bool
+	subScreenMask  *[SCREEN_WIDTH]bool
 }
 
 var modePriorityOrder = map[byte][]pipelineTemplate{
 	0: {
-		{obj, 3},
-		{bg1, 1},
-		{bg2, 1},
-		{obj, 2},
-		{bg1, 0},
-		{bg2, 0},
-		{obj, 1},
-		{bg3, 1},
-		{bg4, 1},
-		{obj, 0},
-		{bg3, 0},
-		{bg4, 0},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{bg2, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{bg1, 0, nil, nil},
+		{bg2, 0, nil, nil},
+		{obj, 1, nil, nil},
+		{bg3, 1, nil, nil},
+		{bg4, 1, nil, nil},
+		{obj, 0, nil, nil},
+		{bg3, 0, nil, nil},
+		{bg4, 0, nil, nil},
 	},
 	1: {
-		{obj, 3},
-		{bg1, 1},
-		{bg2, 1},
-		{obj, 2},
-		{bg1, 0},
-		{bg2, 0},
-		{obj, 1},
-		{bg3, 1},
-		{obj, 0},
-		{bg3, 0},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{bg2, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{bg1, 0, nil, nil},
+		{bg2, 0, nil, nil},
+		{obj, 1, nil, nil},
+		{bg3, 1, nil, nil},
+		{obj, 0, nil, nil},
+		{bg3, 0, nil, nil},
 	},
 	2: {
-		{obj, 3},
-		{bg1, 1},
-		{obj, 2},
-		{bg2, 1},
-		{obj, 1},
-		{bg1, 0},
-		{obj, 0},
-		{bg2, 0},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{bg2, 1, nil, nil},
+		{obj, 1, nil, nil},
+		{bg1, 0, nil, nil},
+		{obj, 0, nil, nil},
+		{bg2, 0, nil, nil},
 	},
 	3: {
-		{obj, 3},
-		{bg1, 1},
-		{obj, 2},
-		{bg2, 1},
-		{obj, 1},
-		{bg1, 0},
-		{obj, 0},
-		{bg2, 0},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{bg2, 1, nil, nil},
+		{obj, 1, nil, nil},
+		{bg1, 0, nil, nil},
+		{obj, 0, nil, nil},
+		{bg2, 0, nil, nil},
 	},
 	4: {
-		{obj, 3},
-		{bg1, 1},
-		{obj, 2},
-		{bg2, 1},
-		{obj, 1},
-		{bg1, 0},
-		{obj, 0},
-		{bg2, 0},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{bg2, 1, nil, nil},
+		{obj, 1, nil, nil},
+		{bg1, 0, nil, nil},
+		{obj, 0, nil, nil},
+		{bg2, 0, nil, nil},
 	},
 	5: {
-		{obj, 3},
-		{bg1, 1},
-		{obj, 2},
-		{bg2, 1},
-		{obj, 1},
-		{bg1, 0},
-		{obj, 0},
-		{bg2, 0},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{bg2, 1, nil, nil},
+		{obj, 1, nil, nil},
+		{bg1, 0, nil, nil},
+		{obj, 0, nil, nil},
+		{bg2, 0, nil, nil},
 	},
 	6: {
-		{obj, 3},
-		{bg1, 1},
-		{obj, 2},
-		{obj, 1},
-		{bg1, 0},
-		{obj, 0},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{obj, 1, nil, nil},
+		{bg1, 0, nil, nil},
+		{obj, 0, nil, nil},
 	},
 	7: {
-		{obj, 3},
-		{obj, 2},
-		{obj, 1},
-		{bgMode7, 0},
-		{obj, 0},
+		{obj, 3, nil, nil},
+		{obj, 2, nil, nil},
+		{obj, 1, nil, nil},
+		{bgMode7, 0, nil, nil},
+		{obj, 0, nil, nil},
 	},
 	8: {
-		{obj, 3},
-		{obj, 2},
-		{bg2, 1}, //TODO i believe bg2 is bg1 and bg1 is mode7
-		{obj, 1},
-		{bgMode7, 0},
-		{obj, 0},
-		{bg2, 0},
+		{obj, 3, nil, nil},
+		{obj, 2, nil, nil},
+		{bg2, 1, nil, nil}, //TODO i believe bg2 is bg1 and bg1 is mode7
+		{obj, 1, nil, nil},
+		{bgMode7, 0, nil, nil},
+		{obj, 0, nil, nil},
+		{bg2, 0, nil, nil},
 	},
 	9: {
-		{bg3, 1},
-		{obj, 3},
-		{bg1, 1},
-		{bg2, 1},
-		{obj, 2},
-		{bg1, 0},
-		{bg2, 0},
-		{obj, 1},
-		{obj, 0},
-		{bg3, 0},
+		{bg3, 1, nil, nil},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{bg2, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{bg1, 0, nil, nil},
+		{bg2, 0, nil, nil},
+		{obj, 1, nil, nil},
+		{obj, 0, nil, nil},
+		{bg3, 0, nil, nil},
 	},
 }
 
@@ -272,9 +275,11 @@ func (ppu *PPU) regeneratePipelines() {
 
 	for _, step := range template {
 		if ppu.isEnabledOnMain(step.layer) {
+			step.mainScreenMask = &ppu.WINDOWS.layers[step.layer].mainCache
 			ppu.mainRenderPipeline = append(ppu.mainRenderPipeline, step)
 		}
 		if ppu.isEnabledOnSub(step.layer) {
+			step.subScreenMask = &ppu.WINDOWS.layers[step.layer].subCache
 			ppu.subRenderPipeline = append(ppu.subRenderPipeline, step)
 		}
 	}
@@ -287,6 +292,7 @@ func (ppu *PPU) regenerateMainPipeline() {
 
 	for _, step := range template {
 		if ppu.isEnabledOnMain(step.layer) {
+			step.mainScreenMask = &ppu.WINDOWS.layers[step.layer].mainCache
 			ppu.mainRenderPipeline = append(ppu.mainRenderPipeline, step)
 		}
 	}
@@ -299,6 +305,7 @@ func (ppu *PPU) regenerateSubPipeline() {
 
 	for _, step := range template {
 		if ppu.isEnabledOnSub(step.layer) {
+			step.subScreenMask = &ppu.WINDOWS.layers[step.layer].subCache
 			ppu.subRenderPipeline = append(ppu.subRenderPipeline, step)
 		}
 	}
@@ -348,6 +355,7 @@ func (ppu *PPU) setBGMODE(value byte) {
 
 	ppu.regeneratePipelines()
 	ppu.invalidateAllBackgrounds()
+	ppu.markActiveWindowsDirty()
 }
 
 func (ppu *PPU) setTM(value byte) {
@@ -433,7 +441,7 @@ func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer, bool) {
 	var prio byte
 	var math bool
 	for _, v := range ppu.mainRenderPipeline {
-		if ppu.WINDOWS.isDotMasked(v.layer, false, H) {
+		if v.mainScreenMask[H] {
 			continue
 		}
 		val, prio, math = ppu.getLayerDot(v.layer, H, V)
@@ -450,7 +458,7 @@ func (ppu *PPU) renderSubScreen(H, V uint16) (uint16, ppuLayer, bool) {
 	var prio byte
 	var math bool
 	for _, v := range ppu.subRenderPipeline {
-		if ppu.WINDOWS.isDotMasked(v.layer, false, H) {
+		if v.subScreenMask[H] {
 			continue
 		}
 		val, prio, math = ppu.getLayerDot(v.layer, H, V)

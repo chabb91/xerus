@@ -1,5 +1,7 @@
 package ppu
 
+const WINDOW_INVALIDATION_COUNTER = 10
+
 type wMaskLogic func(bool, bool) bool
 
 type LayerWindowData struct {
@@ -9,18 +11,51 @@ type LayerWindowData struct {
 	colorMathActive                   bool
 
 	wMaskLogic wMaskLogic
-	//TODO rewrite this so it has three more fields
-	//isTainted and subcahce []bool and maincache []bool
-	//when register write happens mark tainted and recompute the all 256 values for both slices
-	//use lookup mask value in there for massive gains
+
+	mainCache [SCREEN_WIDTH]bool
+	subCache  [SCREEN_WIDTH]bool
 }
 
 type WindowController struct {
 	w1LeftPos, w1RightPos byte
 	w2LeftPos, w2RightPos byte
 
+	dirtyMainWindows, dirtySubWindows byte
+	invalidationCounter               int
+
 	layers    [7]LayerWindowData
 	ColorMath ColorMath
+}
+
+func (wc *WindowController) setMaskLogic(layer ppuLayer, logic wMaskLogic) {
+	wc.layers[layer].wMaskLogic = logic
+	wc.dirtyMainWindows |= 1 << layer
+	wc.dirtySubWindows |= 1 << layer
+	wc.invalidationCounter = WINDOW_INVALIDATION_COUNTER
+}
+
+func (wc *WindowController) maskMainScreen(layer ppuLayer, shouldMask bool) {
+	wc.layers[layer].mainScreenMasked = shouldMask
+	wc.dirtyMainWindows |= 1 << layer
+	wc.invalidationCounter = WINDOW_INVALIDATION_COUNTER
+}
+
+func (wc *WindowController) maskSubScreen(layer ppuLayer, shouldMask bool) {
+	wc.layers[layer].subScreenMasked = shouldMask
+	wc.dirtySubWindows |= 1 << layer
+	wc.invalidationCounter = WINDOW_INVALIDATION_COUNTER
+}
+
+func (wc *WindowController) markLayerDirty(layer ppuLayer) {
+	wc.dirtyMainWindows |= 1 << layer
+	wc.dirtySubWindows |= 1 << layer
+	wc.invalidationCounter = WINDOW_INVALIDATION_COUNTER
+}
+
+func (wc *WindowController) markAllWindowsDirty() {
+	wc.dirtyMainWindows = 0xFF
+	wc.dirtySubWindows = 0xFF
+	wc.invalidationCounter = WINDOW_INVALIDATION_COUNTER
 }
 
 func setupLayerMasks(layer *LayerWindowData, value byte) {
@@ -80,85 +115,50 @@ func getWMaskLogic(value byte) wMaskLogic {
 
 func (wc *WindowController) W12SEL(value byte) {
 	setupLayerMasks(&wc.layers[bg1], value)
+	wc.markLayerDirty(bg1)
 	setupLayerMasks(&wc.layers[bg2], value>>4)
+	wc.markLayerDirty(bg2)
 }
 
 func (wc *WindowController) W34SEL(value byte) {
 	setupLayerMasks(&wc.layers[bg3], value)
+	wc.markLayerDirty(bg3)
 	setupLayerMasks(&wc.layers[bg4], value>>4)
+	wc.markLayerDirty(bg4)
 }
 
 func (wc *WindowController) WOBJSEL(value byte) {
 	setupLayerMasks(&wc.layers[obj], value)
+	wc.markLayerDirty(obj)
 	setupLayerMasks(&wc.ColorMath.colorWindowData, value>>4)
 }
 
 func (wc *WindowController) WBGLOG(value byte) {
-	wc.layers[bg1].wMaskLogic = getWMaskLogic(value)
-	wc.layers[bg2].wMaskLogic = getWMaskLogic(value >> 2)
-	wc.layers[bg3].wMaskLogic = getWMaskLogic(value >> 4)
-	wc.layers[bg4].wMaskLogic = getWMaskLogic(value >> 6)
+	wc.setMaskLogic(bg1, getWMaskLogic(value))
+	wc.setMaskLogic(bg2, getWMaskLogic(value>>2))
+	wc.setMaskLogic(bg3, getWMaskLogic(value>>4))
+	wc.setMaskLogic(bg4, getWMaskLogic(value>>6))
 }
 
 func (wc *WindowController) WOBJLOG(value byte) {
-	wc.layers[obj].wMaskLogic = getWMaskLogic(value)
+	wc.setMaskLogic(obj, getWMaskLogic(value))
 	wc.ColorMath.colorWindowData.wMaskLogic = getWMaskLogic(value >> 2)
 }
 
 func (wc *WindowController) TMW(value byte) {
-	if value&1 != 0 {
-		wc.layers[bg1].mainScreenMasked = true
-	} else {
-		wc.layers[bg1].mainScreenMasked = false
-	}
-	if value&2 != 0 {
-		wc.layers[bg2].mainScreenMasked = true
-	} else {
-		wc.layers[bg2].mainScreenMasked = false
-	}
-	if value&4 != 0 {
-		wc.layers[bg3].mainScreenMasked = true
-	} else {
-		wc.layers[bg3].mainScreenMasked = false
-	}
-	if value&8 != 0 {
-		wc.layers[bg4].mainScreenMasked = true
-	} else {
-		wc.layers[bg4].mainScreenMasked = false
-	}
-	if value&0x10 != 0 {
-		wc.layers[obj].mainScreenMasked = true
-	} else {
-		wc.layers[obj].mainScreenMasked = false
-	}
+	wc.maskMainScreen(bg1, value&1 != 0)
+	wc.maskMainScreen(bg2, value&2 != 0)
+	wc.maskMainScreen(bg3, value&4 != 0)
+	wc.maskMainScreen(bg4, value&8 != 0)
+	wc.maskMainScreen(obj, value&0x10 != 0)
 }
 
 func (wc *WindowController) TSW(value byte) {
-	if value&1 != 0 {
-		wc.layers[bg1].subScreenMasked = true
-	} else {
-		wc.layers[bg1].subScreenMasked = false
-	}
-	if value&2 != 0 {
-		wc.layers[bg2].subScreenMasked = true
-	} else {
-		wc.layers[bg2].subScreenMasked = false
-	}
-	if value&4 != 0 {
-		wc.layers[bg3].subScreenMasked = true
-	} else {
-		wc.layers[bg3].subScreenMasked = false
-	}
-	if value&8 != 0 {
-		wc.layers[bg4].subScreenMasked = true
-	} else {
-		wc.layers[bg4].subScreenMasked = false
-	}
-	if value&0x10 != 0 {
-		wc.layers[obj].subScreenMasked = true
-	} else {
-		wc.layers[obj].subScreenMasked = false
-	}
+	wc.maskSubScreen(bg1, value&1 != 0)
+	wc.maskSubScreen(bg2, value&2 != 0)
+	wc.maskSubScreen(bg3, value&4 != 0)
+	wc.maskSubScreen(bg4, value&8 != 0)
+	wc.maskSubScreen(obj, value&0x10 != 0)
 }
 
 func (wc *WindowController) isDotInMask1Range(inverted bool, H uint16) bool {
@@ -195,8 +195,7 @@ func (wc *WindowController) isDotInMask2Range(inverted bool, H uint16) bool {
 	return ret
 }
 
-func (wc *WindowController) isDotMasked(layer ppuLayer, isSubscreen bool, H uint16) bool {
-	lwd := wc.layers[layer]
+func (lwd *LayerWindowData) isDotMasked(isSubscreen bool, H uint16, wc *WindowController) bool {
 	if !isSubscreen && !lwd.mainScreenMasked {
 		return false
 	}
@@ -238,6 +237,30 @@ func (wc *WindowController) isDotMasked(layer ppuLayer, isSubscreen bool, H uint
 	}
 
 	return false
+}
+
+// TODO find out if a layer is or not and skip rebuilding
+func (wc *WindowController) rebuildDirtyLayerWindowCaches() {
+	for i := range len(wc.layers) {
+		val := byte(1 << i)
+		layer := &wc.layers[i]
+		if wc.dirtyMainWindows&val != 0 && wc.dirtySubWindows&val == 0 {
+			for j := range uint16(SCREEN_WIDTH) {
+				layer.mainCache[j] = layer.isDotMasked(false, j, wc)
+			}
+		} else if wc.dirtyMainWindows&val == 0 && wc.dirtySubWindows&val != 0 {
+			for j := range uint16(SCREEN_WIDTH) {
+				layer.subCache[j] = layer.isDotMasked(true, j, wc)
+			}
+		} else if wc.dirtyMainWindows&val != 0 && wc.dirtySubWindows&val != 0 {
+			for j := range uint16(SCREEN_WIDTH) {
+				layer.mainCache[j] = layer.isDotMasked(false, j, wc)
+				layer.subCache[j] = layer.isDotMasked(true, j, wc)
+			}
+		}
+	}
+	wc.dirtyMainWindows = 0
+	wc.dirtySubWindows = 0
 }
 
 func (wc *WindowController) setCGADSUB(value byte) {
@@ -328,7 +351,7 @@ func getColorClipOrPreventMathMode(value byte) clipOrPreventMathFunction {
 }
 
 func (wc *WindowController) isDotInColorMask(H uint16) bool {
-	lwd := wc.ColorMath.colorWindowData
+	lwd := &wc.ColorMath.colorWindowData
 	if lwd.w1Active && !lwd.w2Active {
 		return wc.isDotInMask1Range(lwd.w1Inverted, H)
 	}
