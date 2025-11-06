@@ -313,6 +313,8 @@ func (ppu *PPU) markActiveWindowsDirty() {
 	if ppu.Obj.isActive() {
 		ppu.WINDOWS.markLayerDirty(obj)
 	}
+
+	ppu.WINDOWS.ColorMath.windowValid = false
 }
 
 func (ppu *PPU) invalidateLayer(layerIndex ppuLayer) {
