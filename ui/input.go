@@ -1,91 +1,140 @@
 package ui
 
 import (
+	"sync/atomic"
+
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
-type SNESController struct {
-	Up      bool
-	Down    bool
-	Left    bool
-	Right   bool
-	AButton bool
-	BButton bool
-	XButton bool
-	YButton bool
-	Start   bool
-	Select  bool
-	LButton bool
-	RButton bool
+type SnesInput interface {
+	UpdateControllerState()
+	Latch() uint16
 }
 
-func (c *SNESController) Latch() uint16 {
-	c.Up = ebiten.IsKeyPressed(ebiten.KeyUp)
-	c.Down = ebiten.IsKeyPressed(ebiten.KeyDown)
-	c.Left = ebiten.IsKeyPressed(ebiten.KeyLeft)
-	c.Right = ebiten.IsKeyPressed(ebiten.KeyRight)
-
-	c.AButton = ebiten.IsKeyPressed(ebiten.KeyA)
-	c.BButton = ebiten.IsKeyPressed(ebiten.KeyS)
-	c.XButton = ebiten.IsKeyPressed(ebiten.KeyW)
-	c.YButton = ebiten.IsKeyPressed(ebiten.KeyE)
-
-	c.LButton = ebiten.IsKeyPressed(ebiten.KeyZ)
-	c.RButton = ebiten.IsKeyPressed(ebiten.KeyX)
-
-	c.Start = ebiten.IsKeyPressed(ebiten.KeyEnter)
-	c.Select = ebiten.IsKeyPressed(ebiten.KeySpace)
-
-	/*if len(ebiten.GamepadIDs()) > 0 {
-		gamepadID := ebiten.GamepadIDs()[0]
-
-		c.Up = c.Up || ebiten.IsGamepadButtonPressed(gamepadID, ebiten.GamepadButton(ebiten.GamepadButton3))
-		c.Down = c.Down || ebiten.IsGamepadButtonPressed(gamepadID, ebiten.GamepadButton(ebiten.GamepadButton4))
-
-		c.AButton = c.AButton || ebiten.IsGamepadButtonPressed(gamepadID, ebiten.GamepadButton(ebiten.GamepadButton1))
-		c.BButton = c.BButton || ebiten.IsGamepadButtonPressed(gamepadID, ebiten.GamepadButton(ebiten.GamepadButton2))
-	}*/
-	return c.GetControllerState()
+type SNESKeyboardInput struct {
+	buttons atomic.Uint32
 }
-func (c *SNESController) GetControllerState() uint16 {
+
+func (c *SNESKeyboardInput) Latch() uint16 {
+	return uint16(c.buttons.Load())
+}
+
+func (c *SNESKeyboardInput) UpdateControllerState() {
 	var state uint16 = 0
 
-	if c.BButton {
+	if ebiten.IsKeyPressed(ebiten.KeyS) {
 		state |= 1
 	}
-	if c.YButton {
+	if ebiten.IsKeyPressed(ebiten.KeyE) {
 		state |= 1 << 1
 	}
-	if c.Select {
+	if ebiten.IsKeyPressed(ebiten.KeySpace) {
 		state |= 1 << 2
 	}
-	if c.Start {
+	if ebiten.IsKeyPressed(ebiten.KeyEnter) {
 		state |= 1 << 3
 	}
-	if c.Up {
+	if ebiten.IsKeyPressed(ebiten.KeyUp) {
 		state |= 1 << 4
 	}
-	if c.Down {
+	if ebiten.IsKeyPressed(ebiten.KeyDown) {
 		state |= 1 << 5
 	}
-	if c.Left {
+	if ebiten.IsKeyPressed(ebiten.KeyLeft) {
 		state |= 1 << 6
 	}
-	if c.Right {
+	if ebiten.IsKeyPressed(ebiten.KeyRight) {
 		state |= 1 << 7
 	}
-	if c.AButton {
+	if ebiten.IsKeyPressed(ebiten.KeyA) {
 		state |= 1 << 8
 	}
-	if c.XButton {
+	if ebiten.IsKeyPressed(ebiten.KeyW) {
 		state |= 1 << 9
 	}
-	if c.LButton {
+	if ebiten.IsKeyPressed(ebiten.KeyZ) {
 		state |= 1 << 10
 	}
-	if c.RButton {
+	if ebiten.IsKeyPressed(ebiten.KeyX) {
 		state |= 1 << 11
 	}
 
-	return state
+	c.buttons.Store(uint32(state))
+}
+
+type SNESControllerInput struct {
+	buttons atomic.Uint32
+
+	controllerId   ebiten.GamepadID
+	isDisconnected bool
+
+	gamepadIDsBuf []ebiten.GamepadID
+}
+
+func NewSnesControllerInput(id ebiten.GamepadID) *SNESControllerInput {
+	return &SNESControllerInput{
+		controllerId: id}
+}
+
+func (c *SNESControllerInput) Latch() uint16 {
+	return uint16(c.buttons.Load())
+}
+
+func (c *SNESControllerInput) UpdateControllerState() {
+
+	c.gamepadIDsBuf = inpututil.AppendJustConnectedGamepadIDs(c.gamepadIDsBuf[:0])
+	for _, id := range c.gamepadIDsBuf {
+		if id == c.controllerId {
+			c.isDisconnected = false
+		}
+	}
+	if inpututil.IsGamepadJustDisconnected(c.controllerId) {
+		c.isDisconnected = true
+	}
+	if c.isDisconnected {
+		c.buttons.Store(0)
+		return
+	}
+
+	var state uint16 = 0
+
+	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton0) {
+		state |= 1
+	}
+	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton2) {
+		state |= 1 << 1
+	}
+	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton6) {
+		state |= 1 << 2
+	}
+	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton7) {
+		state |= 1 << 3
+	}
+	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton11) {
+		state |= 1 << 4
+	}
+	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton13) {
+		state |= 1 << 5
+	}
+	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton14) {
+		state |= 1 << 6
+	}
+	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton12) {
+		state |= 1 << 7
+	}
+	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton1) {
+		state |= 1 << 8
+	}
+	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton3) {
+		state |= 1 << 9
+	}
+	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton4) {
+		state |= 1 << 10
+	}
+	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton5) {
+		state |= 1 << 11
+	}
+
+	c.buttons.Store(uint32(state))
 }

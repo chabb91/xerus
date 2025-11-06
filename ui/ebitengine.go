@@ -56,6 +56,8 @@ type EmulatorDisplay struct {
 	ScreenWidth  int
 	ScreenHeight int
 	ActiveImage  *ebiten.Image
+
+	Controller1 SnesInput
 }
 
 func NewEmulatorDisplay(fb *Framebuffer) *EmulatorDisplay {
@@ -65,6 +67,8 @@ func NewEmulatorDisplay(fb *Framebuffer) *EmulatorDisplay {
 		transformedBuffer: make([]byte, 4*MaxWidth*MaxHeight),
 		ScreenWidth:       MaxWidth,
 		ScreenHeight:      MaxHeight,
+
+		Controller1: NewSnesControllerInput(0),
 	}
 }
 
@@ -87,6 +91,8 @@ func (ed *EmulatorDisplay) Update() error {
 	default:
 		// no new frame yet
 	}
+
+	ed.Controller1.UpdateControllerState()
 	return nil
 }
 

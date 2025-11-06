@@ -25,12 +25,11 @@ func main() {
 	ebiten.SetWindowTitle("SNES Emulator")
 	ebiten.SetWindowSize(ui.DefaultWidth*ui.ScalingFactor, ui.DefaultHeight*ui.ScalingFactor)
 
-	controller1 := new(ui.SNESController)
 	fb := ui.NewFramebuffer()
 	display := ui.NewEmulatorDisplay(fb)
 
 	soc := soc.NewSoC(fb)
-	soc.JoypadController.Attach(0, controller1)
+	soc.JoypadController.Attach(0, display.Controller1)
 	go soc.Run()
 	ebiten.RunGame(display)
 }
