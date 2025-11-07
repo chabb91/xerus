@@ -170,8 +170,8 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 		ret := bg.renderedDotCache
 		return ret.color, ret.priority, true
 	}
-	cache := &bg.tileMapLookupCacke[H][V]
-	if bg.scrollEpoch != cache.entryEpoch {
+	//cache := &bg.tileMapLookupCacke[H][V]
+	/*if bg.scrollEpoch != cache.entryEpoch {
 		//TODO add a nested for loop that set up all 8x8 dots of the tile with this data
 		//so this is only calculated once every character tile which i think is fast
 		hScroll, vScroll := H+bg.hScroll, V+bg.vScroll
@@ -183,14 +183,12 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 	px := cache.px
 	row := cache.row
 	tileIndex := cache.tileIndex
-
-	if bg.OPTMap != nil {
-		if tileColumn := (H + uint16(7-cache.px)) >> 3; tileColumn > 0 {
-			//I THINK this is the correct logic tho i cant verify yet so it is what it is.
-			hScroll, vScroll := bg.optFunc(bg, H, V)
-			px, row, charMapID, tileIndex = getTileIndexAndPixelCoordinates(bg.tileMapSize, bg.charTileSize, hScroll, vScroll)
-		}
+	*/
+	hScroll, vScroll := H+bg.hScroll, V+bg.vScroll
+	if bg.OPTMap != nil && (H+(7-(hScroll&7)))>>3 > 0 {
+		hScroll, vScroll = bg.optFunc(bg, H, V)
 	}
+	px, row, charMapID, tileIndex := getTileIndexAndPixelCoordinates(bg.tileMapSize, bg.charTileSize, hScroll, vScroll)
 
 	tile := &bg.tileMap[tileIndex]
 	if currentEpoch := *bg.currentEpoch; !tile.isValid || tile.lastRenderEpoch != currentEpoch {
