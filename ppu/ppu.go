@@ -127,25 +127,21 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.Bg1.tileMapSize = uint16(value & 0x3)
 		ppu.Bg1.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.invalidateLayer(bg1)
-		ppu.Bg1.InvalidateScrollCache()
 	case 0x2108:
 		fmt.Println("BG2SC: ", value)
 		ppu.Bg2.tileMapSize = uint16(value & 0x3)
 		ppu.Bg2.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.invalidateLayer(bg2)
-		ppu.Bg2.InvalidateScrollCache()
 	case 0x2109:
 		fmt.Println("BG3SC: ", value)
 		ppu.Bg3.tileMapSize = uint16(value & 0x3)
 		ppu.Bg3.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.invalidateLayer(bg3)
-		ppu.Bg3.InvalidateScrollCache()
 	case 0x210A:
 		fmt.Println("BG4SC: ", value)
 		ppu.Bg4.tileMapSize = uint16(value & 0x3)
 		ppu.Bg4.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.invalidateLayer(bg4)
-		ppu.Bg4.InvalidateScrollCache()
 	case 0x210B:
 		fmt.Println("BG12NBA: ", value)
 		ppu.Bg1.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
@@ -161,28 +157,20 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	//TODO add mode 7 scrolling
 	case 0x210D:
 		ppu.Bg1.hScroll = ppu.BGxnOFS.hFormula(value)
-		ppu.Bg1.InvalidateScrollCache()
 	case 0x210E:
 		ppu.Bg1.vScroll = ppu.BGxnOFS.vFormula(value)
-		ppu.Bg1.InvalidateScrollCache()
 	case 0x210F:
 		ppu.Bg2.hScroll = ppu.BGxnOFS.hFormula(value)
-		ppu.Bg2.InvalidateScrollCache()
 	case 0x2110:
 		ppu.Bg2.vScroll = ppu.BGxnOFS.vFormula(value)
-		ppu.Bg2.InvalidateScrollCache()
 	case 0x2111:
 		ppu.Bg3.hScroll = ppu.BGxnOFS.hFormula(value)
-		ppu.Bg3.InvalidateScrollCache()
 	case 0x2112:
 		ppu.Bg3.vScroll = ppu.BGxnOFS.vFormula(value)
-		ppu.Bg3.InvalidateScrollCache()
 	case 0x2113:
 		ppu.Bg4.hScroll = ppu.BGxnOFS.hFormula(value)
-		ppu.Bg4.InvalidateScrollCache()
 	case 0x2114:
 		ppu.Bg4.vScroll = ppu.BGxnOFS.vFormula(value)
-		ppu.Bg4.InvalidateScrollCache()
 	case 0x2115:
 		ppu.VRAM.vmain.Setup(value)
 		fmt.Println("VMAIN: ", value)
@@ -327,11 +315,6 @@ func (ppu *PPU) invalidateAllLayers() {
 	for i := range ppu.bgEpochs {
 		ppu.bgEpochs[i]++
 	}
-
-	ppu.Bg1.InvalidateScrollCache()
-	ppu.Bg2.InvalidateScrollCache()
-	ppu.Bg3.InvalidateScrollCache()
-	ppu.Bg4.InvalidateScrollCache()
 }
 
 func (ppu *PPU) invalidateAllBackgrounds() {
@@ -339,11 +322,6 @@ func (ppu *PPU) invalidateAllBackgrounds() {
 	ppu.bgEpochs[bg2]++
 	ppu.bgEpochs[bg3]++
 	ppu.bgEpochs[bg4]++
-
-	ppu.Bg1.InvalidateScrollCache()
-	ppu.Bg2.InvalidateScrollCache()
-	ppu.Bg3.InvalidateScrollCache()
-	ppu.Bg4.InvalidateScrollCache()
 }
 
 // sprites are only being invalidated locally because if a rom doesnt enable them oam is not interacted with

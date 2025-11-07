@@ -52,7 +52,6 @@ type tileAndPixelCacheEntry struct {
 type renderedDotCache struct {
 	color    uint16
 	priority byte
-	H        uint16
 }
 
 type Background struct {
@@ -69,11 +68,8 @@ type Background struct {
 	getPaletteIndex     colorIndex
 	isDirectColor       bool
 
-	vScroll     uint16
-	hScroll     uint16
-	scrollEpoch uint64
-
-	tileMapLookupCacke [600][600]tileAndPixelCacheEntry
+	vScroll uint16
+	hScroll uint16
 
 	currentEpoch *uint64
 
@@ -84,7 +80,6 @@ type Background struct {
 
 	enabledOnMainScreen, enabledOnSubScreen bool
 
-	renderedDotCache renderedDotCache
 	renderCacheStart uint16
 	renderCacheSize  byte
 	renderCache      [8]renderedDotCache
@@ -94,7 +89,6 @@ func NewBackground(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Backgro
 	bg := &Background{
 		ds:           ds,
 		currentEpoch: epochPtr,
-		scrollEpoch:  1,
 		layerId:      layer,
 	}
 
@@ -108,14 +102,9 @@ func NewBackground(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Backgro
 		bg.charTiles[i].isValid = false
 	}
 
-	bg.renderedDotCache.H = 0xFFFF
 	bg.renderCacheStart = 0xFFFF
 
 	return bg
-}
-
-func (bg *Background) InvalidateScrollCache() {
-	bg.scrollEpoch++
 }
 
 func (bg *Background) isActive() bool {
@@ -180,20 +169,7 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 		return ret.color, ret.priority, true
 
 	}
-	//cache := &bg.tileMapLookupCacke[H][V]
-	/*if bg.scrollEpoch != cache.entryEpoch {
-		//TODO add a nested for loop that set up all 8x8 dots of the tile with this data
-		//so this is only calculated once every character tile which i think is fast
-		hScroll, vScroll := H+bg.hScroll, V+bg.vScroll
-		cache.px, cache.row, cache.charMapID, cache.tileIndex = getTileIndexAndPixelCoordinates(bg.tileMapSize, bg.charTileSize, hScroll, vScroll)
-		cache.entryEpoch = bg.scrollEpoch
-	}
 
-	charMapID := cache.charMapID
-	px := cache.px
-	row := cache.row
-	tileIndex := cache.tileIndex
-	*/
 	bg.renderCacheStart = H
 	hScroll, vScroll := H+bg.hScroll, V+bg.vScroll
 	if bg.OPTMap != nil && (H+(7-(hScroll&7)))>>3 > 0 {
