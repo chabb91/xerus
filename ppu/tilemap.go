@@ -1,5 +1,7 @@
 package ppu
 
+import "math/bits"
+
 type colorDepth uint16
 type ppuLayer uint16
 
@@ -83,6 +85,9 @@ type Background struct {
 	enabledOnMainScreen, enabledOnSubScreen bool
 
 	renderedDotCache renderedDotCache
+	renderCacheStart uint16
+	renderCacheSize  byte
+	renderCache      [8]renderedDotCache
 }
 
 func NewBackground(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Background {
@@ -104,6 +109,7 @@ func NewBackground(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Backgro
 	}
 
 	bg.renderedDotCache.H = 0xFFFF
+	bg.renderCacheStart = 0xFFFF
 
 	return bg
 }
@@ -131,8 +137,8 @@ func (bg *Background) Invalidate(addr uint16) {
 	}
 
 	if addr >= bg.charTileAddressBase {
-		wordsPerTile := uint16(bg.colorDepth) << 2
-		tileIndex := (addr - bg.charTileAddressBase) / wordsPerTile
+		k := bits.TrailingZeros(uint(bg.colorDepth)) // V=2 (0010) k=1, V=4 (0100) k=2, V=8 (1000), k=3
+		tileIndex := (addr - bg.charTileAddressBase) >> (k + 2)
 		if tileIndex < uint16(len(bg.charTiles)) {
 			bg.charTiles[tileIndex].isValid = false
 			//fmt.Println("invlidation")
@@ -146,8 +152,8 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 	charDimensions := charTileSizeLUT[charTileSize]
 	rowCnt := (V >> charDimensions.divMask) & tileDimensions.modMaskH
 	columnCnt := (H >> charDimensions.divMask) & tileDimensions.modMaskW
-	tileMapID := (rowCnt>>5)*tileDimensions.mapsPerRow + columnCnt>>5
-	tileIndex := tileMapID*0x400 + (rowCnt&31)<<5 + columnCnt&31
+	tileMapID := (rowCnt>>5)<<tileDimensions.mapsPerRowMinusOne + columnCnt>>5
+	tileIndex := tileMapID<<10 + (rowCnt&31)<<5 + columnCnt&31
 	row := byte(V & charDimensions.modMask)
 	px := byte(H & charDimensions.modMask)
 	if charTileSize == 0 {
@@ -166,9 +172,13 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
 func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
-	if bg.renderedDotCache.H == H {
-		ret := bg.renderedDotCache
+	if bg.renderCacheStart == H {
+		ret := bg.renderCache[0]
 		return ret.color, ret.priority, true
+	} else if bg.renderCacheStart <= H && bg.renderCacheStart+uint16(bg.renderCacheSize) > H {
+		ret := bg.renderCache[H-bg.renderCacheStart]
+		return ret.color, ret.priority, true
+
 	}
 	//cache := &bg.tileMapLookupCacke[H][V]
 	/*if bg.scrollEpoch != cache.entryEpoch {
@@ -184,6 +194,7 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 	row := cache.row
 	tileIndex := cache.tileIndex
 	*/
+	bg.renderCacheStart = H
 	hScroll, vScroll := H+bg.hScroll, V+bg.vScroll
 	if bg.OPTMap != nil && (H+(7-(hScroll&7)))>>3 > 0 {
 		hScroll, vScroll = bg.optFunc(bg, H, V)
@@ -195,8 +206,8 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 		tile.setup(tileIndex, currentEpoch)
 	}
 
-	px = tileFlipXLUT[tile.flipIndex][px]
 	row = tileFlipYLUT[tile.flipIndex][row]
+	bg.renderCacheSize = 8 - px
 
 	charIndex := tile.charIndex
 	if bg.charTileSize == 1 {
@@ -204,26 +215,32 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 		charIndex += charMapIdToOffsetLUT[charMapID]
 	}
 
-	charData := bg.charTiles[charIndex].getPixelAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, px, row)
+	var ret uint16
+	charTile := &bg.charTiles[charIndex]
+	flipXTtable := &tileFlipXLUT[tile.flipIndex]
+	rowData := charTile.getRowAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, row)
+	cgram := bg.ds.getCGRAM()
 
-	bg.renderedDotCache.priority = tile.priority
-	bg.renderedDotCache.H = H
+	for i := 0; i < int(bg.renderCacheSize); i++ {
+		charData := rowData[flipXTtable[px]]
 
-	if bg.colorDepth == bpp8 && bg.isDirectColor {
-		if charData == 0 {
-			bg.renderedDotCache.color = BG_BACKDROP_COLOR
-			return BG_BACKDROP_COLOR, tile.priority, true
+		bg.renderCache[i].priority = tile.priority
+
+		if bg.colorDepth == bpp8 && bg.isDirectColor {
+			if charData == 0 {
+				ret = BG_BACKDROP_COLOR
+			} else {
+				red := ((charData & 0x07) << 2) | ((tile.paletteNum & 0x01) << 1)
+				green := ((charData & 0x38) >> 1) | (tile.paletteNum & 0x02)
+				blue := ((charData & 0xC0) >> 3) | (tile.paletteNum & 0x04)
+				ret = uint16(blue)<<10 | uint16(green)<<5 | uint16(red)
+			}
 		} else {
-			red := ((charData & 0x07) << 2) | ((tile.paletteNum & 0x01) << 1)
-			green := ((charData & 0x38) >> 1) | ((tile.paletteNum & 0x02) << 2)
-			blue := ((charData & 0xC0) >> 2) | ((tile.paletteNum & 0x04) << 2)
-			ret := uint16(blue)<<10 | uint16(green)<<5 | uint16(red)
-			bg.renderedDotCache.color = ret
-			return ret, tile.priority, true
+			ret = cgram[charData+bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum)]
 		}
+		bg.renderCache[i].color = ret
+		px++
 	}
-	ret := bg.ds.getCGRAM()[charData+bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum)]
-	bg.renderedDotCache.color = ret
 	return ret, tile.priority, true
 }
 
@@ -241,6 +258,7 @@ func resolveOPTMode26(bg *Background, H, V uint16) (uint16, uint16) {
 	optM := bg.OPTMap
 	vram := bg.ds.getVRAM()
 
+	//hLookup := ((H - 8) + optM.hScroll) & 0xFFF8
 	hLookup := HOFS&7 | (((H - 8) & 0xFFF8) + (optM.hScroll & 0xFFF8))
 	vLookup := optM.vScroll
 
@@ -276,6 +294,7 @@ func resolveOPTMode4(bg *Background, H, V uint16) (uint16, uint16) {
 
 	optM := bg.OPTMap
 
+	//hLookup := ((H - 8) + optM.hScroll) & 0xFFF8
 	hLookup := HOFS&7 | (((H - 8) & 0xFFF8) + (optM.hScroll & 0xFFF8))
 	vLookup := optM.vScroll
 
@@ -372,6 +391,28 @@ RENDER_AND_CACHE:
 	ct.lastRenderEpoch = currentEpoch
 
 	return ct.resolvedData[row][px]
+}
+
+func (ct *CharTile) getRowAt(bitplanes colorDepth, addr VRAMAddressCalculator, tileId, row byte) *[8]byte {
+	currentEpoch := *ct.layerEpoch.GetLayerSourceEpoch()
+	if ct.lastRenderEpoch != currentEpoch {
+		ct.tileAddress = addr(tileId)
+		goto RENDER_AND_CACHE
+	}
+
+	if !ct.isValid {
+		goto RENDER_AND_CACHE
+	}
+
+	return &ct.resolvedData[row]
+
+RENDER_AND_CACHE:
+	ct.setup(bitplanes)
+	ct.renderer(ct.ds.getVRAM(), ct.tileAddress, &ct.resolvedData)
+	ct.isValid = true
+	ct.lastRenderEpoch = currentEpoch
+
+	return &ct.resolvedData[row]
 }
 
 // TODO swap this with the lookuptable approach
