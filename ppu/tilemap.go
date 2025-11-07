@@ -25,6 +25,7 @@ type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
 type optResolver func(*Background, uint16, uint16) (uint16, uint16)
 type VRAMAddressCalculator func(tileIndex byte) uint16
 type colorIndex func(ppuLayer, colorDepth, byte) byte
+type rendererFunction func(uint16, uint16) (uint16, byte, bool)
 
 // The PPU provides access to the epoch relevant to a specific BG layer
 type LayerEpochSource interface {

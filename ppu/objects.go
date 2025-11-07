@@ -54,6 +54,11 @@ func newObjects(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Objects {
 	return obj
 }
 
+func (ob *Objects) GetDotAt(H, V uint16) (uint16, byte, bool) {
+	ret := ob.resolvedDotsOnScanLine[H]
+	return ret.color, ret.priority, ret.partakesInColorMath
+}
+
 func (ob *Objects) isActive() bool {
 	return ob.enabledOnMainScreen || ob.enabledOnSubScreen
 }

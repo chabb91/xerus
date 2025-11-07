@@ -6,112 +6,114 @@ type pipelineTemplate struct {
 	layer    ppuLayer
 	priority byte
 
+	renderer rendererFunction
+
 	mainScreenMask *[SCREEN_WIDTH]bool
 	subScreenMask  *[SCREEN_WIDTH]bool
 }
 
 var modePriorityOrder = map[byte][]pipelineTemplate{
 	0: {
-		{obj, 3, nil, nil},
-		{bg1, 1, nil, nil},
-		{bg2, 1, nil, nil},
-		{obj, 2, nil, nil},
-		{bg1, 0, nil, nil},
-		{bg2, 0, nil, nil},
-		{obj, 1, nil, nil},
-		{bg3, 1, nil, nil},
-		{bg4, 1, nil, nil},
-		{obj, 0, nil, nil},
-		{bg3, 0, nil, nil},
-		{bg4, 0, nil, nil},
+		{obj, 3, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
+		{bg2, 1, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{bg1, 0, nil, nil, nil},
+		{bg2, 0, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{bg3, 1, nil, nil, nil},
+		{bg4, 1, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
+		{bg3, 0, nil, nil, nil},
+		{bg4, 0, nil, nil, nil},
 	},
 	1: {
-		{obj, 3, nil, nil},
-		{bg1, 1, nil, nil},
-		{bg2, 1, nil, nil},
-		{obj, 2, nil, nil},
-		{bg1, 0, nil, nil},
-		{bg2, 0, nil, nil},
-		{obj, 1, nil, nil},
-		{bg3, 1, nil, nil},
-		{obj, 0, nil, nil},
-		{bg3, 0, nil, nil},
+		{obj, 3, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
+		{bg2, 1, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{bg1, 0, nil, nil, nil},
+		{bg2, 0, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{bg3, 1, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
+		{bg3, 0, nil, nil, nil},
 	},
 	2: {
-		{obj, 3, nil, nil},
-		{bg1, 1, nil, nil},
-		{obj, 2, nil, nil},
-		{bg2, 1, nil, nil},
-		{obj, 1, nil, nil},
-		{bg1, 0, nil, nil},
-		{obj, 0, nil, nil},
-		{bg2, 0, nil, nil},
+		{obj, 3, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{bg2, 1, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{bg1, 0, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
+		{bg2, 0, nil, nil, nil},
 	},
 	3: {
-		{obj, 3, nil, nil},
-		{bg1, 1, nil, nil},
-		{obj, 2, nil, nil},
-		{bg2, 1, nil, nil},
-		{obj, 1, nil, nil},
-		{bg1, 0, nil, nil},
-		{obj, 0, nil, nil},
-		{bg2, 0, nil, nil},
+		{obj, 3, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{bg2, 1, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{bg1, 0, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
+		{bg2, 0, nil, nil, nil},
 	},
 	4: {
-		{obj, 3, nil, nil},
-		{bg1, 1, nil, nil},
-		{obj, 2, nil, nil},
-		{bg2, 1, nil, nil},
-		{obj, 1, nil, nil},
-		{bg1, 0, nil, nil},
-		{obj, 0, nil, nil},
-		{bg2, 0, nil, nil},
+		{obj, 3, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{bg2, 1, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{bg1, 0, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
+		{bg2, 0, nil, nil, nil},
 	},
 	5: {
-		{obj, 3, nil, nil},
-		{bg1, 1, nil, nil},
-		{obj, 2, nil, nil},
-		{bg2, 1, nil, nil},
-		{obj, 1, nil, nil},
-		{bg1, 0, nil, nil},
-		{obj, 0, nil, nil},
-		{bg2, 0, nil, nil},
+		{obj, 3, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{bg2, 1, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{bg1, 0, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
+		{bg2, 0, nil, nil, nil},
 	},
 	6: {
-		{obj, 3, nil, nil},
-		{bg1, 1, nil, nil},
-		{obj, 2, nil, nil},
-		{obj, 1, nil, nil},
-		{bg1, 0, nil, nil},
-		{obj, 0, nil, nil},
+		{obj, 3, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{bg1, 0, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
 	},
 	7: {
-		{obj, 3, nil, nil},
-		{obj, 2, nil, nil},
-		{obj, 1, nil, nil},
-		{bgMode7, 0, nil, nil},
-		{obj, 0, nil, nil},
+		{obj, 3, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{bgMode7, 0, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
 	},
 	8: {
-		{obj, 3, nil, nil},
-		{obj, 2, nil, nil},
-		{bg2, 1, nil, nil}, //TODO i believe bg2 is bg1 and bg1 is mode7
-		{obj, 1, nil, nil},
-		{bgMode7, 0, nil, nil},
-		{obj, 0, nil, nil},
-		{bg2, 0, nil, nil},
+		{obj, 3, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{bg2, 1, nil, nil, nil}, //TODO i believe bg2 is bg1 and bg1 is mode7
+		{obj, 1, nil, nil, nil},
+		{bgMode7, 0, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
+		{bg2, 0, nil, nil, nil},
 	},
 	9: {
-		{bg3, 1, nil, nil},
-		{obj, 3, nil, nil},
-		{bg1, 1, nil, nil},
-		{bg2, 1, nil, nil},
-		{obj, 2, nil, nil},
-		{bg1, 0, nil, nil},
-		{bg2, 0, nil, nil},
-		{obj, 1, nil, nil},
-		{obj, 0, nil, nil},
-		{bg3, 0, nil, nil},
+		{bg3, 1, nil, nil, nil},
+		{obj, 3, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
+		{bg2, 1, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{bg1, 0, nil, nil, nil},
+		{bg2, 0, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
+		{bg3, 0, nil, nil, nil},
 	},
 }
 
@@ -275,10 +277,12 @@ func (ppu *PPU) regeneratePipelines() {
 
 	for _, step := range template {
 		if ppu.isEnabledOnMain(step.layer) {
+			step.renderer = ppu.getLayerRenderer(step.layer)
 			step.mainScreenMask = &ppu.WINDOWS.layers[step.layer].mainCache
 			ppu.mainRenderPipeline = append(ppu.mainRenderPipeline, step)
 		}
 		if ppu.isEnabledOnSub(step.layer) {
+			step.renderer = ppu.getLayerRenderer(step.layer)
 			step.subScreenMask = &ppu.WINDOWS.layers[step.layer].subCache
 			ppu.subRenderPipeline = append(ppu.subRenderPipeline, step)
 		}
@@ -292,6 +296,7 @@ func (ppu *PPU) regenerateMainPipeline() {
 
 	for _, step := range template {
 		if ppu.isEnabledOnMain(step.layer) {
+			step.renderer = ppu.getLayerRenderer(step.layer)
 			step.mainScreenMask = &ppu.WINDOWS.layers[step.layer].mainCache
 			ppu.mainRenderPipeline = append(ppu.mainRenderPipeline, step)
 		}
@@ -305,6 +310,7 @@ func (ppu *PPU) regenerateSubPipeline() {
 
 	for _, step := range template {
 		if ppu.isEnabledOnSub(step.layer) {
+			step.renderer = ppu.getLayerRenderer(step.layer)
 			step.subScreenMask = &ppu.WINDOWS.layers[step.layer].subCache
 			ppu.subRenderPipeline = append(ppu.subRenderPipeline, step)
 		}
@@ -359,81 +365,35 @@ func (ppu *PPU) setBGMODE(value byte) {
 }
 
 func (ppu *PPU) setTM(value byte) {
-	if value&1 != 0 {
-		ppu.Bg1.enabledOnMainScreen = true
-	} else {
-		ppu.Bg1.enabledOnMainScreen = false
-	}
-	if value&2 != 0 {
-		ppu.Bg2.enabledOnMainScreen = true
-	} else {
-		ppu.Bg2.enabledOnMainScreen = false
-	}
-
-	if value&4 != 0 {
-		ppu.Bg3.enabledOnMainScreen = true
-	} else {
-		ppu.Bg3.enabledOnMainScreen = false
-	}
-
-	if value&8 != 0 {
-		ppu.Bg4.enabledOnMainScreen = true
-	} else {
-		ppu.Bg4.enabledOnMainScreen = false
-	}
-
-	if value&0x10 != 0 {
-		ppu.Obj.enabledOnMainScreen = true
-	} else {
-		ppu.Obj.enabledOnMainScreen = false
-	}
+	ppu.Bg1.enabledOnMainScreen = value&1 != 0
+	ppu.Bg2.enabledOnMainScreen = value&2 != 0
+	ppu.Bg3.enabledOnMainScreen = value&4 != 0
+	ppu.Bg4.enabledOnMainScreen = value&8 != 0
+	ppu.Obj.enabledOnMainScreen = value&0x10 != 0
 }
 func (ppu *PPU) setTS(value byte) {
-	if value&1 != 0 {
-		ppu.Bg1.enabledOnSubScreen = true
-	} else {
-		ppu.Bg1.enabledOnSubScreen = false
-	}
-	if value&2 != 0 {
-		ppu.Bg2.enabledOnSubScreen = true
-	} else {
-		ppu.Bg2.enabledOnSubScreen = false
-	}
-
-	if value&4 != 0 {
-		ppu.Bg3.enabledOnSubScreen = true
-	} else {
-		ppu.Bg3.enabledOnSubScreen = false
-	}
-
-	if value&8 != 0 {
-		ppu.Bg4.enabledOnSubScreen = true
-	} else {
-		ppu.Bg4.enabledOnSubScreen = false
-	}
-
-	if value&0x10 != 0 {
-		ppu.Obj.enabledOnSubScreen = true
-	} else {
-		ppu.Obj.enabledOnSubScreen = false
-	}
+	ppu.Bg1.enabledOnSubScreen = value&1 != 0
+	ppu.Bg2.enabledOnSubScreen = value&2 != 0
+	ppu.Bg3.enabledOnSubScreen = value&4 != 0
+	ppu.Bg4.enabledOnSubScreen = value&8 != 0
+	ppu.Obj.enabledOnSubScreen = value&0x10 != 0
 }
 
-func (ppu *PPU) getLayerDot(layer ppuLayer, H, V uint16) (uint16, byte, bool) {
+func (ppu *PPU) getLayerRenderer(layer ppuLayer) rendererFunction {
 	switch layer {
 	case bg1:
-		return ppu.Bg1.GetDotAt(H, V)
+		return ppu.Bg1.GetDotAt
 	case bg2:
-		return ppu.Bg2.GetDotAt(H, V)
+		return ppu.Bg2.GetDotAt
 	case bg3:
-		return ppu.Bg3.GetDotAt(H, V)
+		return ppu.Bg3.GetDotAt
 	case bg4:
-		return ppu.Bg4.GetDotAt(H, V)
+		return ppu.Bg4.GetDotAt
 	case obj:
-		ret := ppu.Obj.resolvedDotsOnScanLine[H]
-		return ret.color, ret.priority, ret.partakesInColorMath
+		return ppu.Obj.GetDotAt
 	}
-	return 0, 0, false
+
+	return nil
 }
 
 func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer, bool) {
@@ -444,7 +404,7 @@ func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer, bool) {
 		if v.mainScreenMask[H] {
 			continue
 		}
-		val, prio, math = ppu.getLayerDot(v.layer, H, V)
+		val, prio, math = v.renderer(H, V)
 		if val == BG_BACKDROP_COLOR || prio != v.priority {
 			continue
 		}
@@ -461,7 +421,7 @@ func (ppu *PPU) renderSubScreen(H, V uint16) (uint16, ppuLayer, bool) {
 		if v.subScreenMask[H] {
 			continue
 		}
-		val, prio, math = ppu.getLayerDot(v.layer, H, V)
+		val, prio, math = v.renderer(H, V)
 		if val == BG_BACKDROP_COLOR || prio != v.priority {
 			continue
 		}
