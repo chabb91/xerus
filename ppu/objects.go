@@ -22,17 +22,16 @@ type Objects struct {
 	name, nameBase uint16
 	tileSize       [2]OBTileSize
 
-	currentEpoch *uint64
+	currentEpoch uint64
 
 	layerId ppuLayer
 
 	enabledOnMainScreen, enabledOnSubScreen bool
 }
 
-func newObjects(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Objects {
+func newObjects(ds tileDataSource, layer ppuLayer) *Objects {
 	obj := &Objects{
 		ds:                             ds,
-		currentEpoch:                   epochPtr,
 		layerId:                        layer,
 		colorDepth:                     bpp4,
 		spritesParticipatingOnScanLine: make([]*Sprite, 32),
@@ -69,7 +68,7 @@ func (ob *Objects) setupOBSEL(value byte) {
 	ob.nameBase = uint16(value&0x7) << 13
 }
 
-func (ob *Objects) GetLayerSourceEpoch() *uint64 {
+func (ob *Objects) GetLayerSourceEpoch() uint64 {
 	return ob.currentEpoch
 }
 

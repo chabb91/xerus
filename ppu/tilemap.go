@@ -29,9 +29,8 @@ type VRAMAddressCalculator func(tileIndex byte) uint16
 type colorIndex func(ppuLayer, colorDepth, byte) byte
 type rendererFunction func(uint16, uint16) (uint16, byte, bool)
 
-// The PPU provides access to the epoch relevant to a specific BG layer
 type LayerEpochSource interface {
-	GetLayerSourceEpoch() *uint64
+	GetLayerSourceEpoch() uint64
 }
 
 type BackgroundI interface {
@@ -71,7 +70,7 @@ type Background struct {
 	vScroll uint16
 	hScroll uint16
 
-	currentEpoch *uint64
+	currentEpoch uint64
 
 	layerId ppuLayer
 
@@ -85,11 +84,10 @@ type Background struct {
 	renderCache      [8]renderedDotCache
 }
 
-func NewBackground(ds tileDataSource, epochPtr *uint64, layer ppuLayer) *Background {
+func NewBackground(ds tileDataSource, layer ppuLayer) *Background {
 	bg := &Background{
-		ds:           ds,
-		currentEpoch: epochPtr,
-		layerId:      layer,
+		ds:      ds,
+		layerId: layer,
 	}
 
 	for i := range bg.tileMap {
@@ -111,7 +109,7 @@ func (bg *Background) isActive() bool {
 	return bg.enabledOnMainScreen || bg.enabledOnSubScreen
 }
 
-func (bg *Background) GetLayerSourceEpoch() *uint64 {
+func (bg *Background) GetLayerSourceEpoch() uint64 {
 	return bg.currentEpoch
 }
 
@@ -177,7 +175,7 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 	px, row, charMapID, tileIndex := getTileIndexAndPixelCoordinates(bg.tileMapSize, bg.charTileSize, hScroll, vScroll)
 
 	tile := &bg.tileMap[tileIndex]
-	if currentEpoch := *bg.currentEpoch; !tile.isValid || tile.lastRenderEpoch != currentEpoch {
+	if currentEpoch := bg.currentEpoch; tile.lastRenderEpoch != currentEpoch || !tile.isValid {
 		tile.setup(tileIndex, currentEpoch)
 	}
 
@@ -347,7 +345,7 @@ func (ct *CharTile) setup(bitPlanes colorDepth) {
 }
 
 func (ct *CharTile) getPixelAt(bitplanes colorDepth, addr VRAMAddressCalculator, tileId, px, row byte) byte {
-	currentEpoch := *ct.layerEpoch.GetLayerSourceEpoch()
+	currentEpoch := ct.layerEpoch.GetLayerSourceEpoch()
 	if ct.lastRenderEpoch != currentEpoch {
 		ct.tileAddress = addr(tileId)
 		goto RENDER_AND_CACHE
@@ -369,7 +367,7 @@ RENDER_AND_CACHE:
 }
 
 func (ct *CharTile) getRowAt(bitplanes colorDepth, addr VRAMAddressCalculator, tileId, row byte) *[8]byte {
-	currentEpoch := *ct.layerEpoch.GetLayerSourceEpoch()
+	currentEpoch := ct.layerEpoch.GetLayerSourceEpoch()
 	if ct.lastRenderEpoch != currentEpoch {
 		ct.tileAddress = addr(tileId)
 		goto RENDER_AND_CACHE

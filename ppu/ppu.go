@@ -52,7 +52,7 @@ type PPU struct {
 	mainRenderPipeline []pipelineTemplate
 	subRenderPipeline  []pipelineTemplate
 
-	bgEpochs [6]uint64 //1 2 3 4 mode7 and obj
+	bgEpochs [6]*uint64 //1 2 3 4 mode7 and obj
 
 	InterruptScheduler InterruptScheduler
 	HdmaScheduler      HdmaScheduler
@@ -69,11 +69,20 @@ func NewPPU() *PPU {
 	ppu.mainRenderPipeline = make([]pipelineTemplate, 0, 12)
 	ppu.subRenderPipeline = make([]pipelineTemplate, 0, 12)
 
-	ppu.Bg1 = NewBackground(ppu, &ppu.bgEpochs[bg1], bg1)
-	ppu.Bg2 = NewBackground(ppu, &ppu.bgEpochs[bg2], bg2)
-	ppu.Bg3 = NewBackground(ppu, &ppu.bgEpochs[bg3], bg3)
-	ppu.Bg4 = NewBackground(ppu, &ppu.bgEpochs[bg4], bg4)
-	ppu.Obj = newObjects(ppu, &ppu.bgEpochs[obj], obj)
+	ppu.Bg1 = NewBackground(ppu, bg1)
+	ppu.Bg2 = NewBackground(ppu, bg2)
+	ppu.Bg3 = NewBackground(ppu, bg3)
+	ppu.Bg4 = NewBackground(ppu, bg4)
+	ppu.Obj = newObjects(ppu, obj)
+
+	ppu.bgEpochs[bg1] = &ppu.Bg1.currentEpoch
+	ppu.bgEpochs[bg2] = &ppu.Bg2.currentEpoch
+	ppu.bgEpochs[bg3] = &ppu.Bg3.currentEpoch
+	ppu.bgEpochs[bg4] = &ppu.Bg4.currentEpoch
+	ppu.bgEpochs[obj] = &ppu.Obj.currentEpoch
+	//TODO placeholder to avoid nil
+	ppu.bgEpochs[bgMode7] = new(uint64)
+
 	ppu.VRAM = NewVRAM(ppu)
 	ppu.OAM = NewOAM(ppu)
 
@@ -308,21 +317,21 @@ func (ppu *PPU) markActiveWindowsDirty() {
 
 func (ppu *PPU) invalidateLayer(layerIndex ppuLayer) {
 	if layerIndex >= 0 && layerIndex < ppuLayer(len(ppu.bgEpochs)) {
-		ppu.bgEpochs[layerIndex]++
+		*ppu.bgEpochs[layerIndex]++
 	}
 }
 
 func (ppu *PPU) invalidateAllLayers() {
 	for i := range ppu.bgEpochs {
-		ppu.bgEpochs[i]++
+		*ppu.bgEpochs[i]++
 	}
 }
 
 func (ppu *PPU) invalidateAllBackgrounds() {
-	ppu.bgEpochs[bg1]++
-	ppu.bgEpochs[bg2]++
-	ppu.bgEpochs[bg3]++
-	ppu.bgEpochs[bg4]++
+	*ppu.bgEpochs[bg1]++
+	*ppu.bgEpochs[bg2]++
+	*ppu.bgEpochs[bg3]++
+	*ppu.bgEpochs[bg4]++
 }
 
 // sprites are only being invalidated locally because if a rom doesnt enable them oam is not interacted with
