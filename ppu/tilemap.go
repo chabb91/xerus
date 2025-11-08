@@ -167,7 +167,6 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 	} else if bg.renderCacheStart <= H && bg.renderCacheStart+uint16(bg.renderCacheSize) > H {
 		ret := bg.renderCache[H-bg.renderCacheStart]
 		return ret.color, ret.priority, true
-
 	}
 
 	bg.renderCacheStart = H

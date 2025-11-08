@@ -8,7 +8,7 @@ import (
 var frameStartTime time.Time
 
 func (ppu *PPU) Step() {
-	timing := ppu.SETINI.Timing
+	timing := &ppu.SETINI.Timing
 
 	draw := ppu.SETINI.TimingLUT[ppu.V*H_TOTAL+ppu.H]
 	if !ppu.FBlank {

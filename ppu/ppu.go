@@ -303,6 +303,7 @@ func (ppu *PPU) markActiveWindowsDirty() {
 	}
 
 	ppu.WINDOWS.ColorMath.windowValid = false
+	ppu.WINDOWS.invalidationCounter = WINDOW_INVALIDATION_COUNTER
 }
 
 func (ppu *PPU) invalidateLayer(layerIndex ppuLayer) {
