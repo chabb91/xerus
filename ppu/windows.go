@@ -1,6 +1,7 @@
 package ppu
 
 const WINDOW_INVALIDATION_COUNTER = 10
+const WINDOW_CACHE_SIZE = uint16(SCREEN_WIDTH / 8)
 
 type wMaskLogic func(bool, bool) bool
 
@@ -12,8 +13,8 @@ type LayerWindowData struct {
 
 	wMaskLogic wMaskLogic
 
-	mainCache [SCREEN_WIDTH]bool
-	subCache  [SCREEN_WIDTH]bool
+	mainCache [WINDOW_CACHE_SIZE]byte
+	subCache  [WINDOW_CACHE_SIZE]byte
 }
 
 type WindowController struct {
@@ -240,23 +241,52 @@ func (wc *WindowController) rebuildDirtyLayerWindowCaches() {
 		val := byte(1 << i)
 		layer := &wc.layers[i]
 		if wc.dirtyMainWindows&val != 0 && wc.dirtySubWindows&val == 0 {
-			for j := range uint16(SCREEN_WIDTH) {
-				layer.mainCache[j] = layer.isDotMasked(false, j, wc)
+			for j := range WINDOW_CACHE_SIZE {
+				ret := byte(0)
+				for r := range uint16(8) {
+					if layer.isDotMasked(false, j<<3+r, wc) {
+						ret |= 1 << r
+					}
+				}
+				layer.mainCache[j] = ret
 			}
 		} else if wc.dirtyMainWindows&val == 0 && wc.dirtySubWindows&val != 0 {
-			for j := range uint16(SCREEN_WIDTH) {
-				layer.subCache[j] = layer.isDotMasked(true, j, wc)
+			for j := range WINDOW_CACHE_SIZE {
+				ret := byte(0)
+				for r := range uint16(8) {
+					if layer.isDotMasked(true, j<<3+r, wc) {
+						ret |= 1 << r
+					}
+				}
+				layer.subCache[j] = ret
 			}
 		} else if wc.dirtyMainWindows&val != 0 && wc.dirtySubWindows&val != 0 {
-			for j := range uint16(SCREEN_WIDTH) {
-				layer.mainCache[j] = layer.isDotMasked(false, j, wc)
-				layer.subCache[j] = layer.isDotMasked(true, j, wc)
+			for j := range WINDOW_CACHE_SIZE {
+				retM := byte(0)
+				retS := byte(0)
+				for r := range uint16(8) {
+					H := j<<3 + r
+					if layer.isDotMasked(false, H, wc) {
+						retM |= 1 << r
+					}
+					if layer.isDotMasked(true, H, wc) {
+						retS |= 1 << r
+					}
+				}
+				layer.mainCache[j] = retM
+				layer.subCache[j] = retS
 			}
 		}
 	}
 	if !wc.ColorMath.windowValid {
-		for i := range uint16(SCREEN_WIDTH) {
-			wc.ColorMath.colorWindowData.mainCache[i] = wc.isDotInColorMask(i)
+		for i := range WINDOW_CACHE_SIZE {
+			ret := byte(0)
+			for r := range uint16(8) {
+				if wc.isDotInColorMask((i << 3) + r) {
+					ret |= (1 << r)
+				}
+			}
+			wc.ColorMath.colorWindowData.mainCache[i] = ret
 		}
 	}
 
@@ -375,7 +405,7 @@ func (wc *WindowController) isDotInColorMask(H uint16) bool {
 
 func (wc *WindowController) performColorMath(mainColor, subColor, H uint16, layer ppuLayer) uint16 {
 	colorMath := &wc.ColorMath
-	inColorMask := colorMath.colorWindowData.mainCache[H]
+	inColorMask := (colorMath.colorWindowData.mainCache[H>>3]>>(H&7))&1 == 1
 	if colorMath.clipToBlack(inColorMask) {
 		mainColor = 0
 	}

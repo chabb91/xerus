@@ -68,7 +68,7 @@ func NewEmulatorDisplay(fb *Framebuffer) *EmulatorDisplay {
 		ScreenWidth:       MaxWidth,
 		ScreenHeight:      MaxHeight,
 
-		Controller1: NewSnesControllerInput(0),
+		Controller1: &SNESKeyboardInput{},
 	}
 }
 

@@ -8,8 +8,8 @@ type pipelineTemplate struct {
 
 	renderer rendererFunction
 
-	mainScreenMask *[SCREEN_WIDTH]bool
-	subScreenMask  *[SCREEN_WIDTH]bool
+	mainScreenMask *[WINDOW_CACHE_SIZE]byte
+	subScreenMask  *[WINDOW_CACHE_SIZE]byte
 }
 
 var modePriorityOrder = map[byte][]pipelineTemplate{
@@ -406,7 +406,7 @@ func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer, bool) {
 	var prio byte
 	var math bool
 	for _, v := range ppu.mainRenderPipeline {
-		if v.mainScreenMask[H] {
+	if (v.mainScreenMask[H>>3]>>(H&7))&1 == 1 {
 			continue
 		}
 
@@ -435,7 +435,7 @@ func (ppu *PPU) renderSubScreen(H, V uint16) (uint16, ppuLayer, bool) {
 	var prio byte
 	var math bool
 	for _, v := range ppu.subRenderPipeline {
-		if v.subScreenMask[H] {
+		if (v.subScreenMask[H>>3]>>(H&7))&1 == 1 {
 			continue
 		}
 
