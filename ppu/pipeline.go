@@ -396,6 +396,11 @@ func (ppu *PPU) getLayerRenderer(layer ppuLayer) rendererFunction {
 	return nil
 }
 
+// TODO things like this arent really supposed to be package level but its fast access
+var colorCache [7]uint16
+var spritePrio byte
+var spriteMath bool
+
 func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer, bool) {
 	var val uint16
 	var prio byte
@@ -404,7 +409,19 @@ func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer, bool) {
 		if v.mainScreenMask[H] {
 			continue
 		}
-		val, prio, math = v.renderer(H, V)
+
+		if v.priority == 3 {
+			val, prio, math = v.renderer(H, V)
+			colorCache[v.layer], spritePrio, spriteMath = val, prio, math
+		} else if v.priority == 1 && v.layer != obj {
+			val, prio, math = v.renderer(H, V)
+			colorCache[v.layer] = val
+		} else if v.layer != obj {
+			val, prio, math = colorCache[v.layer], 0, true
+		} else {
+			val, prio, math = colorCache[v.layer], spritePrio, spriteMath
+		}
+
 		if val == BG_BACKDROP_COLOR || prio != v.priority {
 			continue
 		}
@@ -421,7 +438,19 @@ func (ppu *PPU) renderSubScreen(H, V uint16) (uint16, ppuLayer, bool) {
 		if v.subScreenMask[H] {
 			continue
 		}
-		val, prio, math = v.renderer(H, V)
+
+		if v.priority == 3 {
+			val, prio, math = v.renderer(H, V)
+			colorCache[v.layer], spritePrio, spriteMath = val, prio, math
+		} else if v.priority == 1 && v.layer != obj {
+			val, prio, math = v.renderer(H, V)
+			colorCache[v.layer] = val
+		} else if v.layer != obj {
+			val, prio, math = colorCache[v.layer], 0, true
+		} else {
+			val, prio, math = colorCache[v.layer], spritePrio, spriteMath
+		}
+
 		if val == BG_BACKDROP_COLOR || prio != v.priority {
 			continue
 		}

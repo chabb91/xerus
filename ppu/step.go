@@ -109,5 +109,9 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 		if ppu.Obj.isActive() {
 			ppu.Obj.prepareScanLine(draw.V)
 		}
+		ppu.Bg1.renderCacheEnd = 0
+		ppu.Bg2.renderCacheEnd = 0
+		ppu.Bg3.renderCacheEnd = 0
+		ppu.Bg4.renderCacheEnd = 0
 	}
 }

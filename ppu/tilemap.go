@@ -1,6 +1,8 @@
 package ppu
 
-import "math/bits"
+import (
+	"math/bits"
+)
 
 type colorDepth uint16
 type ppuLayer uint16
@@ -80,8 +82,9 @@ type Background struct {
 	enabledOnMainScreen, enabledOnSubScreen bool
 
 	renderCacheStart uint16
+	renderCacheEnd   uint16
 	renderCacheSize  byte
-	renderCache      [8]renderedDotCache
+	renderCache      [SCREEN_WIDTH]renderedDotCache
 }
 
 func NewBackground(ds tileDataSource, layer ppuLayer) *Background {
@@ -159,15 +162,11 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
 func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
-	if bg.renderCacheStart == H {
-		ret := bg.renderCache[0]
-		return ret.color, ret.priority, true
-	} else if bg.renderCacheStart <= H && bg.renderCacheStart+uint16(bg.renderCacheSize) > H {
-		ret := bg.renderCache[H-bg.renderCacheStart]
+	if H < bg.renderCacheEnd {
+		ret := bg.renderCache[H]
 		return ret.color, ret.priority, true
 	}
 
-	bg.renderCacheStart = H
 	hScroll, vScroll := H+bg.hScroll, V+bg.vScroll
 	if bg.OPTMap != nil && (H+(7-(hScroll&7)))>>3 > 0 {
 		hScroll, vScroll = bg.optFunc(bg, H, V)
@@ -180,7 +179,7 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 	}
 
 	row = tileFlipYLUT[tile.flipIndex][row]
-	bg.renderCacheSize = 8 - px
+	bg.renderCacheEnd = min(H+uint16(8-px), SCREEN_WIDTH)
 
 	charIndex := tile.charIndex
 	if bg.charTileSize == 1 {
@@ -188,30 +187,34 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 		charIndex += charMapIdToOffsetLUT[charMapID]
 	}
 
-	var ret uint16
+	var ret, color uint16
 	charTile := &bg.charTiles[charIndex]
 	flipXTtable := &tileFlipXLUT[tile.flipIndex]
 	rowData := charTile.getRowAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, row)
 	cgram := bg.ds.getCGRAM()
 
-	for i := 0; i < int(bg.renderCacheSize); i++ {
+	for i := H; i < bg.renderCacheEnd; i++ {
 		charData := rowData[flipXTtable[px]]
-
-		bg.renderCache[i].priority = tile.priority
 
 		if bg.colorDepth == bpp8 && bg.isDirectColor {
 			if charData == 0 {
-				ret = BG_BACKDROP_COLOR
+				color = BG_BACKDROP_COLOR
 			} else {
 				red := ((charData & 0x07) << 2) | ((tile.paletteNum & 0x01) << 1)
 				green := ((charData & 0x38) >> 1) | (tile.paletteNum & 0x02)
 				blue := ((charData & 0xC0) >> 3) | (tile.paletteNum & 0x04)
-				ret = uint16(blue)<<10 | uint16(green)<<5 | uint16(red)
+				color = uint16(blue)<<10 | uint16(green)<<5 | uint16(red)
 			}
 		} else {
-			ret = cgram[charData+bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum)]
+			color = cgram[charData+bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum)]
 		}
-		bg.renderCache[i].color = ret
+
+		if i == H {
+			ret = color
+		}
+		cache := &bg.renderCache[i]
+		cache.priority = tile.priority
+		cache.color = color
 		px++
 	}
 	return ret, tile.priority, true
