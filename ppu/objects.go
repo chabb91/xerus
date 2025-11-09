@@ -144,7 +144,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 			screenPos := sprite.posX + j
 			if screenPos < int16(SCREEN_WIDTH) && screenPos >= 0 {
 				if renderDot := &ob.resolvedDotsOnScanLine[screenPos]; renderDot.color == BG_BACKDROP_COLOR {
-					renderDot.color, renderDot.priority = ob.drawASpriteByRef(sprite, dimensions, uint16(screenPos), V)
+					renderDot.color, renderDot.priority = ob.drawASpriteByRef(sprite, dimensions, uint16(screenPos), V), sprite.priority
 					renderDot.partakesInColorMath = sprite.paletteNum >= 4
 				}
 			}
@@ -152,9 +152,8 @@ func (ob *Objects) prepareScanLine(V uint16) {
 	}
 }
 
-func (ob *Objects) drawASpriteByRef(sprite *Sprite, dimensions OBTileSize, H, V uint16) (uint16, byte) {
+func (ob *Objects) drawASpriteByRef(sprite *Sprite, dimensions OBTileSize, H, V uint16) uint16 {
 	x := H - uint16(sprite.posX)
-	//trying to handle wrapping of big sprites, UNTESTED
 	y := uint16(sprite.posY)
 	if V >= y {
 		y = V - y
@@ -179,12 +178,12 @@ func (ob *Objects) drawASpriteByRef(sprite *Sprite, dimensions OBTileSize, H, V 
 	r := tileFlipYLUT[sprite.flipIndex][y&7]
 
 	char := &ob.charTiles[sprite.nameTable][tileIndex]
-	colorIndex := sprite.GetCgramIndex(char.getPixelAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, px, r))
+	colorIndex := 128 + sprite.paletteNum<<4 + (char.getPixelAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, px, r))
 
 	if colorIndex&0xF == 0 {
-		return BG_BACKDROP_COLOR, sprite.priority
+		return BG_BACKDROP_COLOR
 	} else {
-		return ob.ds.getCGRAM()[colorIndex], sprite.priority
+		return ob.ds.getCGRAM()[colorIndex]
 	}
 }
 
