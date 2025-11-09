@@ -81,10 +81,8 @@ type Background struct {
 
 	enabledOnMainScreen, enabledOnSubScreen bool
 
-	renderCacheStart uint16
-	renderCacheEnd   uint16
-	renderCacheSize  byte
-	renderCache      [SCREEN_WIDTH]renderedDotCache
+	renderCacheEnd uint16
+	renderCache    [SCREEN_WIDTH]renderedDotCache
 }
 
 func NewBackground(ds tileDataSource, layer ppuLayer) *Background {
@@ -102,8 +100,6 @@ func NewBackground(ds tileDataSource, layer ppuLayer) *Background {
 		bg.charTiles[i].ds = bg.ds
 		bg.charTiles[i].isValid = false
 	}
-
-	bg.renderCacheStart = 0xFFFF
 
 	return bg
 }
