@@ -181,14 +181,12 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 	row = tileFlipYLUT[tile.flipIndex][row]
 	bg.renderCacheEnd = min(H+uint16(8-px), SCREEN_WIDTH)
 
-	charIndex := tile.charIndex
 	if bg.charTileSize == 1 {
 		charMapID = compositeFlipLUT[charMapID][tile.flipIndex]
-		charIndex += charMapIdToOffsetLUT[charMapID]
 	}
 
 	var ret, color uint16
-	charTile := &bg.charTiles[charIndex]
+	charTile := tile.charTiles[charMapID]
 	flipXTtable := &tileFlipXLUT[tile.flipIndex]
 	rowData := charTile.getRowAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, row)
 	cgram := bg.ds.getCGRAM()
@@ -299,6 +297,7 @@ type BgTile struct {
 	priority   byte
 	paletteNum byte
 	charIndex  uint16
+	charTiles  [4]*CharTile
 
 	lastRenderEpoch uint64
 	bg              *Background
@@ -309,17 +308,27 @@ func (bt *BgTile) setup(tileIndex uint16, currentEpoch uint64) {
 	bt.flipIndex = byte((params >> 14) & 3)
 	bt.priority = byte(params>>13) & 1
 	bt.paletteNum = byte(params>>10) & 7
-	bt.charIndex = params & 0x3FF
+	charIndex := params & 0x3FF
+	bt.charIndex = charIndex
+
+	charTiles := &bt.bg.charTiles
+
+	bt.charTiles[0] = &charTiles[bt.charIndex]
+	if bt.bg.charTileSize == 1 {
+		bt.charTiles[1] = &charTiles[charIndex+charMapIdToOffsetLUT[1]]
+		bt.charTiles[2] = &charTiles[charIndex+charMapIdToOffsetLUT[2]]
+		bt.charTiles[3] = &charTiles[charIndex+charMapIdToOffsetLUT[3]]
+	}
 
 	bt.isValid = true
 	bt.lastRenderEpoch = currentEpoch
 }
 
 func (tile *BgTile) GetVramTileWordIndex(tileIndex byte) uint16 {
-	return ((tile.charIndex+charMapIdToOffsetLUT[tileIndex])*uint16(tile.bg.colorDepth<<2) + tile.bg.charTileAddressBase) & 0x7FFF
+	k := bits.TrailingZeros(uint(tile.bg.colorDepth << 2))
+	return ((tile.charIndex+charMapIdToOffsetLUT[tileIndex])<<k + tile.bg.charTileAddressBase) & 0x7FFF
 }
 
-// TODO chartile needs to be able to handle 16x16 tiles later on too
 type CharTile struct {
 	isValid bool
 
