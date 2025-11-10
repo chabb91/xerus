@@ -1,6 +1,7 @@
 // bad practce in general but not going to use dependency injection
 // or dereferencing in general 100k times per frame just to write "correct" code
 // the rendering pipeline gets to have a few fast magical package level variables
+// there are never two ppu instances anyway.
 package ppu
 
 import "time"
@@ -15,4 +16,5 @@ var frameStartTime time.Time
 
 // global mosaic values
 var mosaicSize byte
-var mosaicStartLine byte
+var mosaicStartLine uint16
+var hasMosaic bool

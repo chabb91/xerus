@@ -133,14 +133,36 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.setBGMODE(value)
 	case 0x2106:
 		fmt.Println("MOSAIC: ", value)
-		ppu.Bg1.mosaicSize = value >> 4
-		if ppu.V <= 256 && ppu.V > 0 {
-			ppu.Bg1.mosaicStartLine = byte(ppu.V - 1)
-		} else {
-			ppu.Bg1.mosaicStartLine = 0
+		ppu.Bg1.mosaic = value&1 == 1
+		ppu.Bg2.mosaic = value&2 == 2
+		ppu.Bg3.mosaic = value&4 == 4
+		ppu.Bg4.mosaic = value&8 == 8
+
+		hasMosaic = value&0xF > 0
+
+		ms := value>>4 + 1
+		if ms != mosaicSize {
+			draw := ppu.SETINI.TimingLUT[ppu.V*H_TOTAL+ppu.H]
+			if draw.IsVisible {
+				mosaicStartLine = draw.V
+			} else {
+				mosaicStartLine = 0
+			}
 		}
-		ppu.Bg1.renderCacheEnd = 0
-		fmt.Println(ppu.Bg1.mosaicStartLine)
+		mosaicSize = ms
+
+		if ppu.Bg1.mosaic {
+			ppu.Bg1.renderCacheEnd = 0
+		}
+		if ppu.Bg2.mosaic {
+			ppu.Bg2.renderCacheEnd = 0
+		}
+		if ppu.Bg3.mosaic {
+			ppu.Bg3.renderCacheEnd = 0
+		}
+		if ppu.Bg4.mosaic {
+			ppu.Bg4.renderCacheEnd = 0
+		}
 	case 0x2107:
 		fmt.Println("BG1SC: ", value)
 		ppu.Bg1.tileMapSize = uint16(value & 0x3)

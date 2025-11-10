@@ -84,7 +84,7 @@ type Background struct {
 	renderCacheEnd uint16
 	renderCache    [SCREEN_WIDTH]renderedDotCache
 
-	mosaicSize, mosaicStartLine byte
+	mosaic bool
 }
 
 func NewBackground(ds tileDataSource, layer ppuLayer) *Background {
@@ -177,12 +177,11 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 	}
 
 	row = tileFlipYLUT[tile.flipIndex][row]
-	if bg.mosaicSize != 0 {
+	if bg.mosaic {
 		offset := 8 - px
-		ms := bg.mosaicSize + 1
-		size := (offset / ms) * ms
-		if (offset % ms) > 0 {
-			size += ms
+		size := (offset / mosaicSize) * mosaicSize
+		if (offset % mosaicSize) > 0 {
+			size += mosaicSize
 		}
 		bg.renderCacheEnd = min(H+uint16(size), SCREEN_WIDTH)
 	} else {
@@ -200,7 +199,7 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 	cgram := bg.ds.getCGRAM()
 
 	for i := H; i < bg.renderCacheEnd; i++ {
-		if bg.mosaicSize == 0 || (bg.mosaicSize != 0 && (i-H)%(uint16(bg.mosaicSize+1)) == 0) {
+		if !bg.mosaic || (bg.mosaic && (i-H)%(uint16(mosaicSize)) == 0) {
 			charData := rowData[flipXTtable[px]]
 
 			if bg.colorDepth == bpp8 && bg.isDirectColor {
