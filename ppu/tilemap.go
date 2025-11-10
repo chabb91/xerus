@@ -83,6 +83,8 @@ type Background struct {
 
 	renderCacheEnd uint16
 	renderCache    [SCREEN_WIDTH]renderedDotCache
+
+	mosaicSize, mosaicStartLine byte
 }
 
 func NewBackground(ds tileDataSource, layer ppuLayer) *Background {
@@ -175,7 +177,17 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 	}
 
 	row = tileFlipYLUT[tile.flipIndex][row]
-	bg.renderCacheEnd = min(H+uint16(8-px), SCREEN_WIDTH)
+	if bg.mosaicSize != 0 {
+		offset := 8 - px
+		ms := bg.mosaicSize + 1
+		size := (offset / ms) * ms
+		if (offset % ms) > 0 {
+			size += ms
+		}
+		bg.renderCacheEnd = min(H+uint16(size), SCREEN_WIDTH)
+	} else {
+		bg.renderCacheEnd = min(H+uint16(8-px), SCREEN_WIDTH)
+	}
 
 	if bg.charTileSize == 1 {
 		charMapID = compositeFlipLUT[charMapID][tile.flipIndex]
@@ -188,6 +200,14 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 	cgram := bg.ds.getCGRAM()
 
 	for i := H; i < bg.renderCacheEnd; i++ {
+		if bg.mosaicSize != 0 {
+			if (i-H)%(uint16(bg.mosaicSize+1)) != 0 {
+				cache := &bg.renderCache[i]
+				cache.priority = tile.priority
+				cache.color = color
+				continue
+			}
+		}
 		charData := rowData[flipXTtable[px]]
 
 		if bg.colorDepth == bpp8 && bg.isDirectColor {
@@ -214,8 +234,6 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 	return ret, tile.priority, true
 }
 
-// my best guess for OPT. will test it in a year when i can run games LUL
-// TODO once i know this works it should be heavily optimized
 func resolveOPTMode26(bg *Background, H, V uint16) (uint16, uint16) {
 	HOFS := bg.hScroll + H
 	VOFS := bg.vScroll + V

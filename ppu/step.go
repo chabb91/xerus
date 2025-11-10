@@ -109,7 +109,10 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 		if ppu.Obj.isActive() {
 			ppu.Obj.prepareScanLine(draw.V)
 		}
-		ppu.Bg1.renderCacheEnd = 0
+		if ppu.Bg1.mosaicSize == 0 ||
+			(draw.V >= uint16(ppu.Bg1.mosaicStartLine) && (draw.V-uint16(ppu.Bg1.mosaicStartLine))%(uint16(ppu.Bg1.mosaicSize+1)) == 0) {
+			ppu.Bg1.renderCacheEnd = 0
+		}
 		ppu.Bg2.renderCacheEnd = 0
 		ppu.Bg3.renderCacheEnd = 0
 		ppu.Bg4.renderCacheEnd = 0
