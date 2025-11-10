@@ -396,11 +396,6 @@ func (ppu *PPU) getLayerRenderer(layer ppuLayer) rendererFunction {
 	return nil
 }
 
-// TODO things like this arent really supposed to be package level but its fast access
-var colorCache [7]uint16
-var spritePrio byte
-var spriteMath bool
-
 func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer, bool) {
 	var val uint16
 	var prio byte

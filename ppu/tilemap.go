@@ -200,32 +200,26 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 	cgram := bg.ds.getCGRAM()
 
 	for i := H; i < bg.renderCacheEnd; i++ {
-		if bg.mosaicSize != 0 {
-			if (i-H)%(uint16(bg.mosaicSize+1)) != 0 {
-				cache := &bg.renderCache[i]
-				cache.priority = tile.priority
-				cache.color = color
-				continue
-			}
-		}
-		charData := rowData[flipXTtable[px]]
+		if bg.mosaicSize == 0 || (bg.mosaicSize != 0 && (i-H)%(uint16(bg.mosaicSize+1)) == 0) {
+			charData := rowData[flipXTtable[px]]
 
-		if bg.colorDepth == bpp8 && bg.isDirectColor {
-			if charData == 0 {
-				color = BG_BACKDROP_COLOR
+			if bg.colorDepth == bpp8 && bg.isDirectColor {
+				if charData == 0 {
+					color = BG_BACKDROP_COLOR
+				} else {
+					red := ((charData & 0x07) << 2) | ((tile.paletteNum & 0x01) << 1)
+					green := ((charData & 0x38) >> 1) | (tile.paletteNum & 0x02)
+					blue := ((charData & 0xC0) >> 3) | (tile.paletteNum & 0x04)
+					color = uint16(blue)<<10 | uint16(green)<<5 | uint16(red)
+				}
 			} else {
-				red := ((charData & 0x07) << 2) | ((tile.paletteNum & 0x01) << 1)
-				green := ((charData & 0x38) >> 1) | (tile.paletteNum & 0x02)
-				blue := ((charData & 0xC0) >> 3) | (tile.paletteNum & 0x04)
-				color = uint16(blue)<<10 | uint16(green)<<5 | uint16(red)
+				color = cgram[charData+bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum)]
 			}
-		} else {
-			color = cgram[charData+bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum)]
+			if i == H {
+				ret = color
+			}
 		}
 
-		if i == H {
-			ret = color
-		}
 		cache := &bg.renderCache[i]
 		cache.priority = tile.priority
 		cache.color = color

@@ -5,8 +5,6 @@ import (
 	"time"
 )
 
-var frameStartTime time.Time
-
 func (ppu *PPU) Step() {
 	timing := &ppu.SETINI.Timing
 

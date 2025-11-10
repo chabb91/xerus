@@ -139,7 +139,8 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		} else {
 			ppu.Bg1.mosaicStartLine = 0
 		}
-
+		ppu.Bg1.renderCacheEnd = 0
+		fmt.Println(ppu.Bg1.mosaicStartLine)
 	case 0x2107:
 		fmt.Println("BG1SC: ", value)
 		ppu.Bg1.tileMapSize = uint16(value & 0x3)
