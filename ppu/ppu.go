@@ -138,31 +138,16 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.Bg3.mosaic = value&4 == 4
 		ppu.Bg4.mosaic = value&8 == 8
 
-		hasMosaic = value&0xF > 0
-
 		ms := value>>4 + 1
 		if ms != mosaicSize {
-			draw := ppu.SETINI.TimingLUT[ppu.V*H_TOTAL+ppu.H]
-			if draw.IsVisible {
-				mosaicStartLine = draw.V
+			if ppu.V > 0 && ppu.SETINI.Timing.TotalScanlines >= ppu.V {
+				mosaicStartLine = uint16(ppu.V)
 			} else {
 				mosaicStartLine = 0
 			}
 		}
 		mosaicSize = ms
-
-		if ppu.Bg1.mosaic {
-			ppu.Bg1.renderCacheEnd = 0
-		}
-		if ppu.Bg2.mosaic {
-			ppu.Bg2.renderCacheEnd = 0
-		}
-		if ppu.Bg3.mosaic {
-			ppu.Bg3.renderCacheEnd = 0
-		}
-		if ppu.Bg4.mosaic {
-			ppu.Bg4.renderCacheEnd = 0
-		}
+		hasMosaic = value&0xF > 0
 	case 0x2107:
 		fmt.Println("BG1SC: ", value)
 		ppu.Bg1.tileMapSize = uint16(value & 0x3)

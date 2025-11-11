@@ -17,4 +17,5 @@ var frameStartTime time.Time
 // global mosaic values
 var mosaicSize byte
 var mosaicStartLine uint16
+var mosaicLineCnt uint16
 var hasMosaic bool

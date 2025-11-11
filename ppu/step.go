@@ -109,9 +109,19 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 		}
 
 		shouldReset := true
-		if hasMosaic {
-			shouldReset = (draw.V >= mosaicStartLine && (draw.V-mosaicStartLine)%(uint16(mosaicSize)) == 0)
+		if hasMosaic && mosaicSize > 1 {
+			if draw.V == 0 {
+				mosaicLineCnt = 0
+			}
+			mosaicLineCnt++
+			if mosaicLineCnt >= uint16(mosaicSize) {
+				mosaicLineCnt = 0
+			}
+			shouldReset = (mosaicLineCnt == 0) || (draw.V == mosaicStartLine)
+		} else {
+			shouldReset = true
 		}
+
 		if !ppu.Bg1.mosaic || shouldReset {
 			ppu.Bg1.renderCacheEnd = 0
 		}
