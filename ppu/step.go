@@ -110,12 +110,14 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 
 		shouldReset := true
 		if hasMosaic && mosaicSize > 1 {
-			if draw.V <= mosaicStartLine {
+			if draw.V == 0 {
 				mosaicLineCnt = 0
+			}
+			if draw.V <= mosaicStartLine {
 				shouldReset = true
 			} else {
-				shouldReset = mosaicLineCnt == 0
 				mosaicLineCnt++
+				shouldReset = mosaicLineCnt == uint16(mosaicSize)
 				if mosaicLineCnt >= uint16(mosaicSize) {
 					mosaicLineCnt = 0
 				}
