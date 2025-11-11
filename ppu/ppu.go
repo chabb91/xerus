@@ -108,6 +108,7 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 
 // TODO some of these heavy register operations should be deferred to the next scanline for accuracy
 // its called mode latch delay
+// bgmode and mosaic for sure belong in this category
 func (ppu *PPU) Write(addr uint16, value byte) error {
 	switch addr {
 	case 0x2100:
