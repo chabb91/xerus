@@ -24,7 +24,7 @@ type SoC struct {
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/SNES_11.sfc")
+	romData, err := cartridge.Load("/home/chabb/Downloads/demo_fix.sfc")
 	if err != nil {
 		panic(err)
 	}
@@ -41,6 +41,7 @@ func NewSoC(framebuffer *ui.Framebuffer) *SoC {
 	soc.Ppu.InterruptScheduler = soc.InterruptController
 	soc.Ppu.HdmaScheduler = soc.Dma
 	soc.Ppu.Framebuffer = framebuffer
+	soc.Ppu.Init()
 
 	bus.RegisterRange(0x4200, 0x421F, soc, "internal CPU")
 	bus.RegisterRange(0x2100, 0x213F, soc.Ppu, "PPU")

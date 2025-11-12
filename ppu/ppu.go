@@ -89,6 +89,13 @@ func NewPPU() *PPU {
 	return ppu
 }
 
+// initializing the ppu to a known state at start
+func (ppu *PPU) Init() {
+	for i := range uint16(64) {
+		ppu.Write(0x2100|i, 0)
+	}
+}
+
 // Some of these registers can only be read and written to at specific times defined by the blanking periods
 // TODO
 func (ppu *PPU) Read(addr uint16) (byte, error) {
