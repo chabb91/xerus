@@ -81,7 +81,7 @@ func (dma *Dma) Step() bool {
 	if dma.DmaState == HDMA_RELOAD {
 		dma.currentHdmaId = getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1)
 		if dma.currentHdmaId != -1 {
-			dma.hdmaOp[dma.currentHdmaId].reload(dma.Channels[dma.currentHdmaId])
+			dma.hdmaOp[dma.currentHdmaId].reload()
 			log.Printf("RELOADING HDMA on channel %v with params %+v\n", dma.currentHdmaId, dma.Channels[dma.currentHdmaId])
 			if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
 				dma.DmaState = HDMA_INACTIVE
@@ -186,7 +186,7 @@ func (dma *Dma) isHdmaActive() bool {
 // needed to properly enable midframe HDMA
 func (dma *Dma) SetHdmaen(value byte) {
 	for i := range 8 {
-		if (dma.Hdmaen>>i)&1 == 0 && (value>>i)&1 != 0 {
+		if /*(dma.Hdmaen>>i)&1 == 0 &&*/ (value>>i)&1 != 0 {
 			dma.hdmaOp[i].setup(dma.Channels[i])
 		}
 	}
