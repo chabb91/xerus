@@ -31,8 +31,9 @@ type DmaChannel struct {
 }
 
 type Dma struct {
-	Mdmaen byte
-	Hdmaen byte
+	Mdmaen      byte
+	Hdmaen      byte
+	HdmaenLatch byte //latching hdmaen so there is no way it changes between trigger and handoff
 
 	dmaOp        *DmaOperation
 	currentDmaOp *DmaOperation
@@ -57,7 +58,7 @@ func NewDma(bus memory.Bus) *Dma {
 	for i := range dma.hdmaOp {
 		dma.hdmaOp[i] = &HdmaOperation{
 			bus:       bus,
-			Hdmaen:    &dma.Hdmaen,
+			Hdmaen:    &dma.HdmaenLatch,
 			channelId: i,
 		}
 	}
@@ -69,21 +70,16 @@ func NewDma(bus memory.Bus) *Dma {
 
 func (dma *Dma) Step() bool {
 	if dma.DmaState == HDMA_RELOAD_INIT {
-		//this should always be >0 but who knows
-		if dma.Hdmaen > 0 {
-			dma.DmaState = HDMA_RELOAD
-			dma.currentHdmaOp = dma.hdmaOp[getNextActiveChannel(dma.Hdmaen, 0)]
-			return false
-		}
-		dma.DmaState = HDMA_INACTIVE
-		return true
+		dma.DmaState = HDMA_RELOAD
+		dma.currentHdmaOp = dma.hdmaOp[getNextActiveChannel(dma.HdmaenLatch, 0)]
+		return false
 	}
 	if dma.DmaState == HDMA_RELOAD {
 		if dma.currentHdmaOp != nil {
 			dma.currentHdmaOp.reload()
 			channelId := dma.currentHdmaOp.channelId
 			log.Printf("RELOADING HDMA on channel %v with params %+v\n", channelId, dma.Channels[channelId])
-			if nextChannel := getNextActiveChannel(dma.Hdmaen, dma.currentHdmaOp.channelId+1); nextChannel == -1 {
+			if nextChannel := getNextActiveChannel(dma.HdmaenLatch, dma.currentHdmaOp.channelId+1); nextChannel == -1 {
 				dma.DmaState = HDMA_INACTIVE
 				return true
 			} else {
@@ -95,8 +91,8 @@ func (dma *Dma) Step() bool {
 	//costs 18 master cycles
 	if dma.DmaState == HDMA_TRANSFER_INIT {
 		//this has to be non -1 because the state cant be entered if hdmaen is 0
-		dma.currentHdmaOp = dma.hdmaOp[getNextActiveChannel(dma.Hdmaen, 0)]
-		dma.decideNextHdmaTransferState(dma.currentHdmaOp)
+		dma.currentHdmaOp = dma.hdmaOp[getNextActiveChannel(dma.HdmaenLatch, 0)]
+		dma.decideNextHdmaTransferState()
 
 		return false
 	}
@@ -104,12 +100,12 @@ func (dma *Dma) Step() bool {
 		if !dma.currentHdmaOp.isTerminated {
 			dma.currentHdmaOp.stepLineCounter()
 		}
-		if nextChannel := getNextActiveChannel(dma.Hdmaen, dma.currentHdmaOp.channelId+1); nextChannel == -1 {
+		if nextChannel := getNextActiveChannel(dma.HdmaenLatch, dma.currentHdmaOp.channelId+1); nextChannel == -1 {
 			dma.DmaState = HDMA_INACTIVE
 			return true
 		} else {
 			dma.currentHdmaOp = dma.hdmaOp[nextChannel]
-			dma.decideNextHdmaTransferState(dma.currentHdmaOp)
+			dma.decideNextHdmaTransferState()
 		}
 		return false
 	}
@@ -139,7 +135,8 @@ func (dma *Dma) Step() bool {
 	return false
 }
 
-func (dma *Dma) decideNextHdmaTransferState(channel *HdmaOperation) {
+func (dma *Dma) decideNextHdmaTransferState() {
+	channel := dma.currentHdmaOp
 	if channel.doTransfer && !channel.isTerminated {
 		dma.DmaState = HDMA_TRANSFER
 		//dma and hdma on same channel cancels dma
@@ -159,6 +156,7 @@ func (dma *Dma) IsInProgress() bool {
 func (dma *Dma) Reload() {
 	if dma.Hdmaen > 0 {
 		dma.DmaState = HDMA_RELOAD_INIT
+		dma.HdmaenLatch = dma.Hdmaen
 	}
 }
 
@@ -168,17 +166,8 @@ func (dma *Dma) DoTransfer() {
 	//and hdma effects so the conflicting dma gets canceled and stuff glitches
 	if dma.Hdmaen > 0 {
 		dma.DmaState = HDMA_TRANSFER_INIT
+		dma.HdmaenLatch = dma.Hdmaen
 	}
-}
-
-func (dma *Dma) isHdmaActive() bool {
-	for v := range 8 {
-		if (dma.Hdmaen&(1<<v)) != 0 && !dma.hdmaOp[v].isTerminated {
-			//dma.currentHdmaId = v
-			return true
-		}
-	}
-	return false
 }
 
 // needed to properly enable midframe HDMA
