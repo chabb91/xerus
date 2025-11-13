@@ -12,7 +12,7 @@ const (
 	HDMA_RELOAD
 	HDMA_TRANSFER_INIT
 	HDMA_TRANSFER_CH_OVERHEAD
-	HDMA_TRANSFER_LOAD_INDIRECT
+	//HDMA_TRANSFER_LOAD_INDIRECT
 	HDMA_TRANSFER
 )
 
@@ -69,12 +69,12 @@ func NewDma(bus memory.Bus) *Dma {
 }
 
 func (dma *Dma) Step() bool {
-	if dma.DmaState == HDMA_RELOAD_INIT {
+	switch dma.DmaState {
+	case HDMA_RELOAD_INIT:
 		dma.DmaState = HDMA_RELOAD
 		dma.currentHdmaOp = dma.hdmaOp[getNextActiveChannel(dma.HdmaenLatch, 0)]
 		return false
-	}
-	if dma.DmaState == HDMA_RELOAD {
+	case HDMA_RELOAD:
 		if dma.currentHdmaOp != nil {
 			dma.currentHdmaOp.reload()
 			channelId := dma.currentHdmaOp.channelId
@@ -87,16 +87,13 @@ func (dma *Dma) Step() bool {
 			}
 			return false
 		}
-	}
-	//costs 18 master cycles
-	if dma.DmaState == HDMA_TRANSFER_INIT {
+	case HDMA_TRANSFER_INIT:
 		//this has to be non -1 because the state cant be entered if hdmaen is 0
 		dma.currentHdmaOp = dma.hdmaOp[getNextActiveChannel(dma.HdmaenLatch, 0)]
 		dma.decideNextHdmaTransferState()
 
 		return false
-	}
-	if dma.DmaState == HDMA_TRANSFER_CH_OVERHEAD {
+	case HDMA_TRANSFER_CH_OVERHEAD:
 		if !dma.currentHdmaOp.isTerminated {
 			dma.currentHdmaOp.stepLineCounter()
 		}
@@ -108,23 +105,21 @@ func (dma *Dma) Step() bool {
 			dma.decideNextHdmaTransferState()
 		}
 		return false
-	}
-	if dma.DmaState == HDMA_TRANSFER {
+	case HDMA_TRANSFER:
 		if dma.currentHdmaOp.stepCycle() {
 			dma.DmaState = HDMA_TRANSFER_CH_OVERHEAD
 			return false
 		}
 		return false
-	}
-	if dma.DmaState == HDMA_INACTIVE {
-		if dma.isDmaActive() && dma.currentDmaOp == nil {
+	case HDMA_INACTIVE:
+		if dma.Mdmaen != 0 && dma.currentDmaOp == nil {
 			dma.currentDmaOp = dma.dmaOp
 			dma.currentDmaId = getNextActiveChannel(dma.Mdmaen, 0)
 			dma.currentDmaOp.setup(dma.Channels[dma.currentDmaId])
 			log.Printf("Starting dma on channel %v with params %+v\n", dma.currentDmaId, dma.Channels[dma.currentDmaId])
 			return false
 		}
-		if dma.isDmaActive() && dma.currentDmaOp != nil {
+		if dma.Mdmaen != 0 && dma.currentDmaOp != nil {
 			if dma.currentDmaOp.stepCycle() {
 				dma.currentDmaOp = nil
 				dma.Mdmaen &= ^(1 << dma.currentDmaId)
@@ -150,7 +145,7 @@ func (dma *Dma) decideNextHdmaTransferState() {
 }
 
 func (dma *Dma) IsInProgress() bool {
-	return dma.isDmaActive() || dma.DmaState != HDMA_INACTIVE
+	return dma.Mdmaen != 0 || dma.DmaState != HDMA_INACTIVE
 }
 
 func (dma *Dma) Reload() {
@@ -178,10 +173,6 @@ func (dma *Dma) SetHdmaen(value byte) {
 		}
 	}
 	dma.Hdmaen = value
-}
-
-func (dma *Dma) isDmaActive() bool {
-	return dma.Mdmaen != 0
 }
 
 func (dma *Dma) Read(addr uint16) (byte, error) {
