@@ -127,6 +127,7 @@ func (dma *Dma) Step() bool {
 	}
 	if dma.DmaState == HDMA_TRANSFER {
 		if dma.hdmaOp[dma.currentHdmaId].stepCycle() {
+			dma.hdmaOp[dma.currentHdmaId].stepLineCounter()
 			if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
 				dma.DmaState = HDMA_INACTIVE
 				return true

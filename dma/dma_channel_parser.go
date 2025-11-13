@@ -239,7 +239,6 @@ func (op *HdmaOperation) stepCycle() bool {
 	if op.transferIndex == op.transferUnitSize {
 		op.doTransfer = op.repeat
 		op.transferIndex = 0
-		op.stepLineCounter()
 		return true
 	} else {
 		return false
