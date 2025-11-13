@@ -31,18 +31,16 @@ type DmaChannel struct {
 }
 
 type Dma struct {
-	bus memory.Bus
-
 	Mdmaen byte
 	Hdmaen byte
 
 	dmaOp        *DmaOperation
 	currentDmaOp *DmaOperation
 
-	hdmaOp [8]*HdmaOperation
+	hdmaOp        [8]*HdmaOperation
+	currentHdmaOp *HdmaOperation
 
-	currentDmaId  int
-	currentHdmaId int
+	currentDmaId int
 
 	DmaState int
 
@@ -53,13 +51,15 @@ func NewDma(bus memory.Bus) *Dma {
 
 	dma := &Dma{
 		currentDmaOp: nil,
-		bus:          bus,
 		dmaOp:        &DmaOperation{bus: bus},
-		hdmaOp:       [8]*HdmaOperation{},
 		Channels:     [8]DmaChannel{}}
 
 	for i := range dma.hdmaOp {
-		dma.hdmaOp[i] = &HdmaOperation{bus: bus}
+		dma.hdmaOp[i] = &HdmaOperation{
+			bus:       bus,
+			Hdmaen:    &dma.Hdmaen,
+			channelId: i,
+		}
 	}
 
 	//TODO this probably isnt the best place to register it
@@ -72,20 +72,22 @@ func (dma *Dma) Step() bool {
 		//this should always be >0 but who knows
 		if dma.Hdmaen > 0 {
 			dma.DmaState = HDMA_RELOAD
-			dma.currentHdmaId = -1
+			dma.currentHdmaOp = dma.hdmaOp[getNextActiveChannel(dma.Hdmaen, 0)]
 			return false
 		}
 		dma.DmaState = HDMA_INACTIVE
 		return true
 	}
 	if dma.DmaState == HDMA_RELOAD {
-		dma.currentHdmaId = getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1)
-		if dma.currentHdmaId != -1 {
-			dma.hdmaOp[dma.currentHdmaId].reload()
-			log.Printf("RELOADING HDMA on channel %v with params %+v\n", dma.currentHdmaId, dma.Channels[dma.currentHdmaId])
-			if getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1) == -1 {
+		if dma.currentHdmaOp != nil {
+			dma.currentHdmaOp.reload()
+			channelId := dma.currentHdmaOp.channelId
+			log.Printf("RELOADING HDMA on channel %v with params %+v\n", channelId, dma.Channels[channelId])
+			if nextChannel := getNextActiveChannel(dma.Hdmaen, dma.currentHdmaOp.channelId+1); nextChannel == -1 {
 				dma.DmaState = HDMA_INACTIVE
 				return true
+			} else {
+				dma.currentHdmaOp = dma.hdmaOp[nextChannel]
 			}
 			return false
 		}
@@ -93,26 +95,26 @@ func (dma *Dma) Step() bool {
 	//costs 18 master cycles
 	if dma.DmaState == HDMA_TRANSFER_INIT {
 		//this has to be non -1 because the state cant be entered if hdmaen is 0
-		dma.currentHdmaId = getNextActiveChannel(dma.Hdmaen, 0)
-		dma.decideNextHdmaTransferState(dma.currentHdmaId)
+		dma.currentHdmaOp = dma.hdmaOp[getNextActiveChannel(dma.Hdmaen, 0)]
+		dma.decideNextHdmaTransferState(dma.currentHdmaOp)
 
 		return false
 	}
 	if dma.DmaState == HDMA_TRANSFER_CH_OVERHEAD {
-		if !dma.hdmaOp[dma.currentHdmaId].isTerminated {
-			dma.hdmaOp[dma.currentHdmaId].stepLineCounter()
+		if !dma.currentHdmaOp.isTerminated {
+			dma.currentHdmaOp.stepLineCounter()
 		}
-		dma.currentHdmaId = getNextActiveChannel(dma.Hdmaen, dma.currentHdmaId+1)
-		if dma.currentHdmaId == -1 {
+		if nextChannel := getNextActiveChannel(dma.Hdmaen, dma.currentHdmaOp.channelId+1); nextChannel == -1 {
 			dma.DmaState = HDMA_INACTIVE
 			return true
 		} else {
-			dma.decideNextHdmaTransferState(dma.currentHdmaId)
+			dma.currentHdmaOp = dma.hdmaOp[nextChannel]
+			dma.decideNextHdmaTransferState(dma.currentHdmaOp)
 		}
 		return false
 	}
 	if dma.DmaState == HDMA_TRANSFER {
-		if dma.hdmaOp[dma.currentHdmaId].stepCycle() {
+		if dma.currentHdmaOp.stepCycle() {
 			dma.DmaState = HDMA_TRANSFER_CH_OVERHEAD
 			return false
 		}
@@ -137,11 +139,11 @@ func (dma *Dma) Step() bool {
 	return false
 }
 
-func (dma *Dma) decideNextHdmaTransferState(channelId int) {
-	if hdma := dma.hdmaOp[channelId]; hdma.doTransfer && !hdma.isTerminated {
+func (dma *Dma) decideNextHdmaTransferState(channel *HdmaOperation) {
+	if channel.doTransfer && !channel.isTerminated {
 		dma.DmaState = HDMA_TRANSFER
 		//dma and hdma on same channel cancels dma
-		if channelId == dma.currentDmaId && dma.currentDmaOp != nil {
+		if channel.channelId == dma.currentDmaId && dma.currentDmaOp != nil {
 			dma.currentDmaOp = nil
 			dma.Mdmaen &= ^(1 << dma.currentDmaId)
 		}

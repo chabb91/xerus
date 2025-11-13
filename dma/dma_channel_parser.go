@@ -148,7 +148,10 @@ func (op *DmaOperation) stepCycle() bool {
 }
 
 type HdmaOperation struct {
-	bus memory.Bus
+	//injected from the parent dma struct
+	bus       memory.Bus
+	Hdmaen    *byte
+	channelId int
 
 	transferMode     byte
 	transferIndex    byte
