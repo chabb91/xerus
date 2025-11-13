@@ -156,13 +156,10 @@ type HdmaOperation struct {
 	direction        direction
 	addressingMode   int
 
-	//table start address
-	//the bank is constant, the mid and lo are the reload values for 43x8/9
-	//i believe in indirect mode the table reads two bytes and loads it into indirectAddr which then is used for the actual write
-	tableAddr           uint32
-	indirecCurrenttAddr uint32
-	indirectBank        uint32
-	tableCurrentAddr    uint32
+	tableAddr           uint32 //the table start index
+	tableCurrentAddr    uint32 //the current table index
+	indirectBank        uint32 //constant no matter if its midframe or not
+	indirecCurrenttAddr uint32 //the index of the data the indirect table points at
 	busB                byte
 
 	currentAddressPointer *uint32
@@ -186,17 +183,13 @@ func (op *HdmaOperation) reload() {
 	op.isTerminated = ntlrx == 0
 
 	if op.addressingMode == indirect {
-		lo := op.bus.ReadByte(op.tableCurrentAddr)
-		op.tableCurrentAddr++
-		hi := op.bus.ReadByte(op.tableCurrentAddr)
-		op.tableCurrentAddr++
-		op.indirecCurrenttAddr = op.indirectBank | uint32(hi)<<8 | uint32(lo)
+		op.loadIndirectAddress()
 	}
 }
 
 func (op *HdmaOperation) setup(channel DmaChannel) {
 	op.transferIndex = 0
-	op.transferMode = channel.dmap & 0b111
+	op.transferMode = channel.dmap & 7
 	switch op.transferMode {
 	case 0:
 		op.transferUnitSize = 1
@@ -206,44 +199,42 @@ func (op *HdmaOperation) setup(channel DmaChannel) {
 		op.transferUnitSize = 4
 	}
 
-	op.tableAddr = uint32(channel.a1b)<<16 | uint32(channel.a1th)<<8 | uint32(channel.a1tl)
-	op.tableCurrentAddr = uint32(channel.a1b)<<16 | uint32(channel.a2ah)<<8 | uint32(channel.a2al)
-	op.indirectBank = uint32(channel.dasb) << 16
-	op.indirecCurrenttAddr = op.indirectBank | uint32(channel.dash)<<8 | uint32(channel.dasl)
-	op.busB = channel.bbad
-
-	op.lineCounter = channel.ntlrx & 0x7F
-	op.repeat = channel.ntlrx&0x80 != 0 || channel.ntlrx == 0 //at setup ntlrx == 0 is treated as 0x80 instead
-
-	op.isTerminated = false
-	op.doTransfer = false
-
-	switch (channel.dmap & 0x40) >> 6 {
-	case 0:
-		op.addressingMode = direct
-	case 1:
-		op.addressingMode = indirect
-	}
-
 	switch (channel.dmap >> 7) & 1 {
 	case 0:
 		op.direction = CpuToIo
 	case 1:
 		op.direction = IoToCpu
 	}
+
+	switch (channel.dmap & 0x40) >> 6 {
+	case 0:
+		op.addressingMode = direct
+		op.currentAddressPointer = &op.tableCurrentAddr
+	case 1:
+		op.addressingMode = indirect
+		op.currentAddressPointer = &op.indirecCurrenttAddr
+
+		op.indirectBank = uint32(channel.dasb) << 16
+		op.indirecCurrenttAddr = op.indirectBank | uint32(channel.dash)<<8 | uint32(channel.dasl)
+	}
+
+	op.tableAddr = uint32(channel.a1b)<<16 | uint32(channel.a1th)<<8 | uint32(channel.a1tl)
+	op.tableCurrentAddr = uint32(channel.a1b)<<16 | uint32(channel.a2ah)<<8 | uint32(channel.a2al)
+	op.busB = channel.bbad
+
+	ntlrx := channel.ntlrx
+	op.lineCounter = ntlrx & 0x7F
+	op.repeat = ntlrx&0x80 != 0 || ntlrx == 0 //at setup ntlrx == 0 is treated as 0x80 instead
+
+	op.isTerminated = false
+	op.doTransfer = false
 }
 
 func (op *HdmaOperation) stepCycle() bool {
 	if op.transferIndex < op.transferUnitSize {
-		if op.addressingMode == direct {
-			transfer(op.transferMode, op.transferIndex, op.tableCurrentAddr, op.busB, op.direction, op.bus)
-			op.transferIndex++
-			op.tableCurrentAddr++
-		} else {
-			transfer(op.transferMode, op.transferIndex, op.indirecCurrenttAddr, op.busB, op.direction, op.bus)
-			op.transferIndex++
-			op.indirecCurrenttAddr++
-		}
+		transfer(op.transferMode, op.transferIndex, *op.currentAddressPointer, op.busB, op.direction, op.bus)
+		op.transferIndex++
+		*op.currentAddressPointer++
 	}
 	if op.transferIndex == op.transferUnitSize {
 		op.doTransfer = op.repeat
@@ -263,11 +254,7 @@ func (op *HdmaOperation) stepLineCounter() {
 		op.repeat = ntlrx&0x80 != 0
 		op.tableCurrentAddr++
 		if op.addressingMode == indirect {
-			lo := op.bus.ReadByte(op.tableCurrentAddr)
-			op.tableCurrentAddr++
-			hi := op.bus.ReadByte(op.tableCurrentAddr)
-			op.tableCurrentAddr++
-			op.indirecCurrenttAddr = op.indirectBank | uint32(hi)<<8 | uint32(lo)
+			op.loadIndirectAddress()
 		}
 		op.doTransfer = true
 		op.isTerminated = ntlrx == 0
@@ -277,4 +264,12 @@ func (op *HdmaOperation) stepLineCounter() {
 	if op.repeat && !op.doTransfer {
 		op.doTransfer = true
 	}
+}
+
+func (op *HdmaOperation) loadIndirectAddress() {
+	lo := op.bus.ReadByte(op.tableCurrentAddr)
+	op.tableCurrentAddr++
+	hi := op.bus.ReadByte(op.tableCurrentAddr)
+	op.tableCurrentAddr++
+	op.indirecCurrenttAddr = op.indirectBank | uint32(hi)<<8 | uint32(lo)
 }
