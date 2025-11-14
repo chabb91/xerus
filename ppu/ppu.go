@@ -108,6 +108,8 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 		return ppu.VRAM.ReadDataHigh(), nil
 	case 0x213B:
 		return ppu.CGRAM.ReadData(), nil
+	/*case 0x213F:
+	return 0x13, nil*/
 	default:
 		return 0, fmt.Errorf("invalid PPU register read at $%04X", addr)
 	}

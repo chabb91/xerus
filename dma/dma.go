@@ -22,6 +22,8 @@ const (
 )
 
 type DmaChannel struct {
+	id int
+
 	dmap  byte //control register
 	bbad  byte //destination register
 	a1tl  byte //dma source address low/hdma table address register
@@ -60,11 +62,15 @@ func NewDma(bus memory.Bus) *Dma {
 		dmaOp:        &DmaOperation{bus: bus},
 		Channels:     [8]DmaChannel{}}
 
+	for i := range dma.Channels {
+		dma.Channels[i].id = i
+	}
+
 	for i := range dma.hdmaOp {
 		dma.hdmaOp[i] = &HdmaOperation{
-			bus:       bus,
-			Hdmaen:    &dma.HdmaenLatch,
-			channelId: i,
+			bus:     bus,
+			Hdmaen:  &dma.HdmaenLatch,
+			channel: &dma.Channels[i],
 		}
 	}
 
@@ -82,9 +88,8 @@ func (dma *Dma) Step() uint64 {
 	case HDMA_RELOAD:
 		cycles := CYCLE_8
 		cycles += dma.currentHdmaOp.reload()
-		channelId := dma.currentHdmaOp.channelId
-		log.Printf("RELOADING HDMA on channel %v with params %+v\n", channelId, dma.Channels[channelId])
-		if nextChannel := getNextActiveChannel(dma.HdmaenLatch, dma.currentHdmaOp.channelId+1); nextChannel == -1 {
+		log.Printf("RELOADING HDMA with params %+v\n", dma.currentHdmaOp.channel)
+		if nextChannel := getNextActiveChannel(dma.HdmaenLatch, dma.currentHdmaOp.channel.id+1); nextChannel == -1 {
 			dma.DmaState = HDMA_INACTIVE
 		} else {
 			dma.currentHdmaOp = dma.hdmaOp[nextChannel]
@@ -100,7 +105,7 @@ func (dma *Dma) Step() uint64 {
 		if !dma.currentHdmaOp.isTerminated {
 			cycles += dma.currentHdmaOp.stepLineCounter()
 		}
-		if nextChannel := getNextActiveChannel(dma.HdmaenLatch, dma.currentHdmaOp.channelId+1); nextChannel == -1 {
+		if nextChannel := getNextActiveChannel(dma.HdmaenLatch, dma.currentHdmaOp.channel.id+1); nextChannel == -1 {
 			dma.DmaState = HDMA_INACTIVE
 		} else {
 			dma.currentHdmaOp = dma.hdmaOp[nextChannel]
@@ -139,7 +144,7 @@ func (dma *Dma) decideNextHdmaTransferState() {
 	if channel.doTransfer && !channel.isTerminated {
 		dma.DmaState = HDMA_TRANSFER
 		//dma and hdma on same channel cancels dma
-		if channel.channelId == dma.currentDmaId && dma.currentDmaOp != nil {
+		if channel.channel.id == dma.currentDmaId && dma.currentDmaOp != nil {
 			dma.currentDmaOp = nil
 			dma.Mdmaen &= ^(1 << dma.currentDmaId)
 		}
@@ -173,7 +178,7 @@ func (dma *Dma) DoTransfer() {
 func (dma *Dma) SetHdmaen(value byte) {
 	for i := range 8 {
 		if /*(dma.Hdmaen>>i)&1 == 0 &&*/ (value>>i)&1 != 0 {
-			dma.hdmaOp[i].setup(dma.Channels[i])
+			dma.hdmaOp[i].setup()
 		}
 	}
 	dma.Hdmaen = value

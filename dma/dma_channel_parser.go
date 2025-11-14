@@ -149,9 +149,9 @@ func (op *DmaOperation) stepCycle() bool {
 
 type HdmaOperation struct {
 	//injected from the parent dma struct
-	bus       memory.Bus
-	Hdmaen    *byte
-	channelId int
+	bus     memory.Bus
+	Hdmaen  *byte
+	channel *DmaChannel
 
 	transferMode     byte
 	transferIndex    byte
@@ -176,6 +176,9 @@ type HdmaOperation struct {
 
 func (op *HdmaOperation) reload() uint64 {
 	cycles := uint64(0)
+
+	//turns out reload does read fresh values from the registers
+	op.setup()
 	op.tableCurrentAddr = op.tableAddr
 
 	ntlrx := op.bus.ReadByte(op.tableCurrentAddr)
@@ -192,7 +195,9 @@ func (op *HdmaOperation) reload() uint64 {
 	return cycles
 }
 
-func (op *HdmaOperation) setup(channel DmaChannel) {
+func (op *HdmaOperation) setup() {
+	channel := *op.channel
+
 	op.transferIndex = 0
 	op.transferMode = channel.dmap & 7
 	switch op.transferMode {
@@ -276,7 +281,7 @@ func (op *HdmaOperation) loadIndirectAddress(ntlrx byte) uint64 {
 	cycles := CYCLE_8
 	lo := op.bus.ReadByte(op.tableCurrentAddr)
 	op.tableCurrentAddr++
-	if ntlrx == 0 && getNextActiveChannel(*op.Hdmaen, op.channelId) == -1 {
+	if ntlrx == 0 && getNextActiveChannel(*op.Hdmaen, op.channel.id) == -1 {
 		op.indirecCurrenttAddr = op.indirectBank | uint32(lo)<<8
 	} else {
 		hi := op.bus.ReadByte(op.tableCurrentAddr)
