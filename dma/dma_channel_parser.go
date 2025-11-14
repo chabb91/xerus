@@ -5,11 +5,12 @@ import (
 )
 
 const (
-	increment = iota
-	decrement
-	fixed
-	direct
-	indirect
+	fixed     = 0
+	decrement = -1
+	increment = 1
+
+	direct   = 2
+	indirect = 3
 )
 
 type direction func(busA uint32, busB byte, validB bool, bus memory.Bus)
@@ -72,21 +73,18 @@ func transfer(mode byte, index byte, busA uint32, busB byte, direction direction
 }
 
 type DmaOperation struct {
-	bus memory.Bus
+	bus     memory.Bus
+	channel *DmaChannel
 
 	transferMode     byte
 	transferIndex    byte
 	transferUnitSize byte
 	direction        direction
 	step             int
-
-	busA uint32
-	busB byte
-
-	size uint16
 }
 
-func (op *DmaOperation) setup(channel DmaChannel) {
+func (op *DmaOperation) setup(channel *DmaChannel) {
+	op.channel = channel
 	op.transferIndex = 0
 	op.transferMode = channel.dmap & 0b111
 	switch op.transferMode {
@@ -113,34 +111,21 @@ func (op *DmaOperation) setup(channel DmaChannel) {
 	case 1:
 		op.direction = IoToCpu
 	}
-
-	op.busA = channel.a1b | uint32(channel.a1w)
-	op.busB = channel.bbad
-
-	op.size = channel.dasw
 }
 
 func (op *DmaOperation) stepCycle() bool {
-	if op.size > 0 {
-		transfer(op.transferMode, op.transferIndex, op.busA, op.busB, op.direction, op.bus)
-		op.size--
-		op.transferIndex++
+	channel := op.channel
 
-		if op.transferIndex >= op.transferUnitSize {
-			op.transferIndex = 0
-		}
-
-		switch op.step {
-		case decrement:
-			op.busA = (op.busA - 1) & 0xFFFFFF
-		case increment:
-			op.busA = (op.busA + 1) & 0xFFFFFF
-		default:
-			//fixed
-		}
+	transfer(op.transferMode, op.transferIndex, channel.a1b|uint32(channel.a1w), channel.bbad, op.direction, op.bus)
+	op.transferIndex++
+	if op.transferIndex == op.transferUnitSize {
+		op.transferIndex = 0
 	}
 
-	if op.size > 0 {
+	channel.a1w += uint16(op.step)
+	channel.dasw--
+
+	if channel.dasw != 0 {
 		return false
 	} else {
 		return true
