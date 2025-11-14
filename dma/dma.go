@@ -26,15 +26,14 @@ type DmaChannel struct {
 
 	dmap  byte //control register
 	bbad  byte //destination register
-	a1tl  byte //dma source address low/hdma table address register
-	a1th  byte //dma source address high/hdma table address register
-	a1b   byte //dma source address bank/hdma table address register
-	dasl  byte //dma size register low/hdma indirect address register
-	dash  byte //dma size register high/hdma indirect address register
-	dasb  byte //hdma indirect address register
-	a2al  byte //hdma mid frame table address register low
-	a2ah  byte //hdma mid frame table address register high
 	ntlrx byte //hdma line counter register
+
+	a1w  uint16 //dma source address/hdma table address register
+	dasw uint16 //dma size register/hdma current indirect address register
+	a2w  uint16 //hdma current table address register
+
+	a1b  uint32 //dma source address bank/hdma table address register
+	dasb uint32 //hdma indirect address register
 }
 
 type Dma struct {
@@ -190,12 +189,12 @@ func (dma *Dma) Read(addr uint16) (byte, error) {
 		return 0, err
 	}
 
-	b2, err := getRegister(&dma.Channels[b1], addr)
+	b2, err := readRegister(&dma.Channels[b1], addr)
 	if err != nil {
 		return 0, err
 	}
 
-	return *b2, nil
+	return b2, nil
 }
 
 func (dma *Dma) Write(addr uint16, value byte) error {
@@ -204,42 +203,80 @@ func (dma *Dma) Write(addr uint16, value byte) error {
 		return err
 	}
 
-	b2, err := getRegister(&dma.Channels[b1], addr)
+	err = writeRegister(&dma.Channels[b1], addr, value)
 	if err != nil {
 		return err
 	}
 
-	*b2 = value
 	return nil
 }
 
-func getRegister(channel *DmaChannel, address uint16) (*byte, error) {
-
+func writeRegister(channel *DmaChannel, address uint16, value byte) error {
 	switch address & 0xF {
 	case 0x0:
-		return &channel.dmap, nil
+		channel.dmap = value
+		return nil
 	case 0x1:
-		return &channel.bbad, nil
+		channel.bbad = value
+		return nil
 	case 0x2:
-		return &channel.a1tl, nil
+		channel.a1w = channel.a1w&0xFF00 | uint16(value)
+		return nil
 	case 0x3:
-		return &channel.a1th, nil
+		channel.a1w = channel.a1w&0x00FF | uint16(value)<<8
+		return nil
 	case 0x4:
-		return &channel.a1b, nil
+		channel.a1b = uint32(value) << 16
+		return nil
 	case 0x5:
-		return &channel.dasl, nil
+		channel.dasw = channel.dasw&0xFF00 | uint16(value)
+		return nil
 	case 0x6:
-		return &channel.dash, nil
+		channel.dasw = channel.dasw&0x00FF | uint16(value)<<8
+		return nil
 	case 0x7:
-		return &channel.dasb, nil
+		channel.dasb = uint32(value) << 16
+		return nil
 	case 0x8:
-		return &channel.a2al, nil
+		channel.a2w = channel.a2w&0xFF00 | uint16(value)
+		return nil
 	case 0x9:
-		return &channel.a2ah, nil
+		channel.a2w = channel.a2w&0x00FF | uint16(value)<<8
+		return nil
 	case 0xA:
-		return &channel.ntlrx, nil
+		channel.ntlrx = value
+		return nil
 	default:
-		return nil, fmt.Errorf("undefined DMA register $%04X", address)
+		return fmt.Errorf("undefined DMA register $%04X", address)
+	}
+}
+
+func readRegister(channel *DmaChannel, address uint16) (byte, error) {
+	switch address & 0xF {
+	case 0x0:
+		return channel.dmap, nil
+	case 0x1:
+		return channel.bbad, nil
+	case 0x2:
+		return byte(channel.a1w), nil
+	case 0x3:
+		return byte(channel.a1w >> 8), nil
+	case 0x4:
+		return byte(channel.a1b >> 16), nil
+	case 0x5:
+		return byte(channel.dasw), nil
+	case 0x6:
+		return byte(channel.dasw >> 8), nil
+	case 0x7:
+		return byte(channel.dasb >> 16), nil
+	case 0x8:
+		return byte(channel.a2w), nil
+	case 0x9:
+		return byte(channel.a2w >> 8), nil
+	case 0xA:
+		return channel.ntlrx, nil
+	default:
+		return 0, fmt.Errorf("undefined DMA register $%04X", address)
 	}
 }
 
