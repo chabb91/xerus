@@ -6,29 +6,32 @@ func (soc SoC) Run() {
 	var cnt2 uint64
 
 	cpuTickRate := 3
-	dmaTickRate := 4
+	//dmaTickRate := 4
 	ppuTickRate := 2
 
+	cnt2 = uint64(ppuTickRate) - 1
+
 	for {
-		cnt++
 		cnt2++
 		soc.MulDiv.StepCycle()
-
 		if cnt2 == uint64(ppuTickRate) {
 			soc.Ppu.Step()
 			cnt2 = 0
 		}
 
-		if soc.Dma.IsInProgress() && cnt == uint64(dmaTickRate) {
-			soc.Dma.Step()
-			cnt = 0
+		if cnt > 0 {
+			cnt--
 			continue
-
 		}
-		if !soc.Dma.IsInProgress() && cnt == uint64(cpuTickRate) {
+
+		//TODO if i keep decrementing like this in the future the cycle counts should be adjusted instead
+		//so theres no unnecessary subtraction
+		if soc.Dma.IsInProgress() {
+			cycles := soc.Dma.Step()
+			cnt = cycles - 1
+		} else {
 			soc.Cpu.StepCycle()
-			cnt = 0
-			continue
+			cnt = uint64(cpuTickRate) - 1
 		}
 	}
 }

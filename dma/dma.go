@@ -16,6 +16,11 @@ const (
 	HDMA_TRANSFER
 )
 
+const (
+	CYCLE_8  = uint64(4)
+	CYCLE_18 = uint64(9)
+)
+
 type DmaChannel struct {
 	dmap  byte //control register
 	bbad  byte //destination register
@@ -68,66 +73,65 @@ func NewDma(bus memory.Bus) *Dma {
 	return dma
 }
 
-func (dma *Dma) Step() bool {
+func (dma *Dma) Step() uint64 {
 	switch dma.DmaState {
 	case HDMA_RELOAD_INIT:
 		dma.DmaState = HDMA_RELOAD
 		dma.currentHdmaOp = dma.hdmaOp[getNextActiveChannel(dma.HdmaenLatch, 0)]
-		return false
+		return CYCLE_18
 	case HDMA_RELOAD:
-		if dma.currentHdmaOp != nil {
-			dma.currentHdmaOp.reload()
-			channelId := dma.currentHdmaOp.channelId
-			log.Printf("RELOADING HDMA on channel %v with params %+v\n", channelId, dma.Channels[channelId])
-			if nextChannel := getNextActiveChannel(dma.HdmaenLatch, dma.currentHdmaOp.channelId+1); nextChannel == -1 {
-				dma.DmaState = HDMA_INACTIVE
-				return true
-			} else {
-				dma.currentHdmaOp = dma.hdmaOp[nextChannel]
-			}
-			return false
+		cycles := CYCLE_8
+		cycles += dma.currentHdmaOp.reload()
+		channelId := dma.currentHdmaOp.channelId
+		log.Printf("RELOADING HDMA on channel %v with params %+v\n", channelId, dma.Channels[channelId])
+		if nextChannel := getNextActiveChannel(dma.HdmaenLatch, dma.currentHdmaOp.channelId+1); nextChannel == -1 {
+			dma.DmaState = HDMA_INACTIVE
+		} else {
+			dma.currentHdmaOp = dma.hdmaOp[nextChannel]
 		}
+		return cycles
 	case HDMA_TRANSFER_INIT:
 		//this has to be non -1 because the state cant be entered if hdmaen is 0
 		dma.currentHdmaOp = dma.hdmaOp[getNextActiveChannel(dma.HdmaenLatch, 0)]
 		dma.decideNextHdmaTransferState()
-
-		return false
+		return CYCLE_18
 	case HDMA_TRANSFER_CH_OVERHEAD:
+		cycles := CYCLE_8
 		if !dma.currentHdmaOp.isTerminated {
-			dma.currentHdmaOp.stepLineCounter()
+			cycles += dma.currentHdmaOp.stepLineCounter()
 		}
 		if nextChannel := getNextActiveChannel(dma.HdmaenLatch, dma.currentHdmaOp.channelId+1); nextChannel == -1 {
 			dma.DmaState = HDMA_INACTIVE
-			return true
 		} else {
 			dma.currentHdmaOp = dma.hdmaOp[nextChannel]
 			dma.decideNextHdmaTransferState()
 		}
-		return false
+		return cycles
 	case HDMA_TRANSFER:
 		if dma.currentHdmaOp.stepCycle() {
 			dma.DmaState = HDMA_TRANSFER_CH_OVERHEAD
-			return false
 		}
-		return false
+		return CYCLE_8
 	case HDMA_INACTIVE:
 		if dma.Mdmaen != 0 && dma.currentDmaOp == nil {
 			dma.currentDmaOp = dma.dmaOp
 			dma.currentDmaId = getNextActiveChannel(dma.Mdmaen, 0)
 			dma.currentDmaOp.setup(dma.Channels[dma.currentDmaId])
 			log.Printf("Starting dma on channel %v with params %+v\n", dma.currentDmaId, dma.Channels[dma.currentDmaId])
-			return false
+			return CYCLE_8
 		}
 		if dma.Mdmaen != 0 && dma.currentDmaOp != nil {
 			if dma.currentDmaOp.stepCycle() {
 				dma.currentDmaOp = nil
 				dma.Mdmaen &= ^(1 << dma.currentDmaId)
 			}
-			return dma.Mdmaen == 0
+			return CYCLE_8
 		}
+		fallthrough
+	default:
+		log.Println("WARNING: The dma chip is in an unexpected state")
+		return CYCLE_8
 	}
-	return false
 }
 
 func (dma *Dma) decideNextHdmaTransferState() {

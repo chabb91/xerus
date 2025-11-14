@@ -174,7 +174,8 @@ type HdmaOperation struct {
 	isTerminated bool
 }
 
-func (op *HdmaOperation) reload() {
+func (op *HdmaOperation) reload() uint64 {
+	cycles := uint64(0)
 	op.tableCurrentAddr = op.tableAddr
 
 	ntlrx := op.bus.ReadByte(op.tableCurrentAddr)
@@ -186,8 +187,9 @@ func (op *HdmaOperation) reload() {
 	op.isTerminated = ntlrx == 0
 
 	if op.addressingMode == indirect {
-		op.loadIndirectAddress(ntlrx)
+		cycles += op.loadIndirectAddress(ntlrx)
 	}
+	return cycles
 }
 
 func (op *HdmaOperation) setup(channel DmaChannel) {
@@ -248,7 +250,8 @@ func (op *HdmaOperation) stepCycle() bool {
 	}
 }
 
-func (op *HdmaOperation) stepLineCounter() {
+func (op *HdmaOperation) stepLineCounter() uint64 {
+	cycles := uint64(0)
 	op.lineCounter--
 	if op.lineCounter == 0 {
 		ntlrx := op.bus.ReadByte(op.tableCurrentAddr)
@@ -256,7 +259,7 @@ func (op *HdmaOperation) stepLineCounter() {
 		op.repeat = ntlrx&0x80 != 0
 		op.tableCurrentAddr++
 		if op.addressingMode == indirect {
-			op.loadIndirectAddress(ntlrx)
+			cycles += op.loadIndirectAddress(ntlrx)
 		}
 		op.doTransfer = true
 		op.isTerminated = ntlrx == 0
@@ -266,9 +269,11 @@ func (op *HdmaOperation) stepLineCounter() {
 	if op.repeat && !op.doTransfer {
 		op.doTransfer = true
 	}
+	return cycles
 }
 
-func (op *HdmaOperation) loadIndirectAddress(ntlrx byte) {
+func (op *HdmaOperation) loadIndirectAddress(ntlrx byte) uint64 {
+	cycles := CYCLE_8
 	lo := op.bus.ReadByte(op.tableCurrentAddr)
 	op.tableCurrentAddr++
 	if ntlrx == 0 && getNextActiveChannel(*op.Hdmaen, op.channelId) == -1 {
@@ -277,5 +282,7 @@ func (op *HdmaOperation) loadIndirectAddress(ntlrx byte) {
 		hi := op.bus.ReadByte(op.tableCurrentAddr)
 		op.tableCurrentAddr++
 		op.indirecCurrenttAddr = op.indirectBank | uint32(hi)<<8 | uint32(lo)
+		cycles <<= 1
 	}
+	return cycles
 }
