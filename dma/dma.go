@@ -34,6 +34,8 @@ type DmaChannel struct {
 
 	a1b  uint32 //dma source address bank/hdma table address register
 	dasb uint32 //hdma indirect address register
+
+	unknown1 byte //43xB and 43xF registers exist and they are aliases of each other but their purpose is not known
 }
 
 type Dma struct {
@@ -46,8 +48,6 @@ type Dma struct {
 
 	hdmaOp        [8]*HdmaOperation
 	currentHdmaOp *HdmaOperation
-
-	currentDmaId int
 
 	DmaState int
 
@@ -118,16 +118,15 @@ func (dma *Dma) Step() uint64 {
 		return CYCLE_8
 	case HDMA_INACTIVE:
 		if dma.Mdmaen != 0 && dma.currentDmaOp == nil {
-			dma.currentDmaOp = dma.dmaOp
-			dma.currentDmaId = getNextActiveChannel(dma.Mdmaen, 0)
-			dma.currentDmaOp.setup(&dma.Channels[dma.currentDmaId])
-			log.Printf("Starting dma on channel %v with params %+v\n", dma.currentDmaId, dma.Channels[dma.currentDmaId])
+			nextChannel := getNextActiveChannel(dma.Mdmaen, 0)
+			dma.currentDmaOp = dma.dmaOp.setup(&dma.Channels[nextChannel])
+			log.Printf("Starting dma with params %+v\n", dma.currentDmaOp.channel)
 			return CYCLE_8
 		}
 		if dma.Mdmaen != 0 && dma.currentDmaOp != nil {
 			if dma.currentDmaOp.stepCycle() {
+				dma.Mdmaen &= ^(1 << dma.currentDmaOp.channel.id)
 				dma.currentDmaOp = nil
-				dma.Mdmaen &= ^(1 << dma.currentDmaId)
 			}
 			return CYCLE_8
 		}
@@ -143,9 +142,9 @@ func (dma *Dma) decideNextHdmaTransferState() {
 	if channel.doTransfer && !channel.isTerminated {
 		dma.DmaState = HDMA_TRANSFER
 		//dma and hdma on same channel cancels dma
-		if channel.channel.id == dma.currentDmaId && dma.currentDmaOp != nil {
+		if dma.currentDmaOp != nil && channel.channel.id == dma.currentDmaOp.channel.id {
+			dma.Mdmaen &= ^(1 << dma.currentDmaOp.channel.id)
 			dma.currentDmaOp = nil
-			dma.Mdmaen &= ^(1 << dma.currentDmaId)
 		}
 	} else {
 		dma.DmaState = HDMA_TRANSFER_CH_OVERHEAD
@@ -189,12 +188,35 @@ func (dma *Dma) Read(addr uint16) (byte, error) {
 		return 0, err
 	}
 
-	b2, err := readRegister(&dma.Channels[b1], addr)
-	if err != nil {
-		return 0, err
+	channel := &dma.Channels[b1]
+	switch addr & 0xF {
+	case 0x0:
+		return channel.dmap, nil
+	case 0x1:
+		return channel.bbad, nil
+	case 0x2:
+		return byte(channel.a1w), nil
+	case 0x3:
+		return byte(channel.a1w >> 8), nil
+	case 0x4:
+		return byte(channel.a1b >> 16), nil
+	case 0x5:
+		return byte(channel.dasw), nil
+	case 0x6:
+		return byte(channel.dasw >> 8), nil
+	case 0x7:
+		return byte(channel.dasb >> 16), nil
+	case 0x8:
+		return byte(channel.a2w), nil
+	case 0x9:
+		return byte(channel.a2w >> 8), nil
+	case 0xA:
+		return channel.ntlrx, nil
+	case 0xB, 0xF:
+		return channel.unknown1, nil
+	default:
+		return 0, fmt.Errorf("undefined DMA register $%04X", addr)
 	}
-
-	return b2, nil
 }
 
 func (dma *Dma) Write(addr uint16, value byte) error {
@@ -203,16 +225,8 @@ func (dma *Dma) Write(addr uint16, value byte) error {
 		return err
 	}
 
-	err = writeRegister(&dma.Channels[b1], addr, value)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func writeRegister(channel *DmaChannel, address uint16, value byte) error {
-	switch address & 0xF {
+	channel := &dma.Channels[b1]
+	switch addr & 0xF {
 	case 0x0:
 		channel.dmap = value
 		return nil
@@ -246,37 +260,11 @@ func writeRegister(channel *DmaChannel, address uint16, value byte) error {
 	case 0xA:
 		channel.ntlrx = value
 		return nil
+	case 0xB, 0xF:
+		channel.unknown1 = value
+		return nil
 	default:
-		return fmt.Errorf("undefined DMA register $%04X", address)
-	}
-}
-
-func readRegister(channel *DmaChannel, address uint16) (byte, error) {
-	switch address & 0xF {
-	case 0x0:
-		return channel.dmap, nil
-	case 0x1:
-		return channel.bbad, nil
-	case 0x2:
-		return byte(channel.a1w), nil
-	case 0x3:
-		return byte(channel.a1w >> 8), nil
-	case 0x4:
-		return byte(channel.a1b >> 16), nil
-	case 0x5:
-		return byte(channel.dasw), nil
-	case 0x6:
-		return byte(channel.dasw >> 8), nil
-	case 0x7:
-		return byte(channel.dasb >> 16), nil
-	case 0x8:
-		return byte(channel.a2w), nil
-	case 0x9:
-		return byte(channel.a2w >> 8), nil
-	case 0xA:
-		return channel.ntlrx, nil
-	default:
-		return 0, fmt.Errorf("undefined DMA register $%04X", address)
+		return fmt.Errorf("undefined DMA register $%04X", addr)
 	}
 }
 

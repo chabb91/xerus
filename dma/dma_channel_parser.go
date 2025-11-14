@@ -83,7 +83,7 @@ type DmaOperation struct {
 	step             int
 }
 
-func (op *DmaOperation) setup(channel *DmaChannel) {
+func (op *DmaOperation) setup(channel *DmaChannel) *DmaOperation {
 	op.channel = channel
 	op.transferIndex = 0
 	op.transferMode = channel.dmap & 0b111
@@ -111,6 +111,7 @@ func (op *DmaOperation) setup(channel *DmaChannel) {
 	case 1:
 		op.direction = IoToCpu
 	}
+	return op
 }
 
 func (op *DmaOperation) stepCycle() bool {
