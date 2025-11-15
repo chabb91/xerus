@@ -64,7 +64,7 @@ func NewPPU() *PPU {
 	ppu := &PPU{
 		CGRAM:   NewCGRAM(),
 		BGxnOFS: &BGxnOFS{},
-		SETINI:  NewSETINI(PAL_TIMING),
+		SETINI:  NewSETINI(NTSC_TIMING),
 	}
 	ppu.mainRenderPipeline = make([]pipelineTemplate, 0, 12)
 	ppu.subRenderPipeline = make([]pipelineTemplate, 0, 12)
@@ -108,6 +108,8 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 		return ppu.VRAM.ReadDataHigh(), nil
 	case 0x213B:
 		return ppu.CGRAM.ReadData(), nil
+	/*case 0x213D:
+	return 0x33, nil*/
 	/*case 0x213F:
 	return 0x13, nil*/
 	default:

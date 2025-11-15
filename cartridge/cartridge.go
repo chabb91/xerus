@@ -36,12 +36,13 @@ func NewCartridge(romData []byte, mapper romMapper) *Cartridge {
 		romData: romData,
 		Mapper:  mapper}
 
-	cart.DetectSram()
+	cart.sramData = cart.DetectSram()
 
 	return cart
 }
 
-func (cart Cartridge) ReadByte(bank byte, offset uint16) (byte, error) {
+// TODO modulo has to be optimized away.
+func (cart *Cartridge) ReadByte(bank byte, offset uint16) (byte, error) {
 	index, addressType := cart.Mapper.mapToCartridge(bank, offset, cart.HasSram())
 
 	switch addressType {
@@ -59,7 +60,7 @@ func (cart Cartridge) ReadByte(bank byte, offset uint16) (byte, error) {
 	}
 }
 
-func (cart Cartridge) WriteByte(bank byte, offset uint16, value byte) error {
+func (cart *Cartridge) WriteByte(bank byte, offset uint16, value byte) error {
 	if !cart.HasSram() {
 		return errors.New("No SRAM present so writes arent allowed")
 	}
@@ -74,12 +75,12 @@ func (cart Cartridge) WriteByte(bank byte, offset uint16, value byte) error {
 	return errors.New("Trying to write to read only or unmapped region")
 }
 
-func (cart Cartridge) HasSram() bool {
+func (cart *Cartridge) HasSram() bool {
 	return cart.sramData != nil
 }
 
 // TODO this always creates a new sram but if theres a battery and there is a SRAM file already it should be loaded instead
-func (cart Cartridge) DetectSram() []byte {
+func (cart *Cartridge) DetectSram() []byte {
 	romType, err := cart.ReadByte(0, 0xFFD6)
 	if err != nil {
 		return nil
@@ -91,8 +92,8 @@ func (cart Cartridge) DetectSram() []byte {
 		if sizeVal == 0 || err != nil {
 			return nil
 		}
-		//return make([]byte, 1<<(10+sizeVal))
-		return make([]byte, (1<<sizeVal)*1024)
+		return make([]byte, 1<<(10+sizeVal))
+		//return make([]byte, (1<<sizeVal)*1024)
 	default:
 		return nil
 	}

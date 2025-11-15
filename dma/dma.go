@@ -91,8 +91,8 @@ func NewDma(bus memory.Bus) *Dma {
 func (dma *Dma) Step() uint64 {
 	switch dma.DmaState {
 	case HDMA_RELOAD_INIT:
+		dma.initHdma()
 		dma.DmaState = HDMA_RELOAD
-		dma.currentHdmaOp = dma.hdmaOp[getNextActiveChannel(dma.HdmaenLatch, 0)]
 		return CYCLE_18
 	case HDMA_RELOAD:
 		cycles := CYCLE_8
@@ -105,8 +105,7 @@ func (dma *Dma) Step() uint64 {
 		}
 		return cycles
 	case HDMA_TRANSFER_INIT:
-		//this has to be non -1 because the state cant be entered if hdmaen is 0
-		dma.currentHdmaOp = dma.hdmaOp[getNextActiveChannel(dma.HdmaenLatch, 0)]
+		dma.initHdma()
 		dma.decideNextHdmaTransferState()
 		return CYCLE_18
 	case HDMA_TRANSFER_CH_OVERHEAD:
@@ -151,14 +150,31 @@ func (dma *Dma) decideNextHdmaTransferState() {
 	channel := dma.currentHdmaOp
 	if channel.doTransfer && !channel.isTerminated {
 		dma.DmaState = HDMA_TRANSFER
-		//dma and hdma on same channel cancels dma
-		if dma.currentDmaOp != nil && channel.channel.id == dma.currentDmaOp.channel.id {
-			log.Printf("Axing conflicting dma transfer: %+v\n", dma.currentDmaOp.channel)
-			dma.Mdmaen &= ^(1 << dma.currentDmaOp.channel.id)
-			dma.currentDmaOp = nil
-		}
 	} else {
 		dma.DmaState = HDMA_TRANSFER_CH_OVERHEAD
+	}
+}
+
+// RELOAD init and TRANSFER init cancels all conflicting DMA transfers regardless if its in progress or qued
+func (dma *Dma) cancelConflictingDmaTransfers(firstHdmaId int) {
+	for i := firstHdmaId; i < 8; i++ {
+		mask := byte(1) << i
+		if dma.Mdmaen&mask != 0 && dma.HdmaenLatch&mask != 0 {
+			log.Printf("Axing conflicting dma transfer: %+v\n", dma.Channels[i])
+			dma.Mdmaen &= ^mask
+			if dma.currentDmaOp != nil {
+				dma.currentDmaOp = nil
+			}
+		}
+	}
+}
+
+func (dma *Dma) initHdma() {
+	//this has to be non -1 because the state cant be entered if hdmaen is 0
+	nextChannel := getNextActiveChannel(dma.HdmaenLatch, 0)
+	dma.currentHdmaOp = dma.hdmaOp[nextChannel]
+	if dma.Mdmaen != 0 {
+		dma.cancelConflictingDmaTransfers(nextChannel)
 	}
 }
 
