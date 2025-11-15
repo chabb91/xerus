@@ -153,6 +153,7 @@ func (dma *Dma) decideNextHdmaTransferState() {
 		dma.DmaState = HDMA_TRANSFER
 		//dma and hdma on same channel cancels dma
 		if dma.currentDmaOp != nil && channel.channel.id == dma.currentDmaOp.channel.id {
+			log.Printf("Axing conflicting dma transfer: %+v\n", dma.currentDmaOp.channel)
 			dma.Mdmaen &= ^(1 << dma.currentDmaOp.channel.id)
 			dma.currentDmaOp = nil
 		}
