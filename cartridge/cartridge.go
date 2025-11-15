@@ -50,7 +50,7 @@ func (cart *Cartridge) ReadByte(bank byte, offset uint16) (byte, error) {
 		return cart.romData[index%len(cart.romData)], nil
 	case sramAddress:
 		if cart.HasSram() {
-			return cart.sramData[index%len(cart.romData)], nil
+			return cart.sramData[index%len(cart.sramData)], nil
 		} else {
 			return 0, errors.New("Trying to read SRAM but the cartridge doesnt have one")
 		}
@@ -68,7 +68,7 @@ func (cart *Cartridge) WriteByte(bank byte, offset uint16, value byte) error {
 	index, addressType := cart.Mapper.mapToCartridge(bank, offset, true)
 
 	if addressType == sramAddress {
-		cart.sramData[index%len(cart.romData)] = value
+		cart.sramData[index%len(cart.sramData)] = value
 		return nil
 	}
 

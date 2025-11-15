@@ -5,6 +5,8 @@ import (
 	"log"
 )
 
+const WRAM_SIZE = 0x20000 // 128 KB
+
 type Bus interface {
 	ReadByte(address uint32) byte
 	WriteByte(address uint32, value byte)
@@ -21,14 +23,13 @@ type RealBus struct {
 
 	registers *RegisterSystem
 
-	WRAM      []byte
+	WRAM      [WRAM_SIZE]byte
 	cartridge *cartridge.Cartridge
 	memsel    bool
 }
 
 func NewBus(cartridge *cartridge.Cartridge) *RealBus {
 	rb := &RealBus{
-		WRAM:      make([]byte, 0x20000), // 128 KB
 		cartridge: cartridge,
 	}
 	SetupRegisterSystem(rb)

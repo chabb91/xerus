@@ -55,7 +55,7 @@ func (rs *RegisterSystem) IsRegisterAddress(bank byte, addr uint16) bool {
 func SetupRegisterSystem(bus *RealBus) {
 	bus.registers = NewRegisterSystem()
 
-	bus.RegisterRange(0x2180, 0x2183, newWramDataRW(bus.WRAM), "WRAM")
+	bus.RegisterRange(0x2180, 0x2183, newWramDataRW(bus.WRAM[:]), "WRAM")
 
 	//bus.registers.RegisterRange(0x2100, 0x213F, ppuHandler, "PPU")
 	//bus.registers.RegisterRange(0x2140, 0x2143, apuHandler, "APU")
@@ -72,22 +72,12 @@ func newWramDataRW(WRAM []byte) *WramDataRW {
 	return &WramDataRW{WRAM: WRAM}
 }
 
-func (wd *WramDataRW) sanitizeAddress() uint32 {
-	wd.address = wd.address & 0x1FFFF
-	return wd.address
-
-}
-
 func (wd *WramDataRW) Read(addr uint16) (byte, error) {
-	if addr == 2180 {
-		if int(wd.sanitizeAddress()) >= len(wd.WRAM) {
-			return 0, fmt.Errorf("index out of range, cant read from register $%04X", addr)
-		} else {
-			result := wd.WRAM[wd.sanitizeAddress()]
-			wd.address++
-			wd.sanitizeAddress()
-			return result, nil
-		}
+	if addr == 0x2180 {
+		result := wd.WRAM[wd.address]
+		wd.address++
+		wd.address &= 0x1FFFF
+		return result, nil
 	}
 	return 0, fmt.Errorf("invalid internal WRAM register read at $%04X", addr)
 }
@@ -95,14 +85,9 @@ func (wd *WramDataRW) Read(addr uint16) (byte, error) {
 func (wd *WramDataRW) Write(addr uint16, value byte) error {
 	switch addr {
 	case 0x2180:
-		if int(wd.sanitizeAddress()) >= len(wd.WRAM) {
-			return fmt.Errorf("index out of range, cant write to register $%04X", addr)
-		} else {
-			wd.WRAM[wd.sanitizeAddress()] = value
-			wd.address++
-			wd.sanitizeAddress()
-			return nil
-		}
+		wd.WRAM[wd.address] = value
+		wd.address++
+		wd.address &= 0x1FFFF
 	case 0x2181:
 		wd.address = (wd.address & 0x1FF00) | uint32(value)
 	case 0x2182:
