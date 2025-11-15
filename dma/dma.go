@@ -63,6 +63,16 @@ func NewDma(bus memory.Bus) *Dma {
 
 	for i := range dma.Channels {
 		dma.Channels[i].id = i
+
+		dma.Channels[i].dmap = 0xFF
+		dma.Channels[i].bbad = 0xFF
+		dma.Channels[i].ntlrx = 0xFF
+		dma.Channels[i].a1w = 0xFFFF
+		dma.Channels[i].dasw = 0xFFFF
+		dma.Channels[i].a2w = 0xFFFF
+		dma.Channels[i].a1b = 0xFF0000
+		dma.Channels[i].dasb = 0xFF0000
+		dma.Channels[i].unknown1 = 0xFF
 	}
 
 	for i := range dma.hdmaOp {
@@ -176,7 +186,9 @@ func (dma *Dma) DoTransfer() {
 func (dma *Dma) SetHdmaen(value byte) {
 	for i := range 8 {
 		if /*(dma.Hdmaen>>i)&1 == 0 &&*/ (value>>i)&1 != 0 {
-			dma.hdmaOp[i].setup()
+			channel := dma.hdmaOp[i]
+			channel.isTerminated = false
+			channel.doTransfer = false
 		}
 	}
 	dma.Hdmaen = value
@@ -229,6 +241,7 @@ func (dma *Dma) Write(addr uint16, value byte) error {
 	switch addr & 0xF {
 	case 0x0:
 		channel.dmap = value
+		dma.hdmaOp[b1].setup()
 		return nil
 	case 0x1:
 		channel.bbad = value

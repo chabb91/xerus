@@ -156,8 +156,6 @@ func (op *HdmaOperation) reload() uint64 {
 	cycles := uint64(0)
 	channel := op.channel
 
-	//turns out reload does read fresh values from the registers
-	op.setup()
 	channel.a2w = channel.a1w
 	channel.ntlrx = op.bus.ReadByte(channel.a1b | uint32(channel.a2w))
 	channel.a2w++
@@ -202,9 +200,6 @@ func (op *HdmaOperation) setup() {
 		op.currentAddressPointer = &op.channel.dasw
 		op.currentBankPointer = &op.channel.dasb
 	}
-
-	op.isTerminated = false
-	op.doTransfer = false
 }
 
 func (op *HdmaOperation) stepCycle() bool {
@@ -234,12 +229,14 @@ func (op *HdmaOperation) stepLineCounter() uint64 {
 		op.doTransfer = true
 		op.isTerminated = *ntlrx == 0
 	} else {
+		//TODO this might have to go to stepcycle instead but that would break the midframe hdma test rom so who knows
 		op.doTransfer = *ntlrx >= 0x80
 	}
 
 	return cycles
 }
 
+// returns the indirect table load cycle cost and nothing else
 func (op *HdmaOperation) loadIndirectAddress(ntlrx byte) uint64 {
 	cycles := CYCLE_8
 	channel := op.channel
