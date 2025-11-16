@@ -25,22 +25,22 @@ func (lr loRom) mapToCartridge(bank byte, offset uint16, hasSram bool) (int, int
 	}
 	if offset >= 0x8000 {
 		if bank <= 0x7D {
-			return int(bank)*0x8000 + int(offset-0x8000), romAddress
+			return int(bank)<<15 + int(offset-0x8000), romAddress //<<15 == *0x8000
 		}
 		if bank >= 0x80 {
-			return int(bank-0x80)*0x8000 + int(offset-0x8000), romAddress
+			return int(bank-0x80)<<15 + int(offset-0x8000), romAddress
 		}
 	} else {
 		if hasSram {
 			if bank <= 0x7D && bank >= 0x70 {
-				return int(bank-0x70)*0x8000 + int(offset), sramAddress
+				return int(bank-0x70)<<15 + int(offset), sramAddress
 			}
 		} else {
 			if bank <= 0x7D && bank >= 0x40 {
-				return int(bank)*0x8000 + int(offset), romAddress
+				return int(bank)<<15 + int(offset), romAddress
 			}
 			if bank >= 0xC0 {
-				return int(bank-0x80)*0x8000 + int(offset), romAddress
+				return int(bank-0x80)<<15 + int(offset), romAddress
 			}
 		}
 	}

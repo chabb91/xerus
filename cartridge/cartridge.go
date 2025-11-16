@@ -2,6 +2,8 @@ package cartridge
 
 import (
 	"errors"
+	"log"
+	"math/bits"
 	"os"
 )
 
@@ -29,28 +31,31 @@ type Cartridge struct {
 
 	romData  []byte
 	sramData []byte
+
+	romMask  uint32
+	sramMask uint32
 }
 
 func NewCartridge(romData []byte, mapper romMapper) *Cartridge {
 	cart := &Cartridge{
-		romData: romData,
-		Mapper:  mapper}
+		Mapper: mapper}
 
-	cart.sramData = cart.DetectSram()
+	cart.romData, cart.romMask = padROM(romData)
+	cart.DetectSram()
 
 	return cart
 }
 
-// TODO modulo has to be optimized away.
 func (cart *Cartridge) ReadByte(bank byte, offset uint16) (byte, error) {
-	index, addressType := cart.Mapper.mapToCartridge(bank, offset, cart.HasSram())
+	hasSram := cart.HasSram()
+	index, addressType := cart.Mapper.mapToCartridge(bank, offset, hasSram)
 
 	switch addressType {
 	case romAddress:
-		return cart.romData[index%len(cart.romData)], nil
+		return cart.romData[uint32(index)&cart.romMask], nil
 	case sramAddress:
-		if cart.HasSram() {
-			return cart.sramData[index%len(cart.sramData)], nil
+		if hasSram {
+			return cart.sramData[uint32(index)&cart.sramMask], nil
 		} else {
 			return 0, errors.New("Trying to read SRAM but the cartridge doesnt have one")
 		}
@@ -68,7 +73,7 @@ func (cart *Cartridge) WriteByte(bank byte, offset uint16, value byte) error {
 	index, addressType := cart.Mapper.mapToCartridge(bank, offset, true)
 
 	if addressType == sramAddress {
-		cart.sramData[index%len(cart.sramData)] = value
+		cart.sramData[uint32(index)&cart.sramMask] = value
 		return nil
 	}
 
@@ -80,22 +85,26 @@ func (cart *Cartridge) HasSram() bool {
 }
 
 // TODO this always creates a new sram but if theres a battery and there is a SRAM file already it should be loaded instead
-func (cart *Cartridge) DetectSram() []byte {
+func (cart *Cartridge) DetectSram() {
 	romType, err := cart.ReadByte(0, 0xFFD6)
 	if err != nil {
-		return nil
+		cart.sramData = nil
+		return
 	}
 
 	switch romType & 0x7 {
 	case 0x1, 0x2, 0x4, 0x5:
 		sizeVal, err := cart.ReadByte(0, 0xFFD8)
 		if sizeVal == 0 || err != nil {
-			return nil
+			cart.sramData = nil
+		} else {
+			size := 1 << (10 + sizeVal)
+			//cart.sramData =  make([]byte, (1<<sizeVal)*1024)
+			cart.sramData = make([]byte, size)
+			cart.sramMask = uint32(size - 1)
 		}
-		return make([]byte, 1<<(10+sizeVal))
-		//return make([]byte, (1<<sizeVal)*1024)
 	default:
-		return nil
+		cart.sramData = nil
 	}
 }
 
@@ -106,4 +115,66 @@ func Load(path string) ([]byte, error) {
 	} else {
 		return data, nil
 	}
+}
+
+// TODO use this to calculate checksum
+func padROM(data []byte) ([]byte, uint32) {
+	log.Printf("Cartridge: Padding the rom data...")
+	size := len(data)
+	if size == 0 {
+		log.Printf("Cartridge: WARNING: rom file is empty!")
+		return data, 0
+	}
+
+	endSize := nextPow2(size)
+	if endSize == size {
+		log.Printf("Cartridge: Rom size is %v which is a power of 2, no intervention necessary.", size)
+		return data, uint32(endSize - 1)
+	}
+
+	largePart := prevPow2(size)
+
+	remainder := data[largePart:]
+	remSize := len(remainder)
+
+	smallPart := nextPow2(remSize)
+
+	var paddedRem []byte
+	if smallPart == remSize {
+		log.Printf("Cartridge: The small part of the rom is a power of 2(%v), no padding needed.", remSize)
+		paddedRem = remainder
+	} else {
+		log.Printf("Cartridge: The small part of the rom is not a power of 2(%v), padding with zeroes.", remSize)
+		paddedRem = make([]byte, smallPart)
+		copy(paddedRem, remainder)
+	}
+
+	finalROM := make([]byte, endSize)
+	copy(finalROM, data[:largePart])
+	cnt := largePart >> bits.TrailingZeros(uint(smallPart)) //largePart/smallPart
+
+	for i := range cnt {
+		copy(finalROM[largePart+(i*smallPart):], paddedRem)
+	}
+
+	log.Printf("Cartridge: The small part was copied %v times to match the size of the large. Total rom size: %v.", cnt, endSize)
+	return finalROM, uint32(endSize - 1)
+}
+
+func isPowerOfTwo(n int) bool {
+	return n > 0 && (n&(n-1) == 0)
+}
+
+func nextPow2(x int) int {
+	if x <= 1 {
+		return 1
+	}
+	return 1 << bits.Len(uint(x-1))
+}
+
+func prevPow2(x int) int {
+	if x <= 1 {
+		return 1
+	}
+	return 1 << (bits.Len(uint(x)) - 1)
 }
