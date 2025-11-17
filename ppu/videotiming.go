@@ -1,6 +1,9 @@
 package ppu
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type PPUAction byte
 
@@ -21,6 +24,10 @@ const (
 	ActionJoypadReadStart
 	ActionJoypadReadEnd
 	ActionCpuRefresh
+	ActionSetHvbjoyV
+	ActionResetHvbjoyV
+	ActionSetHvbjoyH
+	ActionResetHvbjoyH
 	ActionPrepareScanline //arbitrary action to pre calculate stuff for every scanline
 )
 
@@ -99,53 +106,66 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 
 			action := ActionNone
 			if v == 0 && h == 0 {
-				action = ActionVBlankEnd
+				action = setAction(action, ActionVBlankEnd, v, h)
 				//this also clears nmi if it hasnt been consumed yet
 			}
 			if v == vActive+1 && h == 0 {
-				action = ActionVBlankStart
+				action = setAction(action, ActionVBlankStart, v, h)
 				//TODO this also sets NMI 2(0.5dots) cycles later.
 			}
+			if v == 0 && h == 30 {
+				action = setAction(action, ActionResetHvbjoyV, v, h)
+			}
+			if v == vActive+1 && h == 22 {
+				action = setAction(action, ActionSetHvbjoyV, v, h)
+			}
 			if v == vActive+1 && h == 54 {
-				action = ActionSetRdnmi
+				action = setAction(action, ActionSetRdnmi, v, h)
 			}
 			if v == vActive+1 && h == 10 {
-				action = ActionOAMReset
+				action = setAction(action, ActionOAMReset, v, h)
 			}
 			if v == vActive+1 && h == 33 {
-				action = ActionJoypadReadStart
+				action = setAction(action, ActionJoypadReadStart, v, h)
 			}
 			if v == vActive+4 && h == 66 {
-				action = ActionJoypadReadEnd
+				action = setAction(action, ActionJoypadReadEnd, v, h)
 			}
 			if v == 0 && h == 6 {
-				action = ActionHDMAReload
+				action = setAction(action, ActionHDMAReload, v, h)
 			}
 			if (v >= 0 && v <= vActive) && h == 278 {
-				action = ActionHDMAStart
+				action = setAction(action, ActionHDMAStart, v, h)
 			}
 			if (v >= 1 && v <= vActive) && h == H_BLANK_START-1 {
-				action = ActionPrepareScanline
+				action = setAction(action, ActionPrepareScanline, v, h)
 			}
 			if h == 1 {
-				action = ActionHBlankEnd
 				if v == 0 {
-					action = ActionHBlankEndInterlaceFieldToggle
+					action = setAction(action, ActionHBlankEndInterlaceFieldToggle, v, h)
+				} else {
+					action = setAction(action, ActionHBlankEnd, v, h)
 				}
 			}
 			if h == 274 {
-				action = ActionHBlankStart
+				action = setAction(action, ActionHBlankStart, v, h)
+			}
+			if h == 23 {
+				action = setAction(action, ActionResetHvbjoyH, v, h)
+			}
+			if h == 289 {
+				action = setAction(action, ActionSetHvbjoyH, v, h)
 			}
 			if h == 134 {
-				action = ActionCpuRefresh
+				action = setAction(action, ActionCpuRefresh, v, h)
 			}
 			if v == 311 && h == 123 && timing.TotalScanlines == PAL_TOTAL_SCANLINES {
 				//TODO find the best way to handle the infinite loop this causes with just h--
 				//luckily this is interlace only
-				action = ActionLongLine
+				action = setAction(action, ActionLongLine, v, h)
 			}
 			if v == 240 && h == 123 && timing.TotalScanlines == NTSC_TOTAL_SCANLINES {
-				action = ActionShortLine
+				action = setAction(action, ActionShortLine, v, h)
 			}
 
 			isVisible := (h >= H_BLANK_START && h <= H_BLANK_END) && (v >= 1 && v <= vActive)
@@ -162,4 +182,12 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 	}
 
 	return lut
+}
+
+func setAction(current PPUAction, newVal PPUAction, v, h int) PPUAction {
+	if current != ActionNone {
+		panic(fmt.Sprintf("PPU: Action collision at V=%d H=%d: tried to set %v but %v already exists, cannot create the LUT.",
+			v, h, newVal, current))
+	}
+	return newVal
 }

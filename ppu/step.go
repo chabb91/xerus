@@ -71,23 +71,25 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 	case ActionVBlankStart:
 		ppu.VBlank = true
 		ppu.InterruptScheduler.FireNmi()
-		ppu.InterruptScheduler.SetHvbjoyV(true)
 		ppu.Framebuffer.Swap()
 	case ActionVBlankEnd:
 		ppu.VBlank = false
 		ppu.InterruptScheduler.SetRdnmi(false)
-		ppu.InterruptScheduler.SetHvbjoyV(false)
 	case ActionSetRdnmi:
 		ppu.InterruptScheduler.SetRdnmi(true)
 	case ActionHBlankStart:
 		ppu.HBlank = true
-		ppu.InterruptScheduler.SetHvbjoyH(true)
 	case ActionHBlankEnd:
 		ppu.HBlank = false
-		//TODO HVBJoY troggers on a slightly different timer
-		ppu.InterruptScheduler.SetHvbjoyH(false)
 	case ActionHBlankEndInterlaceFieldToggle:
 		ppu.HBlank = false
+	case ActionSetHvbjoyV:
+		ppu.InterruptScheduler.SetHvbjoyV(true)
+	case ActionSetHvbjoyH:
+		ppu.InterruptScheduler.SetHvbjoyH(true)
+	case ActionResetHvbjoyV:
+		ppu.InterruptScheduler.SetHvbjoyV(false)
+	case ActionResetHvbjoyH:
 		ppu.InterruptScheduler.SetHvbjoyH(false)
 	case ActionOAMReset:
 		ppu.OAM.InvalidateInternalIndex()
