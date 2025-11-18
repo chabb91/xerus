@@ -178,7 +178,7 @@ func (bg *Background) GetDotAt(H, V uint16, isSubscreen bool) (uint16, byte, boo
 		return ret.color, ret.priority, true
 	}
 
-	hScroll, vScroll := H+bg.hScroll, V+bg.vScroll+1
+	hScroll, vScroll := H+bg.hScroll, V+bg.vScroll+(1<<interlace)
 	if bg.OPTMap != nil && (H+(7-(hScroll&7)))>>3 > 0 {
 		hScroll, vScroll = bg.optFunc(bg, H, V)
 	}
@@ -201,9 +201,12 @@ func (bg *Background) GetDotAt(H, V uint16, isSubscreen bool) (uint16, byte, boo
 		bg.renderCacheEnd = min(H+uint16(8-px), SCREEN_WIDTH<<hires)
 	}
 
-	//TODO create a flip table for 16x8 tiles because this rn is breaking things
-	if tile.flipIndex > 0 && (bg.charTileSize == 1 || bgmode == 5 || bgmode == 6) {
-		charMapID = compositeFlipLUT[charMapID][tile.flipIndex]
+	if tile.flipIndex > 0 {
+		if bg.charTileSize == 1 {
+			charMapID = compositeFlipLUT[charMapID][tile.flipIndex]
+		} else if bgmode == 5 || bgmode == 6 {
+			charMapID = compositeFlip16x8LUT[charMapID][tile.flipIndex]
+		}
 	}
 
 	var ret, color uint16
@@ -335,10 +338,12 @@ func (bt *BgTile) setup(tileIndex uint16, currentEpoch uint64) {
 	charTiles := &bt.bg.charTiles
 
 	bt.charTiles[0] = &charTiles[bt.charIndex]
-	if bt.bg.charTileSize == 1 || bgmode == 5 || bgmode == 6 {
+	if bt.bg.charTileSize == 1 {
 		bt.charTiles[1] = &charTiles[charIndex+charMapIdToOffsetLUT[1]]
 		bt.charTiles[2] = &charTiles[charIndex+charMapIdToOffsetLUT[2]]
 		bt.charTiles[3] = &charTiles[charIndex+charMapIdToOffsetLUT[3]]
+	} else if bgmode == 5 || bgmode == 6 {
+		bt.charTiles[1] = &charTiles[charIndex+charMapIdToOffsetLUT[1]]
 	}
 
 	bt.isValid = true

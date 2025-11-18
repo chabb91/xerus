@@ -12,31 +12,32 @@ func (ppu *PPU) Step() {
 	if !ppu.FBlank {
 		if draw.IsVisible {
 			h := draw.H << 1
+			v := draw.V<<interlace + interlaceStep
 			if hires == 1 {
 				//flipping this causes artifacts because the subscreen is always first in the rendering order
-				ss, l2, _ := ppu.renderSubScreen(draw.H, draw.V)
-				ms, l1, math := ppu.renderMainScreen(draw.H, draw.V)
+				ss, l2, _ := ppu.renderSubScreen(draw.H, v)
+				ms, l1, math := ppu.renderMainScreen(draw.H, v)
 				if math {
 					//TODO subscreen color math unfortunately depends on the previous ms pixel. this matters in some cases
 					//try fixing it later
 					cm1 := ppu.WINDOWS.performColorMath(ms, ss, draw.H, l1)
 					cm2 := ppu.WINDOWS.performColorMath(ss, ms, draw.H, l2)
-					ppu.Framebuffer.Back[h][draw.V].SetColor(cm2, ppu.brightness)
-					ppu.Framebuffer.Back[h+1][draw.V].SetColor(cm1, ppu.brightness)
+					ppu.Framebuffer.Back[h][v].SetColor(cm2, ppu.brightness)
+					ppu.Framebuffer.Back[h+1][v].SetColor(cm1, ppu.brightness)
 				} else {
-					ppu.Framebuffer.Back[h][draw.V].SetColor(ss, ppu.brightness)
-					ppu.Framebuffer.Back[h+1][draw.V].SetColor(ms, ppu.brightness)
+					ppu.Framebuffer.Back[h][v].SetColor(ss, ppu.brightness)
+					ppu.Framebuffer.Back[h+1][v].SetColor(ms, ppu.brightness)
 				}
 			} else {
-				ms, l1, math := ppu.renderMainScreen(draw.H, draw.V)
+				ms, l1, math := ppu.renderMainScreen(draw.H, v)
 				if math {
-					ss, _, _ := ppu.renderSubScreen(draw.H, draw.V)
+					ss, _, _ := ppu.renderSubScreen(draw.H, v)
 					cm1 := ppu.WINDOWS.performColorMath(ms, ss, draw.H, l1)
-					ppu.Framebuffer.Back[h][draw.V].SetColor(cm1, ppu.brightness)
-					ppu.Framebuffer.Back[h+1][draw.V].SetColor(cm1, ppu.brightness)
+					ppu.Framebuffer.Back[h][v].SetColor(cm1, ppu.brightness)
+					ppu.Framebuffer.Back[h+1][v].SetColor(cm1, ppu.brightness)
 				} else {
-					ppu.Framebuffer.Back[h][draw.V].SetColor(ms, ppu.brightness)
-					ppu.Framebuffer.Back[h+1][draw.V].SetColor(ms, ppu.brightness)
+					ppu.Framebuffer.Back[h][v].SetColor(ms, ppu.brightness)
+					ppu.Framebuffer.Back[h+1][v].SetColor(ms, ppu.brightness)
 				}
 			}
 		}
@@ -92,7 +93,16 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 	case ActionVBlankStart:
 		ppu.VBlank = true
 		ppu.InterruptScheduler.FireNmi()
-		ppu.Framebuffer.Swap()
+		if int(interlace) == 1 {
+			if interlaceStep == 1 {
+				ppu.Framebuffer.Swap()
+				interlaceStep = 0
+			} else {
+				interlaceStep = 1
+			}
+		} else {
+			ppu.Framebuffer.Swap()
+		}
 	case ActionVBlankEnd:
 		ppu.VBlank = false
 		ppu.InterruptScheduler.SetRdnmi(false)
@@ -128,7 +138,7 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 	case ActionCpuRefresh:
 	case ActionPrepareScanline:
 		if ppu.Obj.isActive() {
-			ppu.Obj.prepareScanLine(draw.V)
+			ppu.Obj.prepareScanLine(draw.V<<ppu.SETINI.objInterlace + interlaceStep)
 		}
 
 		shouldReset := true

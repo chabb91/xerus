@@ -152,7 +152,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ms := value>>4 + 1
 		if ms != mosaicSize {
 			if ppu.V > 0 && ppu.SETINI.Timing.TotalScanlines >= ppu.V {
-				mosaicStartLine = uint16(ppu.V)
+				mosaicStartLine = uint16(ppu.V + 1)
 			} else {
 				mosaicStartLine = 0
 			}
@@ -278,6 +278,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.SETINI.setup(value)
 		ppu.setHiresFlag()
 		ppu.Framebuffer.CurrentHeight, ppu.Framebuffer.CurrentWidth = ppu.SETINI.getScreenHeight()<<1, ppu.SETINI.getScreenWidth()<<1
+		ppu.Framebuffer.Interlace = byte(interlace)
 	default:
 		return fmt.Errorf("invalid PPU register write at $%04X", addr)
 	}

@@ -25,6 +25,7 @@ type Framebuffer struct {
 
 	CurrentWidth  int
 	CurrentHeight int
+	Interlace     byte
 }
 
 func NewFramebuffer() *Framebuffer {
@@ -102,8 +103,8 @@ func (ed *EmulatorDisplay) Draw(screen *ebiten.Image) {
 	}
 	//visibleHeight := ed.fb.CurrentHeight
 	op := &ebiten.DrawImageOptions{}
-	scaleX := float64(512) / 512.0
-	scaleY := float64(2)
+	scaleX := float64(1) //float64(512) / 512.0
+	scaleY := float64(int(2 >> ed.fb.Interlace))
 	op.GeoM.Scale(scaleX, scaleY)
 	screen.DrawImage(ed.ActiveImage, op)
 }

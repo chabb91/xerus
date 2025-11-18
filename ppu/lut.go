@@ -81,6 +81,11 @@ func initBitplaneLUT() {
 	}
 }
 
+var compositeFlip16x8LUT = [2][4]byte{
+	{0, 1, 0, 1},
+	{1, 0, 1, 0},
+}
+
 func initCompositeFlipLUT() {
 	for charMapID := range 4 {
 		for flipIndex := range 4 {

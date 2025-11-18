@@ -22,4 +22,7 @@ var hasMosaic bool
 
 // are we in hires or pseudo hires modes
 var hires byte
+var interlace uint16
+var interlaceStep uint16 //odd or even frame. 0 even 1 odd.
+
 var bgmode byte

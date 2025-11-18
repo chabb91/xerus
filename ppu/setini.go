@@ -1,12 +1,12 @@
 package ppu
 
 type SETINI struct {
-	externalSync    bool
-	m7EXTBG         bool
-	hires           bool
-	overscan        bool
-	objInterlace    bool
-	screenInterlace byte
+	externalSync bool
+	m7EXTBG      bool
+	hires        bool
+	overscan     bool
+	objInterlace uint16
+	//screenInterlace byte
 
 	Timing       VideoTiming
 	TimingLUT    VisibilityLUT
@@ -28,8 +28,10 @@ func (s *SETINI) setup(value byte) {
 	s.m7EXTBG = value&0x40 != 0
 	s.hires = value&0x08 != 0
 	s.setOverscan(value&0x04 != 0)
-	s.objInterlace = value&0x02 != 0
-	s.screenInterlace = value & 1
+	s.objInterlace = uint16(value & 0x02 >> 1)
+	//s.screenInterlace = value & 1
+	interlace = uint16(value & 1)
+	interlaceStep = 0
 }
 
 func (s *SETINI) setOverscan(overscan bool) {
