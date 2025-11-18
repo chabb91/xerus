@@ -350,7 +350,7 @@ func (ppu *PPU) isEnabledOnSub(layer ppuLayer) bool {
 }
 
 func (ppu *PPU) setBGMODE(value byte) {
-	ppu.BGMODE = value & 7
+	bgmode = value & 7
 
 	ppu.Bg1.charTileSize = (value >> 4) & 1
 	ppu.Bg2.charTileSize = (value >> 5) & 1
@@ -406,10 +406,10 @@ func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer, bool) {
 		}
 
 		if v.priority == 3 {
-			val, prio, math = v.renderer(H, V)
+			val, prio, math = v.renderer(H, V, false)
 			colorCache[v.layer], spritePrio, spriteMath = val, prio, math
 		} else if v.priority == 1 && v.layer != obj {
-			val, prio, math = v.renderer(H, V)
+			val, prio, math = v.renderer(H<<uint16(hires)+uint16(hires), V, false)
 			colorCache[v.layer] = val
 		} else if v.layer != obj {
 			val, prio, math = colorCache[v.layer], 0, true
@@ -435,10 +435,10 @@ func (ppu *PPU) renderSubScreen(H, V uint16) (uint16, ppuLayer, bool) {
 		}
 
 		if v.priority == 3 {
-			val, prio, math = v.renderer(H, V)
+			val, prio, math = v.renderer(H, V, true)
 			colorCache[v.layer], spritePrio, spriteMath = val, prio, math
 		} else if v.priority == 1 && v.layer != obj {
-			val, prio, math = v.renderer(H, V)
+			val, prio, math = v.renderer(H<<uint16(hires), V, true)
 			colorCache[v.layer] = val
 		} else if v.layer != obj {
 			val, prio, math = colorCache[v.layer], 0, true

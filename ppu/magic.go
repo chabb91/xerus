@@ -19,3 +19,7 @@ var mosaicSize byte
 var mosaicStartLine uint16
 var mosaicLineCnt uint16
 var hasMosaic bool
+
+// are we in hires or pseudo hires modes
+var hires byte
+var bgmode byte

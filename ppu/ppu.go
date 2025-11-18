@@ -33,8 +33,6 @@ type PPU struct {
 
 	WINDOWS WindowController
 
-	BGMODE byte
-
 	Bg1     *Background
 	Bg2     *Background
 	Bg3     *Background
@@ -143,6 +141,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2105:
 		//fmt.Println("BGMODE: ", value)
 		ppu.setBGMODE(value)
+		ppu.setHiresFlag()
 	case 0x2106:
 		fmt.Println("MOSAIC: ", value)
 		ppu.Bg1.mosaic = value&1 == 1
@@ -277,7 +276,8 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2133:
 		fmt.Println("SETINI", value)
 		ppu.SETINI.setup(value)
-		ppu.Framebuffer.CurrentHeight, ppu.Framebuffer.CurrentWidth = ppu.SETINI.getScreenHeight(), ppu.SETINI.getScreenWidth()
+		ppu.setHiresFlag()
+		ppu.Framebuffer.CurrentHeight, ppu.Framebuffer.CurrentWidth = ppu.SETINI.getScreenHeight()<<1, ppu.SETINI.getScreenWidth()<<1
 	default:
 		return fmt.Errorf("invalid PPU register write at $%04X", addr)
 	}
@@ -372,5 +372,13 @@ func (ppu *PPU) invalidateSpriteHi(id uint16) {
 	id = (id & 31) << 2
 	for i := range uint16(4) {
 		ppu.Obj.Sprites[id+i].isValid = false
+	}
+}
+
+func (ppu *PPU) setHiresFlag() {
+	if bgmode == 5 || bgmode == 6 || ppu.SETINI.hires {
+		hires = 1
+	} else {
+		hires = 0
 	}
 }

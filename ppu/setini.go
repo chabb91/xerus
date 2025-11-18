@@ -6,7 +6,7 @@ type SETINI struct {
 	hires           bool
 	overscan        bool
 	objInterlace    bool
-	screenInterlace bool
+	screenInterlace byte
 
 	Timing       VideoTiming
 	TimingLUT    VisibilityLUT
@@ -29,7 +29,7 @@ func (s *SETINI) setup(value byte) {
 	s.hires = value&0x08 != 0
 	s.setOverscan(value&0x04 != 0)
 	s.objInterlace = value&0x02 != 0
-	s.screenInterlace = value&0x01 != 0
+	s.screenInterlace = value & 1
 }
 
 func (s *SETINI) setOverscan(overscan bool) {

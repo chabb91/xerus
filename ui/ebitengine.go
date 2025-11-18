@@ -8,7 +8,7 @@ const DefaultWidth = 256
 const DefaultHeight = 224
 const MaxWidth = 512
 const MaxHeight = 478
-const ScalingFactor = 3
+const ScalingFactor = 1.5
 
 type SnesColorData struct {
 	Color      uint16
@@ -82,7 +82,7 @@ func (ed *EmulatorDisplay) Update() error {
 			ed.ScreenWidth = newWidth
 			ed.ScreenHeight = newHeight
 			ed.ActiveImage = ebiten.NewImage(newWidth, newHeight)
-			ebiten.SetWindowSize(newWidth*ScalingFactor, newHeight*ScalingFactor)
+			ebiten.SetWindowSize(int(float64(newWidth)*ScalingFactor), int(float64(newHeight)*ScalingFactor))
 		}
 		ed.convertBGR15ToRGBA(frame)
 
@@ -100,7 +100,12 @@ func (ed *EmulatorDisplay) Draw(screen *ebiten.Image) {
 	if ed.ActiveImage == nil {
 		return
 	}
-	screen.DrawImage(ed.ActiveImage, nil)
+	//visibleHeight := ed.fb.CurrentHeight
+	op := &ebiten.DrawImageOptions{}
+	scaleX := float64(512) / 512.0
+	scaleY := float64(2)
+	op.GeoM.Scale(scaleX, scaleY)
+	screen.DrawImage(ed.ActiveImage, op)
 }
 
 func (ed *EmulatorDisplay) Layout(outsideWidth, outsideHeight int) (int, int) {
@@ -113,9 +118,9 @@ func (ed *EmulatorDisplay) convertBGR15ToRGBA(buffer *[MaxWidth][MaxHeight]SnesC
 			v := buffer[x][y]
 			i := (y*ed.ScreenWidth + x) << 2
 
-			r := float32(v.Color&0x1F) * 8
-			g := float32((v.Color>>5)&0x1F) * 8
-			b := float32((v.Color>>10)&0x1F) * 8
+			r := float32(v.Color & 0x1F << 3)
+			g := float32((v.Color >> 5) & 0x1F << 3)
+			b := float32((v.Color >> 10) & 0x1F << 3)
 
 			scale := float32(v.Brightness) / 15
 

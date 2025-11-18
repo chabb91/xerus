@@ -29,7 +29,7 @@ type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
 type optResolver func(*Background, uint16, uint16) (uint16, uint16)
 type VRAMAddressCalculator func(tileIndex byte) uint16
 type colorIndex func(ppuLayer, colorDepth, byte) byte
-type rendererFunction func(uint16, uint16) (uint16, byte, bool)
+type rendererFunction func(uint16, uint16, bool) (uint16, byte, bool)
 
 type LayerEpochSource interface {
 	GetLayerSourceEpoch() uint64
@@ -82,7 +82,7 @@ type Background struct {
 	enabledOnMainScreen, enabledOnSubScreen bool
 
 	renderCacheEnd uint16
-	renderCache    [SCREEN_WIDTH]renderedDotCache
+	renderCache    [SCREEN_WIDTH << 1]renderedDotCache
 
 	mosaic bool
 }
@@ -138,20 +138,33 @@ func (bg *Background) Invalidate(addr uint16) {
 func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V uint16) (byte, byte, byte, uint16) {
 	tileDimensions := tileMapDimensionsLUT[tileMapSize]
 	charDimensions := charTileSizeLUT[charTileSize]
-	rowCnt := (V >> charDimensions.divMask) & tileDimensions.modMaskH
-	columnCnt := (H >> charDimensions.divMask) & tileDimensions.modMaskW
-	tileMapID := (rowCnt>>5)<<tileDimensions.mapsPerRowMinusOne + columnCnt>>5
-	tileIndex := tileMapID<<10 + (rowCnt&31)<<5 + columnCnt&31
-	row := byte(V & charDimensions.modMask)
-	px := byte(H & charDimensions.modMask)
-	if charTileSize == 0 {
-		return px, row, 0, tileIndex
-	}
-	charMapID := (row>>3)<<1 + (px >> 3)
-	row &= 7
-	px &= 7
+	if bgmode == 5 || bgmode == 6 {
+		rowCnt := (V >> charDimensions.divMask) & tileDimensions.modMaskH
+		columnCnt := (H >> 4) & tileDimensions.modMaskW
+		tileMapID := (rowCnt>>5)<<tileDimensions.mapsPerRowMinusOne + columnCnt>>5
+		tileIndex := tileMapID<<10 + (rowCnt&31)<<5 + columnCnt&31
+		row := byte(V & charDimensions.modMask)
+		px := byte(H & 15)
+		charMapID := (row>>3)<<1 + (px >> 3)
+		row &= 7
+		px &= 7
+		return px, row, charMapID, tileIndex
+	} else {
+		rowCnt := (V >> charDimensions.divMask) & tileDimensions.modMaskH
+		columnCnt := (H >> charDimensions.divMask) & tileDimensions.modMaskW
+		tileMapID := (rowCnt>>5)<<tileDimensions.mapsPerRowMinusOne + columnCnt>>5
+		tileIndex := tileMapID<<10 + (rowCnt&31)<<5 + columnCnt&31
+		row := byte(V & charDimensions.modMask)
+		px := byte(H & charDimensions.modMask)
+		if charTileSize == 0 {
+			return px, row, 0, tileIndex
+		}
+		charMapID := (row>>3)<<1 + (px >> 3)
+		row &= 7
+		px &= 7
 
-	return px, row, charMapID, tileIndex
+		return px, row, charMapID, tileIndex
+	}
 }
 
 // TODO this can be optimized like crazy
@@ -159,13 +172,13 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 // save the char address in the chartile
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
-func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
+func (bg *Background) GetDotAt(H, V uint16, isSubscreen bool) (uint16, byte, bool) {
 	if H < bg.renderCacheEnd {
 		ret := bg.renderCache[H]
 		return ret.color, ret.priority, true
 	}
 
-	hScroll, vScroll := H+bg.hScroll, V+bg.vScroll
+	hScroll, vScroll := H+bg.hScroll, V+bg.vScroll+1
 	if bg.OPTMap != nil && (H+(7-(hScroll&7)))>>3 > 0 {
 		hScroll, vScroll = bg.optFunc(bg, H, V)
 	}
@@ -183,12 +196,13 @@ func (bg *Background) GetDotAt(H, V uint16) (uint16, byte, bool) {
 		if (offset % mosaicSize) > 0 {
 			size += mosaicSize
 		}
-		bg.renderCacheEnd = min(H+uint16(size), SCREEN_WIDTH)
+		bg.renderCacheEnd = min(H+uint16(size), SCREEN_WIDTH<<hires)
 	} else {
-		bg.renderCacheEnd = min(H+uint16(8-px), SCREEN_WIDTH)
+		bg.renderCacheEnd = min(H+uint16(8-px), SCREEN_WIDTH<<hires)
 	}
 
-	if bg.charTileSize == 1 {
+	//TODO create a flip table for 16x8 tiles because this rn is breaking things
+	if tile.flipIndex > 0 && (bg.charTileSize == 1 || bgmode == 5 || bgmode == 6) {
 		charMapID = compositeFlipLUT[charMapID][tile.flipIndex]
 	}
 
@@ -321,7 +335,7 @@ func (bt *BgTile) setup(tileIndex uint16, currentEpoch uint64) {
 	charTiles := &bt.bg.charTiles
 
 	bt.charTiles[0] = &charTiles[bt.charIndex]
-	if bt.bg.charTileSize == 1 {
+	if bt.bg.charTileSize == 1 || bgmode == 5 || bgmode == 6 {
 		bt.charTiles[1] = &charTiles[charIndex+charMapIdToOffsetLUT[1]]
 		bt.charTiles[2] = &charTiles[charIndex+charMapIdToOffsetLUT[2]]
 		bt.charTiles[3] = &charTiles[charIndex+charMapIdToOffsetLUT[3]]

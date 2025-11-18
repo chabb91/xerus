@@ -11,12 +11,33 @@ func (ppu *PPU) Step() {
 	draw := ppu.SETINI.TimingLUT[ppu.V*H_TOTAL+ppu.H]
 	if !ppu.FBlank {
 		if draw.IsVisible {
-			ms, l1, math := ppu.renderMainScreen(draw.H, draw.V)
-			if math {
-				ss, _, _ := ppu.renderSubScreen(draw.H, draw.V)
-				ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ppu.WINDOWS.performColorMath(ms, ss, draw.H, l1), ppu.brightness)
+			h := draw.H << 1
+			if hires == 1 {
+				//flipping this causes artifacts because the subscreen is always first in the rendering order
+				ss, l2, _ := ppu.renderSubScreen(draw.H, draw.V)
+				ms, l1, math := ppu.renderMainScreen(draw.H, draw.V)
+				if math {
+					//TODO subscreen color math unfortunately depends on the previous ms pixel. this matters in some cases
+					//try fixing it later
+					cm1 := ppu.WINDOWS.performColorMath(ms, ss, draw.H, l1)
+					cm2 := ppu.WINDOWS.performColorMath(ss, ms, draw.H, l2)
+					ppu.Framebuffer.Back[h][draw.V].SetColor(cm2, ppu.brightness)
+					ppu.Framebuffer.Back[h+1][draw.V].SetColor(cm1, ppu.brightness)
+				} else {
+					ppu.Framebuffer.Back[h][draw.V].SetColor(ss, ppu.brightness)
+					ppu.Framebuffer.Back[h+1][draw.V].SetColor(ms, ppu.brightness)
+				}
 			} else {
-				ppu.Framebuffer.Back[draw.H][draw.V].SetColor(ms, ppu.brightness)
+				ms, l1, math := ppu.renderMainScreen(draw.H, draw.V)
+				if math {
+					ss, _, _ := ppu.renderSubScreen(draw.H, draw.V)
+					cm1 := ppu.WINDOWS.performColorMath(ms, ss, draw.H, l1)
+					ppu.Framebuffer.Back[h][draw.V].SetColor(cm1, ppu.brightness)
+					ppu.Framebuffer.Back[h+1][draw.V].SetColor(cm1, ppu.brightness)
+				} else {
+					ppu.Framebuffer.Back[h][draw.V].SetColor(ms, ppu.brightness)
+					ppu.Framebuffer.Back[h+1][draw.V].SetColor(ms, ppu.brightness)
+				}
 			}
 		}
 	}
