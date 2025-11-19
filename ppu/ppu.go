@@ -278,7 +278,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2133:
 		fmt.Println("SETINI", value)
 		ppu.SETINI.setup(value)
-		ppu.Framebuffer.CurrentHeight = ppu.SETINI.getScreenHeight() - (1 << interlace)
+		ppu.Framebuffer.CurrentHeight = ppu.SETINI.getScreenHeight() // - (1 << interlace)
 		ppu.Framebuffer.Interlace = byte(interlace)
 	default:
 		return fmt.Errorf("invalid PPU register write at $%04X", addr)

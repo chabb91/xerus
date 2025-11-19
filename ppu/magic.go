@@ -24,4 +24,5 @@ var hasMosaic bool
 var hires byte
 var pseudoHires byte
 var interlace uint16
-var interlaceStep uint16 //odd or even frame. 0 even 1 odd.
+var interlaceStep uint16   //odd or even frame. 0 even 1 odd.
+var interlaceLongLine bool //cringe variable for the very special PAL interlace longline

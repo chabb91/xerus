@@ -125,7 +125,20 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 	case ActionHDMAReload:
 		ppu.HdmaScheduler.Reload()
 	case ActionShortLine:
+		if interlace == 0 {
+			ppu.H++
+		}
 	case ActionLongLine:
+		if interlace == 1 {
+			if interlaceStep == 1 {
+				if interlaceLongLine {
+					ppu.H--
+					interlaceLongLine = false
+				}
+			} else {
+				interlaceLongLine = true
+			}
+		}
 	case ActionSetNmi:
 	case ActionJoypadReadStart:
 		ppu.InterruptScheduler.SetHvbjoyA(true)

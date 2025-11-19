@@ -45,6 +45,8 @@ const (
 	PAL_TOTAL_SCANLINES = 312
 )
 
+const LONG_SHORT_SCANLINE_H_TRIGGER = 123
+
 type VisibilityEntry struct {
 	H, V      uint16
 	IsVisible bool
@@ -160,13 +162,17 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 			if h == 134 {
 				action = setAction(action, ActionCpuRefresh, v, h)
 			}
-			if v == 311 && h == 123 && timing.TotalScanlines == PAL_TOTAL_SCANLINES {
-				//TODO find the best way to handle the infinite loop this causes with just h--
-				//luckily this is interlace only
+			if v == 311 && h == LONG_SHORT_SCANLINE_H_TRIGGER && timing.TotalScanlines == PAL_TOTAL_SCANLINES {
 				action = setAction(action, ActionLongLine, v, h)
 			}
-			if v == 240 && h == 123 && timing.TotalScanlines == NTSC_TOTAL_SCANLINES {
+			if v == 240 && h == LONG_SHORT_SCANLINE_H_TRIGGER && timing.TotalScanlines == NTSC_TOTAL_SCANLINES {
 				action = setAction(action, ActionShortLine, v, h)
+			}
+
+			if (v == 311 || v == 240) &&
+				(h == LONG_SHORT_SCANLINE_H_TRIGGER-1 ||
+					h == LONG_SHORT_SCANLINE_H_TRIGGER+1) && action != ActionNone {
+				panic(fmt.Sprintf("PPU: Long and Short scanline timings conflict with neighboring actions at V=%d H=%d", v, h))
 			}
 
 			isVisible := (h >= H_BLANK_START && h <= H_BLANK_END) && (v >= 1 && v <= vActive)
