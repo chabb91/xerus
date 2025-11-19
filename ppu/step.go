@@ -13,33 +13,29 @@ func (ppu *PPU) Step() {
 		if draw.IsVisible {
 			//TODO rewrite the Framebuffer so it is 256 wide but contains a structure that takes two colors
 			//that saves a matrix lookup a bitshift and an addition every dot
-			h := draw.H << 1
+			h := draw.H
 			v := draw.V<<interlace + interlaceStep
 			if hires == 1 || pseudoHires == 1 {
 				//flipping this causes artifacts because the subscreen is always first in the rendering order
-				ss, l2, _ := ppu.renderSubScreen(draw.H, v)
-				ms, l1, math := ppu.renderMainScreen(draw.H, v)
+				ss, l2, _ := ppu.renderSubScreen(h, v)
+				ms, l1, math := ppu.renderMainScreen(h, v)
 				if math {
 					//TODO subscreen color math unfortunately depends on the previous ms pixel. this matters in some cases
 					//try fixing it later
-					cm1 := ppu.WINDOWS.performColorMath(ms, ss, draw.H, l1)
-					cm2 := ppu.WINDOWS.performColorMath(ss, ms, draw.H, l2)
-					ppu.Framebuffer.Back[h][v].SetColor(cm2, ppu.brightness)
-					ppu.Framebuffer.Back[h+1][v].SetColor(cm1, ppu.brightness)
+					cm1 := ppu.WINDOWS.performColorMath(ms, ss, h, l1)
+					cm2 := ppu.WINDOWS.performColorMath(ss, ms, h, l2)
+					ppu.Framebuffer.Back[h][v].SetColor(cm2, cm1, ppu.brightness)
 				} else {
-					ppu.Framebuffer.Back[h][v].SetColor(ss, ppu.brightness)
-					ppu.Framebuffer.Back[h+1][v].SetColor(ms, ppu.brightness)
+					ppu.Framebuffer.Back[h][v].SetColor(ss, ms, ppu.brightness)
 				}
 			} else {
-				ms, l1, math := ppu.renderMainScreen(draw.H, v)
+				ms, l1, math := ppu.renderMainScreen(h, v)
 				if math {
-					ss, _, _ := ppu.renderSubScreen(draw.H, v)
-					cm1 := ppu.WINDOWS.performColorMath(ms, ss, draw.H, l1)
-					ppu.Framebuffer.Back[h][v].SetColor(cm1, ppu.brightness)
-					ppu.Framebuffer.Back[h+1][v].SetColor(cm1, ppu.brightness)
+					ss, _, _ := ppu.renderSubScreen(h, v)
+					cm1 := ppu.WINDOWS.performColorMath(ms, ss, h, l1)
+					ppu.Framebuffer.Back[h][v].SetColor(cm1, cm1, ppu.brightness)
 				} else {
-					ppu.Framebuffer.Back[h][v].SetColor(ms, ppu.brightness)
-					ppu.Framebuffer.Back[h+1][v].SetColor(ms, ppu.brightness)
+					ppu.Framebuffer.Back[h][v].SetColor(ms, ms, ppu.brightness)
 				}
 			}
 		}

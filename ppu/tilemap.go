@@ -174,7 +174,7 @@ func (bg *Background) GetDotAt(H, V uint16, isSubscreen bool) (uint16, byte, boo
 
 	hScroll, vScroll := H+bg.hScroll, V+bg.vScroll+(1<<interlace)
 	if bg.OPTMap != nil && (H+(7-(hScroll&7)))>>3 > 0 {
-		hScroll, vScroll = bg.optFunc(bg, H, V)
+		hScroll, vScroll = bg.optFunc(bg, H, V+(1<<interlace))
 	}
 	px, row, charMapID, tileIndex := getTileIndexAndPixelCoordinates(bg.tileMapSize, bg.charTileSize, hScroll, vScroll)
 

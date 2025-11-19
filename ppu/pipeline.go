@@ -405,16 +405,20 @@ func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer, bool) {
 			continue
 		}
 
-		if v.priority == 3 {
-			val, prio, math = v.renderer(H, V, false)
-			colorCache[v.layer], spritePrio, spriteMath = val, prio, math
-		} else if v.priority == 1 && v.layer != obj {
-			val, prio, math = v.renderer(H<<uint16(hires)+uint16(hires), V, false)
-			colorCache[v.layer] = val
-		} else if v.layer != obj {
-			val, prio, math = colorCache[v.layer], 0, true
+		if v.layer == obj {
+			if v.priority == 3 {
+				val, prio, math = v.renderer(H, V, false)
+				colorCache[v.layer], spritePrio, spriteMath = val, prio, math
+			} else {
+				val, prio, math = colorCache[v.layer], spritePrio, spriteMath
+			}
 		} else {
-			val, prio, math = colorCache[v.layer], spritePrio, spriteMath
+			if v.priority == 1 {
+				val, prio, math = v.renderer(H<<uint16(hires)+uint16(hires), V, false)
+				colorCache[v.layer] = val
+			} else {
+				val, prio, math = colorCache[v.layer], 0, true
+			}
 		}
 
 		if val == BG_BACKDROP_COLOR || prio != v.priority {
@@ -434,16 +438,20 @@ func (ppu *PPU) renderSubScreen(H, V uint16) (uint16, ppuLayer, bool) {
 			continue
 		}
 
-		if v.priority == 3 {
-			val, prio, math = v.renderer(H, V, true)
-			colorCache[v.layer], spritePrio, spriteMath = val, prio, math
-		} else if v.priority == 1 && v.layer != obj {
-			val, prio, math = v.renderer(H<<uint16(hires), V, true)
-			colorCache[v.layer] = val
-		} else if v.layer != obj {
-			val, prio, math = colorCache[v.layer], 0, true
+		if v.layer == obj {
+			if v.priority == 3 {
+				val, prio, math = v.renderer(H, V, false)
+				colorCache[v.layer], spritePrio, spriteMath = val, prio, math
+			} else {
+				val, prio, math = colorCache[v.layer], spritePrio, spriteMath
+			}
 		} else {
-			val, prio, math = colorCache[v.layer], spritePrio, spriteMath
+			if v.priority == 1 {
+				val, prio, math = v.renderer(H<<uint16(hires), V, false)
+				colorCache[v.layer] = val
+			} else {
+				val, prio, math = colorCache[v.layer], 0, true
+			}
 		}
 
 		if val == BG_BACKDROP_COLOR || prio != v.priority {

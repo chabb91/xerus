@@ -23,7 +23,6 @@ func main() {
 	defer pprof.StopCPUProfile()
 
 	ebiten.SetWindowTitle("SNES Emulator")
-	ebiten.SetWindowSize(ui.DefaultWidth*ui.ScalingFactor, ui.DefaultHeight*ui.ScalingFactor)
 
 	fb := ui.NewFramebuffer()
 	display := ui.NewEmulatorDisplay(fb)
