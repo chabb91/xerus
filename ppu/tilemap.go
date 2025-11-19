@@ -134,41 +134,35 @@ func (bg *Background) Invalidate(addr uint16) {
 	}
 }
 
-// in theory this entire thing can be cached between scrolling changes
 func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V uint16) (byte, byte, byte, uint16) {
+	var px byte
+	var tileIndex uint16
 	tileDimensions := tileMapDimensionsLUT[tileMapSize]
 	charDimensions := charTileSizeLUT[charTileSize]
-	if bgmode == 5 || bgmode == 6 {
-		rowCnt := (V >> charDimensions.divMask) & tileDimensions.modMaskH
+	rowCnt := (V >> charDimensions.divMask) & tileDimensions.modMaskH
+	row := byte(V & charDimensions.modMask)
+	if hires == 1 {
 		columnCnt := (H >> 4) & tileDimensions.modMaskW
 		tileMapID := (rowCnt>>5)<<tileDimensions.mapsPerRowMinusOne + columnCnt>>5
-		tileIndex := tileMapID<<10 + (rowCnt&31)<<5 + columnCnt&31
-		row := byte(V & charDimensions.modMask)
-		px := byte(H & 15)
-		charMapID := (row>>3)<<1 + (px >> 3)
-		row &= 7
-		px &= 7
-		return px, row, charMapID, tileIndex
+		tileIndex = tileMapID<<10 + (rowCnt&31)<<5 + columnCnt&31
+		px = byte(H & 15)
 	} else {
-		rowCnt := (V >> charDimensions.divMask) & tileDimensions.modMaskH
 		columnCnt := (H >> charDimensions.divMask) & tileDimensions.modMaskW
 		tileMapID := (rowCnt>>5)<<tileDimensions.mapsPerRowMinusOne + columnCnt>>5
-		tileIndex := tileMapID<<10 + (rowCnt&31)<<5 + columnCnt&31
-		row := byte(V & charDimensions.modMask)
-		px := byte(H & charDimensions.modMask)
+		tileIndex = tileMapID<<10 + (rowCnt&31)<<5 + columnCnt&31
+		px = byte(H & charDimensions.modMask)
 		if charTileSize == 0 {
 			return px, row, 0, tileIndex
 		}
-		charMapID := (row>>3)<<1 + (px >> 3)
-		row &= 7
-		px &= 7
-
-		return px, row, charMapID, tileIndex
 	}
+	charMapID := (row>>3)<<1 + (px >> 3)
+	row &= 7
+	px &= 7
+
+	return px, row, charMapID, tileIndex
 }
 
 // TODO this can be optimized like crazy
-// save the char reference in the tile
 // save the char address in the chartile
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
@@ -204,7 +198,7 @@ func (bg *Background) GetDotAt(H, V uint16, isSubscreen bool) (uint16, byte, boo
 	if tile.flipIndex > 0 {
 		if bg.charTileSize == 1 {
 			charMapID = compositeFlipLUT[charMapID][tile.flipIndex]
-		} else if bgmode == 5 || bgmode == 6 {
+		} else if hires == 1 {
 			charMapID = compositeFlip16x8LUT[charMapID][tile.flipIndex]
 		}
 	}
@@ -342,7 +336,7 @@ func (bt *BgTile) setup(tileIndex uint16, currentEpoch uint64) {
 		bt.charTiles[1] = &charTiles[charIndex+charMapIdToOffsetLUT[1]]
 		bt.charTiles[2] = &charTiles[charIndex+charMapIdToOffsetLUT[2]]
 		bt.charTiles[3] = &charTiles[charIndex+charMapIdToOffsetLUT[3]]
-	} else if bgmode == 5 || bgmode == 6 {
+	} else if hires == 1 {
 		bt.charTiles[1] = &charTiles[charIndex+charMapIdToOffsetLUT[1]]
 	}
 

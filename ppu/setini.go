@@ -1,9 +1,10 @@
 package ppu
 
+// TODO what is this clown file even. needs rewrite
 type SETINI struct {
 	externalSync bool
 	m7EXTBG      bool
-	hires        bool
+	//hires        bool
 	overscan     bool
 	objInterlace uint16
 	//screenInterlace byte
@@ -26,7 +27,8 @@ func NewSETINI(region VideoTiming) *SETINI {
 func (s *SETINI) setup(value byte) {
 	s.externalSync = value&0x80 != 0
 	s.m7EXTBG = value&0x40 != 0
-	s.hires = value&0x08 != 0
+	//s.hires = value&0x08 != 0
+	pseudoHires = value & 8 >> 3
 	s.setOverscan(value&0x04 != 0)
 	s.objInterlace = uint16(value & 0x02 >> 1)
 	//s.screenInterlace = value & 1

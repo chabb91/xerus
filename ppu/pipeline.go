@@ -350,7 +350,7 @@ func (ppu *PPU) isEnabledOnSub(layer ppuLayer) bool {
 }
 
 func (ppu *PPU) setBGMODE(value byte) {
-	bgmode = value & 7
+	ppu.BGMODE = value & 7
 
 	ppu.Bg1.charTileSize = (value >> 4) & 1
 	ppu.Bg2.charTileSize = (value >> 5) & 1

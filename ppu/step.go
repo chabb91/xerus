@@ -11,9 +11,11 @@ func (ppu *PPU) Step() {
 	draw := ppu.SETINI.TimingLUT[ppu.V*H_TOTAL+ppu.H]
 	if !ppu.FBlank {
 		if draw.IsVisible {
+			//TODO rewrite the Framebuffer so it is 256 wide but contains a structure that takes two colors
+			//that saves a matrix lookup a bitshift and an addition every dot
 			h := draw.H << 1
 			v := draw.V<<interlace + interlaceStep
-			if hires == 1 {
+			if hires == 1 || pseudoHires == 1 {
 				//flipping this causes artifacts because the subscreen is always first in the rendering order
 				ss, l2, _ := ppu.renderSubScreen(draw.H, v)
 				ms, l1, math := ppu.renderMainScreen(draw.H, v)
@@ -93,7 +95,7 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 	case ActionVBlankStart:
 		ppu.VBlank = true
 		ppu.InterruptScheduler.FireNmi()
-		if int(interlace) == 1 {
+		if interlace == 1 {
 			if interlaceStep == 1 {
 				ppu.Framebuffer.Swap()
 				interlaceStep = 0

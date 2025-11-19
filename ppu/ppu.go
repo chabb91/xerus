@@ -39,6 +39,8 @@ type PPU struct {
 	Bg4     *Background
 	BGxnOFS *BGxnOFS
 
+	BGMODE byte
+
 	Obj *Objects
 
 	FBlank, VBlank, HBlank bool
@@ -276,7 +278,6 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2133:
 		fmt.Println("SETINI", value)
 		ppu.SETINI.setup(value)
-		ppu.setHiresFlag()
 		ppu.Framebuffer.CurrentHeight, ppu.Framebuffer.CurrentWidth = ppu.SETINI.getScreenHeight()<<1, ppu.SETINI.getScreenWidth()<<1
 		ppu.Framebuffer.Interlace = byte(interlace)
 	default:
@@ -377,7 +378,7 @@ func (ppu *PPU) invalidateSpriteHi(id uint16) {
 }
 
 func (ppu *PPU) setHiresFlag() {
-	if bgmode == 5 || bgmode == 6 || ppu.SETINI.hires {
+	if ppu.BGMODE == 5 || ppu.BGMODE == 6 {
 		hires = 1
 	} else {
 		hires = 0
