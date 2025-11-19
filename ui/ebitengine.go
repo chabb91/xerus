@@ -25,7 +25,6 @@ type Framebuffer struct {
 	front, Back *[BufferWidth][BufferHeight]SnesColorData
 	swap        chan *[BufferWidth][BufferHeight]SnesColorData
 
-	CurrentWidth  int
 	CurrentHeight int
 	Interlace     byte
 }
@@ -35,7 +34,6 @@ func NewFramebuffer() *Framebuffer {
 		front:         new([BufferWidth][BufferHeight]SnesColorData),
 		Back:          new([BufferWidth][BufferHeight]SnesColorData),
 		swap:          make(chan *[BufferWidth][BufferHeight]SnesColorData, 1),
-		CurrentWidth:  BufferWidth,
 		CurrentHeight: 224,
 	}
 	return fb
@@ -79,13 +77,11 @@ func (ed *EmulatorDisplay) Update() error {
 	select {
 	case frame := <-ed.fb.swap:
 
-		newWidth := ed.fb.CurrentWidth << 1
 		newHeight := ed.fb.CurrentHeight << 1
-		if ed.ScreenWidth != newWidth || ed.ScreenHeight != newHeight {
-			ed.ScreenWidth = newWidth
+		if ed.ScreenHeight != newHeight {
 			ed.ScreenHeight = newHeight
-			ed.ActiveImage = ebiten.NewImage(newWidth, newHeight)
-			ebiten.SetWindowSize(int(float64(newWidth)*ScalingFactor), int(float64(newHeight)*ScalingFactor))
+			ed.ActiveImage = ebiten.NewImage(MaxScreenWidth, newHeight)
+			ebiten.SetWindowSize(int(float64(MaxScreenWidth)*ScalingFactor), int(float64(newHeight)*ScalingFactor))
 		}
 		ed.convertBGR15ToRGBA(frame)
 
