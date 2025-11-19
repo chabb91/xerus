@@ -11,8 +11,6 @@ func (ppu *PPU) Step() {
 	draw := ppu.SETINI.TimingLUT[ppu.V*H_TOTAL+ppu.H]
 	if !ppu.FBlank {
 		if draw.IsVisible {
-			//TODO rewrite the Framebuffer so it is 256 wide but contains a structure that takes two colors
-			//that saves a matrix lookup a bitshift and an addition every dot
 			h := draw.H
 			v := draw.V<<interlace + interlaceStep
 			if hires == 1 || pseudoHires == 1 {
