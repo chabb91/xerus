@@ -99,9 +99,10 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 		vActive = timing.OverscanHeight
 	}
 
-	lut := make(VisibilityLUT, timing.TotalScanlines*H_TOTAL)
+	//added +1 to cover the extra scanline edge case every other frame
+	lut := make(VisibilityLUT, (timing.TotalScanlines+1)*H_TOTAL)
 
-	for v := 0; v < timing.TotalScanlines; v++ {
+	for v := 0; v < timing.TotalScanlines+1; v++ {
 		for h := 0; h < H_TOTAL; h++ {
 
 			action := ActionNone

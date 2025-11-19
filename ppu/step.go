@@ -55,7 +55,7 @@ func (ppu *PPU) Step() {
 	if ppu.H >= H_TOTAL {
 		ppu.H = 0
 		ppu.V++
-		if ppu.V >= timing.TotalScanlines {
+		if ppu.V >= timing.TotalScanlines+int(interlace&(1-interlaceStep)) {
 			ppu.V = 0
 
 			elapsed := time.Since(frameStartTime)
