@@ -57,6 +57,9 @@ type PPU struct {
 	InterruptScheduler InterruptScheduler
 	HdmaScheduler      HdmaScheduler
 
+	IrqFunc        func() bool
+	IrqTimeUpTimer byte
+
 	Framebuffer *ui.Framebuffer
 }
 

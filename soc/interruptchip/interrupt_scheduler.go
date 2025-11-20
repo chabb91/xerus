@@ -3,6 +3,7 @@ package interruptchip
 import (
 	"SNES_emulator/cpu"
 	"SNES_emulator/memory"
+	"SNES_emulator/ppu"
 )
 
 type irqMode func(*InterruptController) bool
@@ -11,17 +12,14 @@ type InterruptController struct {
 	Htime, Vtime uint16
 	rdnmi        byte
 	Timeup       byte
-	//todo this is just part of the ppu fr fr
-	hvbjoy byte
+	hvbjoy       byte
 
 	cpu *cpu.CPU
-	//TODO this also has access to joypad and ppu but of course those dont exist yet.
-
-	autoJoypad       bool
-	autoJoypadStatus bool
+	ppu *ppu.PPU
 
 	nmi bool
-	irq irqMode
+
+	autoJoypad bool
 
 	JOY1 uint16
 	JOY2 uint16
@@ -31,12 +29,15 @@ type InterruptController struct {
 	bus memory.Bus
 }
 
-func NewInterruptController(bus memory.Bus, cpu *cpu.CPU) *InterruptController {
+func NewInterruptController(bus memory.Bus, cpu *cpu.CPU, ppu *ppu.PPU) *InterruptController {
 	return &InterruptController{
 		cpu:    cpu,
+		ppu:    ppu,
 		bus:    bus,
 		rdnmi:  0x02,
 		hvbjoy: 0x0,
+		Htime:  0x1FF,
+		Vtime:  0x1FF,
 	}
 }
 
@@ -44,6 +45,10 @@ func (ic *InterruptController) FireNmi() {
 	if ic.nmi {
 		ic.cpu.NmiSignal = true
 	}
+}
+
+func (ic *InterruptController) FireIrq() {
+	ic.cpu.IrqSignal = true
 }
 
 func (ic *InterruptController) SetHvbjoyV(on bool) {
@@ -103,13 +108,13 @@ func (ic *InterruptController) SetNmitimen(value byte) {
 
 	switch (value >> 4) & 3 {
 	case 0:
-		ic.irq = irq00
+		ic.ppu.IrqFunc = nil
 	case 1:
-		ic.irq = irq10
+		ic.ppu.IrqFunc = func() bool { return irq10(ic, ic.ppu) }
 	case 2:
-		ic.irq = irq01
+		ic.ppu.IrqFunc = func() bool { return irq01(ic, ic.ppu) }
 	case 3:
-		ic.irq = irq11
+		ic.ppu.IrqFunc = func() bool { return irq11(ic, ic.ppu) }
 	}
 
 	if value&1 == 1 {
@@ -120,19 +125,19 @@ func (ic *InterruptController) SetNmitimen(value byte) {
 }
 
 func (ic *InterruptController) SetHtimeL(value byte) {
-	ic.Htime = (ic.Htime & 0xFF00) | uint16(value)
+	ic.Htime = (ic.Htime & 0x1F00) | uint16(value)
 }
 
 func (ic *InterruptController) SetHtimeH(value byte) {
-	ic.Htime = (ic.Htime & 0xFF) | uint16(value)<<8
+	ic.Htime = (ic.Htime & 0xFF) | ((uint16(value) << 8) & 1)
 }
 
 func (ic *InterruptController) SetVtimeL(value byte) {
-	ic.Vtime = (ic.Vtime & 0xFF00) | uint16(value)
+	ic.Vtime = (ic.Vtime & 0x1F00) | uint16(value)
 }
 
 func (ic *InterruptController) SetVtimeH(value byte) {
-	ic.Vtime = (ic.Vtime & 0xFF) | uint16(value)<<8
+	ic.Vtime = (ic.Vtime & 0xFF) | ((uint16(value) << 8) & 1)
 }
 
 // used as the actual register
@@ -152,20 +157,25 @@ func (ic *InterruptController) SetRdnmi(nmiOn bool) {
 	}
 }
 
-func irq00(_ *InterruptController) bool {
-	return false
+func (ic *InterruptController) SetTimeUp() {
+	ic.Timeup = 0x80
 }
 
-func irq01(ic *InterruptController) bool {
-	//TODO 123=ppu.V
-	return ic.Vtime == 123
+func (ic *InterruptController) ReadTimeUp() byte {
+	ret := (ic.Timeup & 0x80) | (ic.bus.GetOpenBus() & 0x7F)
+	ic.Timeup = 0
+
+	return ret
 }
 
-func irq10(ic *InterruptController) bool {
-	//TODO 123=ppu.H
-	return ic.Htime == 123
+func irq01(ic *InterruptController, ppu *ppu.PPU) bool {
+	return int(ic.Vtime+2) == ppu.V
 }
 
-func irq11(ic *InterruptController) bool {
-	return irq01(ic) && irq10(ic)
+func irq10(ic *InterruptController, ppu *ppu.PPU) bool {
+	return int(ic.Htime+3) == ppu.H
+}
+
+func irq11(ic *InterruptController, ppu *ppu.PPU) bool {
+	return int(ic.Htime+3) == ppu.H && int(ic.Vtime+2) == ppu.V
 }

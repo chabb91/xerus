@@ -24,7 +24,7 @@ type SoC struct {
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/WaveHDMA.sfc")
+	romData, err := cartridge.Load("/home/chabb/Downloads/HiColor64PerTileRowPseudoHiRes.sfc")
 	if err != nil {
 		panic(err)
 	}
@@ -37,7 +37,7 @@ func NewSoC(framebuffer *ui.Framebuffer) *SoC {
 		bus:    bus,
 	}
 	soc.JoypadController = NewJoypadController(bus)
-	soc.InterruptController = interruptchip.NewInterruptController(bus, soc.Cpu)
+	soc.InterruptController = interruptchip.NewInterruptController(bus, soc.Cpu, soc.Ppu)
 	soc.Ppu.InterruptScheduler = soc.InterruptController
 	soc.Ppu.HdmaScheduler = soc.Dma
 	soc.Ppu.Framebuffer = framebuffer
@@ -54,6 +54,8 @@ func (soc *SoC) Read(addr uint16) (byte, error) {
 	switch addr {
 	case 0x4210:
 		return soc.InterruptController.ReadRdnmi(), nil
+	case 0x4211:
+		return soc.InterruptController.ReadTimeUp(), nil
 	case 0x4212:
 		return soc.InterruptController.ReadHvbjoy(), nil
 	case 0x4214:
@@ -89,8 +91,9 @@ func (soc *SoC) Write(addr uint16, value byte) error {
 	switch addr {
 	case 0x4200:
 		fmt.Println("NMITIMEN: ", value)
-		//TODO THIS IS OMEGA EXPERIMENTAL
 		soc.InterruptController.SetNmitimen(value)
+	case 0x4201:
+		fmt.Println("WRIO: ", value)
 	case 0x4202:
 		soc.MulDiv.Wrmpya = value
 	case 0x4203:
@@ -103,6 +106,16 @@ func (soc *SoC) Write(addr uint16, value byte) error {
 		soc.MulDiv.SetDivisorB(value)
 	case 0x4207:
 		fmt.Println("HTIMEL: ", value)
+		soc.InterruptController.SetHtimeL(value)
+	case 0x4208:
+		fmt.Println("HTIMEH: ", value)
+		soc.InterruptController.SetHtimeH(value)
+	case 0x4209:
+		fmt.Println("VTIMEL: ", value)
+		soc.InterruptController.SetVtimeL(value)
+	case 0x420A:
+		fmt.Println("VTIMEH: ", value)
+		soc.InterruptController.SetVtimeH(value)
 	case 0x420B:
 		soc.Dma.Mdmaen = value
 	case 0x420C:

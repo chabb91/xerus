@@ -51,6 +51,19 @@ func (ppu *PPU) Step() {
 		ppu.performAction(draw)
 	}
 
+	if irqf := ppu.IrqFunc; irqf != nil && irqf() {
+		ppu.InterruptScheduler.FireIrq()
+		ppu.IrqTimeUpTimer = 54
+	}
+
+	if ppu.IrqTimeUpTimer != 0 {
+		if ppu.IrqTimeUpTimer > 0 {
+			ppu.IrqTimeUpTimer--
+		} else {
+			ppu.InterruptScheduler.SetTimeUp()
+		}
+	}
+
 	ppu.H++
 	if ppu.H >= H_TOTAL {
 		ppu.H = 0
@@ -76,7 +89,9 @@ type InterruptScheduler interface {
 	SetHvbjoyV(bool)
 	SetHvbjoyH(bool)
 	SetHvbjoyA(bool)
+	SetTimeUp()
 	FireNmi()
+	FireIrq()
 }
 
 type HdmaScheduler interface {
