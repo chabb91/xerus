@@ -6,8 +6,6 @@ import (
 	"SNES_emulator/ppu"
 )
 
-type irqMode func(*InterruptController) bool
-
 type InterruptController struct {
 	Htime, Vtime uint16
 	rdnmi        byte
@@ -109,12 +107,13 @@ func (ic *InterruptController) SetNmitimen(value byte) {
 	switch (value >> 4) & 3 {
 	case 0:
 		ic.ppu.IrqFunc = nil
+		ic.Timeup = 0
 	case 1:
-		ic.ppu.IrqFunc = func() bool { return irq10(ic, ic.ppu) }
+		ic.ppu.IrqFunc = func() bool { return irqX(ic, ic.ppu) }
 	case 2:
-		ic.ppu.IrqFunc = func() bool { return irq01(ic, ic.ppu) }
+		ic.ppu.IrqFunc = func() bool { return irqY(ic, ic.ppu) }
 	case 3:
-		ic.ppu.IrqFunc = func() bool { return irq11(ic, ic.ppu) }
+		ic.ppu.IrqFunc = func() bool { return irqXY(ic, ic.ppu) }
 	}
 
 	if value&1 == 1 {
@@ -163,19 +162,22 @@ func (ic *InterruptController) SetTimeUp() {
 
 func (ic *InterruptController) ReadTimeUp() byte {
 	ret := (ic.Timeup & 0x80) | (ic.bus.GetOpenBus() & 0x7F)
-	ic.Timeup = 0
+	if ic.ppu.IrqFunc == nil || !ic.ppu.IrqFunc() {
+		ic.Timeup = 0
+		ic.cpu.IrqSignal = false
+	}
 
 	return ret
 }
 
-func irq01(ic *InterruptController, ppu *ppu.PPU) bool {
-	return int(ic.Vtime+2) == ppu.V
+func irqY(ic *InterruptController, ppu *ppu.PPU) bool {
+	return int(ic.Vtime+2) == ppu.V && ppu.H == 2 //HTIME=0 + 2.5
 }
 
-func irq10(ic *InterruptController, ppu *ppu.PPU) bool {
+func irqX(ic *InterruptController, ppu *ppu.PPU) bool {
 	return int(ic.Htime+3) == ppu.H
 }
 
-func irq11(ic *InterruptController, ppu *ppu.PPU) bool {
+func irqXY(ic *InterruptController, ppu *ppu.PPU) bool {
 	return int(ic.Htime+3) == ppu.H && int(ic.Vtime+2) == ppu.V
 }

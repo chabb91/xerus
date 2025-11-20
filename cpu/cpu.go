@@ -108,8 +108,6 @@ func (c *CPU) handleNMI() bool {
 	c.currentInstruction.Reset(c)
 	c.NmiSignal = false
 	c.executionState = normalState
-	//nmi should be cleared from the source that called it i just dont have one yet
-	//TODO
 	return true
 }
 
@@ -120,7 +118,7 @@ func (c *CPU) handleIRQ() bool {
 	if !c.r.hasFlag(FlagI) {
 		c.currentInstruction = c.hwInterrupts[irqId]
 		c.currentInstruction.Reset(c)
-		c.IrqSignal = false
+		//c.IrqSignal = false
 		//irq should be cleared from the source that called it i just dont have one yet
 		//If /IRQ is kept LOW then same (old) interrupt is executed again as soon as setting I=0. If /NMI is kept LOW then no further NMIs can be executed.
 		//TODO
@@ -128,7 +126,7 @@ func (c *CPU) handleIRQ() bool {
 		return true
 	}
 	if c.executionState == waitState {
-		c.IrqSignal = false
+		//c.IrqSignal = false
 		//irq should be cleared from the source that called it i just dont have one yet
 		//If /IRQ is kept LOW then same (old) interrupt is executed again as soon as setting I=0. If /NMI is kept LOW then no further NMIs can be executed.
 		//TODO

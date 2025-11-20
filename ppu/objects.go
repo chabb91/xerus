@@ -98,6 +98,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 	spriteCnt := 0
 	tileCnt := int16(0)
 	priority := ob.ds.getPriorityRotation()
+	cgram := ob.ds.getCGRAM()
 	for i := range SCREEN_WIDTH {
 		ob.resolvedDotsOnScanLine[i].color = BG_BACKDROP_COLOR
 	}
@@ -144,7 +145,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 			screenPos := sprite.posX + j
 			if screenPos < int16(SCREEN_WIDTH) && screenPos >= 0 {
 				if renderDot := &ob.resolvedDotsOnScanLine[screenPos]; renderDot.color == BG_BACKDROP_COLOR {
-					renderDot.color, renderDot.priority = ob.drawASpriteByRef(sprite, dimensions, uint16(screenPos), V), sprite.priority
+					renderDot.color, renderDot.priority = ob.drawASpriteByRef(sprite, dimensions, uint16(screenPos), V, cgram), sprite.priority
 					renderDot.partakesInColorMath = sprite.paletteNum >= 4
 				}
 			}
@@ -152,7 +153,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 	}
 }
 
-func (ob *Objects) drawASpriteByRef(sprite *Sprite, dimensions OBTileSize, H, V uint16) uint16 {
+func (ob *Objects) drawASpriteByRef(sprite *Sprite, dimensions OBTileSize, H, V uint16, cgram []uint16) uint16 {
 	x := H - uint16(sprite.posX)
 	y := uint16(sprite.posY)
 	if V >= y {
@@ -183,7 +184,7 @@ func (ob *Objects) drawASpriteByRef(sprite *Sprite, dimensions OBTileSize, H, V 
 	if colorIndex&0xF == 0 {
 		return BG_BACKDROP_COLOR
 	} else {
-		return ob.ds.getCGRAM()[colorIndex]
+		return cgram[colorIndex]
 	}
 }
 
