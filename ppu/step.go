@@ -108,8 +108,6 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 		ppu.HBlank = true
 	case ActionHBlankEnd:
 		ppu.HBlank = false
-	case ActionHBlankEndInterlaceFieldToggle:
-		ppu.HBlank = false
 	case ActionSetHvbjoyV:
 		ppu.InterruptScheduler.SetHvbjoyV(true)
 	case ActionSetHvbjoyH:

@@ -13,7 +13,6 @@ const (
 	ActionVBlankEnd
 	ActionHBlankStart
 	ActionHBlankEnd
-	ActionHBlankEndInterlaceFieldToggle
 	ActionOAMReset
 	ActionHDMAStart
 	ActionHDMAReload
@@ -144,11 +143,7 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 				action = setAction(action, ActionPrepareScanline, v, h)
 			}
 			if h == 1 {
-				if v == 0 {
-					action = setAction(action, ActionHBlankEndInterlaceFieldToggle, v, h)
-				} else {
-					action = setAction(action, ActionHBlankEnd, v, h)
-				}
+				action = setAction(action, ActionHBlankEnd, v, h)
 			}
 			if h == 274 {
 				action = setAction(action, ActionHBlankStart, v, h)
