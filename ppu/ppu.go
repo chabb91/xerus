@@ -48,6 +48,9 @@ type PPU struct {
 
 	H, V int
 
+	HLatch, VLatch int
+	HHigh, VHigh   bool
+
 	modePriority       []pipelineTemplate
 	mainRenderPipeline []pipelineTemplate
 	subRenderPipeline  []pipelineTemplate
@@ -103,6 +106,10 @@ func (ppu *PPU) Init() {
 // TODO
 func (ppu *PPU) Read(addr uint16) (byte, error) {
 	switch addr {
+	case 0x2137:
+		ppu.VLatch = ppu.V
+		ppu.HLatch = ppu.H
+		return 0, nil
 	case 0x2138:
 		return ppu.OAM.ReadOAMData(), nil
 	case 0x2139:
@@ -111,10 +118,28 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 		return ppu.VRAM.ReadDataHigh(), nil
 	case 0x213B:
 		return ppu.CGRAM.ReadData(), nil
-	/*case 0x213D:
-	return 0x33, nil*/
-	/*case 0x213F:
-	return 0x13, nil*/
+	case 0x213C:
+		if ppu.HHigh {
+			ppu.HHigh = !ppu.HHigh
+			//7 bits are ppu2 open bus
+			return byte(ppu.HLatch>>8) & 1, nil
+		} else {
+			ppu.HHigh = !ppu.HHigh
+			return byte(ppu.HLatch), nil
+		}
+	case 0x213D:
+		if ppu.VHigh {
+			ppu.VHigh = !ppu.VHigh
+			//7 bits are ppu2 open bus
+			return byte(ppu.VLatch>>8) & 1, nil
+		} else {
+			ppu.VHigh = !ppu.VHigh
+			return byte(ppu.VLatch), nil
+		}
+	case 0x213F:
+		ppu.VHigh, ppu.HHigh = false, false
+		return 0, nil
+		//return 0x13, nil
 	default:
 		return 0, fmt.Errorf("invalid PPU register read at $%04X", addr)
 	}
