@@ -53,7 +53,7 @@ func (ppu *PPU) Step() {
 
 	if irqf := ppu.IrqFunc; irqf != nil && irqf() {
 		ppu.InterruptScheduler.FireIrq()
-		ppu.IrqTimeUpTimer = 54
+		ppu.IrqTimeUpTimer = 20
 	}
 
 	if ppu.IrqTimeUpTimer != 0 {

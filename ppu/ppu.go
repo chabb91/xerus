@@ -1,9 +1,13 @@
 package ppu
 
 import (
+	"SNES_emulator/memory"
 	"SNES_emulator/ui"
 	"fmt"
 )
+
+const CHIP_5C77 = byte(1)
+const CHIP_5C78_VERSION = byte(3)
 
 type tileDataSource interface {
 	getOAMLow() []byte
@@ -50,6 +54,8 @@ type PPU struct {
 
 	HLatch, VLatch int
 	HHigh, VHigh   bool
+	Wrio           *byte //maintained elsewhere but the ppu needs access to this
+	LatchFlag      byte
 
 	modePriority       []pipelineTemplate
 	mainRenderPipeline []pipelineTemplate
@@ -63,14 +69,18 @@ type PPU struct {
 	IrqFunc        func() bool
 	IrqTimeUpTimer byte
 
+	//required for like 1 thing only. unlucky
+	bus memory.Bus
+
 	Framebuffer *ui.Framebuffer
 }
 
-func NewPPU() *PPU {
+func NewPPU(bus memory.Bus) *PPU {
 	ppu := &PPU{
 		CGRAM:   NewCGRAM(),
 		BGxnOFS: &BGxnOFS{},
 		SETINI:  NewSETINI(NTSC_TIMING),
+		bus:     bus,
 	}
 	ppu.mainRenderPipeline = make([]pipelineTemplate, 0, 12)
 	ppu.subRenderPipeline = make([]pipelineTemplate, 0, 12)
@@ -107,9 +117,8 @@ func (ppu *PPU) Init() {
 func (ppu *PPU) Read(addr uint16) (byte, error) {
 	switch addr {
 	case 0x2137:
-		ppu.VLatch = ppu.V
-		ppu.HLatch = ppu.H
-		return 0, nil
+		ppu.LatchHV()
+		return ppu.bus.GetOpenBus(), nil
 	case 0x2138:
 		return ppu.OAM.ReadOAMData(), nil
 	case 0x2139:
@@ -119,27 +128,33 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 	case 0x213B:
 		return ppu.CGRAM.ReadData(), nil
 	case 0x213C:
+		var ret byte
 		if ppu.HHigh {
-			ppu.HHigh = !ppu.HHigh
 			//7 bits are ppu2 open bus
-			return byte(ppu.HLatch>>8) & 1, nil
+			ret = byte(ppu.HLatch>>8) & 1
 		} else {
-			ppu.HHigh = !ppu.HHigh
-			return byte(ppu.HLatch), nil
+			ret = byte(ppu.HLatch)
 		}
+		ppu.HHigh = !ppu.HHigh
+		return ret, nil
 	case 0x213D:
+		var ret byte
 		if ppu.VHigh {
-			ppu.VHigh = !ppu.VHigh
 			//7 bits are ppu2 open bus
-			return byte(ppu.VLatch>>8) & 1, nil
+			ret = byte(ppu.VLatch>>8) & 1
 		} else {
-			ppu.VHigh = !ppu.VHigh
-			return byte(ppu.VLatch), nil
+			ret = byte(ppu.VLatch)
 		}
+		ppu.VHigh = !ppu.VHigh
+		return ret, nil
 	case 0x213F:
 		ppu.VHigh, ppu.HHigh = false, false
-		return 0, nil
-		//return 0x13, nil
+		tmpLatch := ppu.LatchFlag
+		if *ppu.Wrio >= 0x80 {
+			ppu.LatchFlag = 0
+		}
+		//bit 5 is ppu2 open bus TODO
+		return byte(interlaceStep&1)<<7 | tmpLatch<<6 | ppu.SETINI.Timing.RegionId<<4 | CHIP_5C78_VERSION, nil
 	default:
 		return 0, fmt.Errorf("invalid PPU register read at $%04X", addr)
 	}
@@ -410,5 +425,13 @@ func (ppu *PPU) setHiresFlag() {
 		hires = 1
 	} else {
 		hires = 0
+	}
+}
+
+func (ppu *PPU) LatchHV() {
+	if *ppu.Wrio >= 0x80 {
+		ppu.HLatch = ppu.H
+		ppu.VLatch = ppu.V
+		ppu.LatchFlag = 1
 	}
 }

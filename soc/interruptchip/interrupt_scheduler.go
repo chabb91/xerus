@@ -6,6 +6,8 @@ import (
 	"SNES_emulator/ppu"
 )
 
+const CHIP_5A22_VERSION = byte(2)
+
 type InterruptController struct {
 	Htime, Vtime uint16
 	rdnmi        byte
@@ -18,6 +20,8 @@ type InterruptController struct {
 	nmi bool
 
 	autoJoypad bool
+
+	WRIO byte //not sure where to put it its related to controllers ig
 
 	JOY1 uint16
 	JOY2 uint16
@@ -32,10 +36,11 @@ func NewInterruptController(bus memory.Bus, cpu *cpu.CPU, ppu *ppu.PPU) *Interru
 		cpu:    cpu,
 		ppu:    ppu,
 		bus:    bus,
-		rdnmi:  0x02,
+		rdnmi:  CHIP_5A22_VERSION,
 		hvbjoy: 0x0,
 		Htime:  0x1FF,
 		Vtime:  0x1FF,
+		WRIO:   0xFF,
 	}
 }
 

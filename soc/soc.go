@@ -24,7 +24,7 @@ type SoC struct {
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/HiColor64PerTileRowPseudoHiRes.sfc")
+	romData, err := cartridge.Load("/home/chabb/Downloads/timing_test.sfc")
 	if err != nil {
 		panic(err)
 	}
@@ -33,7 +33,7 @@ func NewSoC(framebuffer *ui.Framebuffer) *SoC {
 		MulDiv: muldivchip.NewMulDiv(),
 		Dma:    dma.NewDma(bus),
 		Cpu:    cpu.NewCPU(bus),
-		Ppu:    ppu.NewPPU(),
+		Ppu:    ppu.NewPPU(bus),
 		bus:    bus,
 	}
 	soc.JoypadController = NewJoypadController(bus)
@@ -41,6 +41,7 @@ func NewSoC(framebuffer *ui.Framebuffer) *SoC {
 	soc.Ppu.InterruptScheduler = soc.InterruptController
 	soc.Ppu.HdmaScheduler = soc.Dma
 	soc.Ppu.Framebuffer = framebuffer
+	soc.Ppu.Wrio = &soc.InterruptController.WRIO
 	soc.Ppu.Init()
 
 	bus.RegisterRange(0x4200, 0x421F, soc, "internal CPU")
@@ -94,6 +95,12 @@ func (soc *SoC) Write(addr uint16, value byte) error {
 		soc.InterruptController.SetNmitimen(value)
 	case 0x4201:
 		fmt.Println("WRIO: ", value)
+		wrio := &soc.InterruptController.WRIO
+		if *wrio&0x80 != 0 && value&0x80 == 0 {
+			soc.Ppu.LatchHV()
+		}
+
+		*wrio = value
 	case 0x4202:
 		soc.MulDiv.Wrmpya = value
 	case 0x4203:

@@ -70,6 +70,7 @@ type VideoTiming struct {
 
 	TotalScanlines int
 	TargetFrameMS  time.Duration
+	RegionId       byte
 
 	VisibilityLUTs map[bool]VisibilityLUT
 }
@@ -81,6 +82,7 @@ var NTSC_TIMING = VideoTiming{
 	InterlaceHeight: NTSC_STANDARD_HEIGHT * 2,
 	TotalScanlines:  NTSC_TOTAL_SCANLINES,
 	TargetFrameMS:   time.Millisecond * 1000.0 / 60,
+	RegionId:        0,
 	VisibilityLUTs:  make(map[bool]VisibilityLUT),
 }
 
@@ -91,6 +93,7 @@ var PAL_TIMING = VideoTiming{
 	InterlaceHeight: PAL_STANDARD_HEIGHT * 2,
 	TotalScanlines:  PAL_TOTAL_SCANLINES,
 	TargetFrameMS:   time.Millisecond * 1000.0 / 50.0,
+	RegionId:        1,
 	VisibilityLUTs:  make(map[bool]VisibilityLUT),
 }
 
