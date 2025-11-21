@@ -33,7 +33,7 @@ func (s *SETINI) setup(value byte) {
 	s.objInterlace = uint16(value & 0x02 >> 1)
 	//s.screenInterlace = value & 1
 	interlace = uint16(value & 1)
-	interlaceStep = 0
+	//interlaceStep = 0
 }
 
 func (s *SETINI) setOverscan(overscan bool) {

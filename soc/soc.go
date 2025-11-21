@@ -24,7 +24,7 @@ type SoC struct {
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/jonasquinn/nmi_irq/nmi_pf/demo_nmitest_fix.smc")
+	romData, err := cartridge.Load("/home/chabb/Downloads/jonasquinn/nmi_irq/nmi_pf/test_nmi.smc")
 	if err != nil {
 		panic(err)
 	}
