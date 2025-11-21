@@ -24,7 +24,7 @@ type SoC struct {
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/timing_test.sfc")
+	romData, err := cartridge.Load("/home/chabb/Downloads/jonasquinn/nmi_irq/nmi_pf/demo_nmitest_fix.smc")
 	if err != nil {
 		panic(err)
 	}
@@ -94,6 +94,7 @@ func (soc *SoC) Write(addr uint16, value byte) error {
 		fmt.Println("NMITIMEN: ", value)
 		soc.InterruptController.SetNmitimen(value)
 	case 0x4201:
+		//TODO add Lightgun High-to-Low transition support
 		fmt.Println("WRIO: ", value)
 		wrio := &soc.InterruptController.WRIO
 		if *wrio&0x80 != 0 && value&0x80 == 0 {

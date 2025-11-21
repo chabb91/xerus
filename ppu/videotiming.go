@@ -124,7 +124,7 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 			if v == vActive+1 && h == 22 {
 				action = setAction(action, ActionSetHvbjoyV, v, h)
 			}
-			if v == vActive+1 && h == 54 {
+			if v == vActive+1 && h == 38 { // a bit tighter than the docs but it fails above 48
 				action = setAction(action, ActionSetRdnmi, v, h)
 			}
 			if v == vActive+1 && h == 10 {

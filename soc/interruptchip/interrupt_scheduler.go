@@ -17,7 +17,8 @@ type InterruptController struct {
 	cpu *cpu.CPU
 	ppu *ppu.PPU
 
-	nmi bool
+	nmi       bool
+	rdnmiRead bool //reading $4210 will prevent an NMI from firing
 
 	autoJoypad bool
 
@@ -45,7 +46,7 @@ func NewInterruptController(bus memory.Bus, cpu *cpu.CPU, ppu *ppu.PPU) *Interru
 }
 
 func (ic *InterruptController) FireNmi() {
-	if ic.nmi {
+	if ic.nmi && !ic.rdnmiRead {
 		ic.cpu.NmiSignal = true
 	}
 }
@@ -104,6 +105,10 @@ func (ic *InterruptController) performAutoJoypadRead() {
 
 func (ic *InterruptController) SetNmitimen(value byte) {
 	if value >= 0x80 {
+		// strobing (lowering and raising) $4200 triggers an NMI after vblank -byuu
+		if ic.hvbjoy >= 0x80 && !ic.nmi && !ic.rdnmiRead {
+			ic.cpu.NmiSignal = true
+		}
 		ic.nmi = true
 	} else {
 		ic.nmi = false
@@ -148,6 +153,9 @@ func (ic *InterruptController) SetVtimeH(value byte) {
 func (ic *InterruptController) ReadRdnmi() byte {
 	ret := (ic.rdnmi & 0x8F) | (ic.bus.GetOpenBus() & 0x70)
 	ic.rdnmi &= 0x7F
+	if !ic.rdnmiRead {
+		ic.rdnmiRead = ret >= 0x80
+	}
 
 	return ret
 }
@@ -158,6 +166,7 @@ func (ic *InterruptController) SetRdnmi(nmiOn bool) {
 		ic.rdnmi |= 0x80
 	} else {
 		ic.rdnmi &= 0x7F
+		ic.rdnmiRead = false
 	}
 }
 
