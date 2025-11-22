@@ -59,10 +59,10 @@ func (ppu *PPU) Step() {
 	}
 
 	if irqf := ppu.IrqFunc; irqf != nil && irqf() {
-		if !(ppu.V == 261 && ppu.H == 339) {
-			ppu.InterruptScheduler.FireIrq()
-			ppu.IrqTimeUpTimer = 3
-		}
+		//if !(ppu.V == 261 && ppu.H == 339) {
+		ppu.InterruptScheduler.FireIrq()
+		ppu.IrqTimeUpTimer = 3 //2.5 - 3.5 dots after irq fires TIMEUP gets set as i understand
+		//}
 	}
 
 	ppu.H++

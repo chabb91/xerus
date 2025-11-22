@@ -134,6 +134,7 @@ func (ic *InterruptController) SetNmitimen(value byte) {
 	}
 }
 
+// TODO apparently setting Vtime to a number the ppu is currently on should re fire irq but that fails the only test i have for it
 func (ic *InterruptController) SetHtimeL(value byte) {
 	ic.Htime = (ic.Htime & 0x1F00) | uint16(value)
 }
@@ -189,6 +190,7 @@ func irqY(ic *InterruptController, ppu *ppu.PPU) bool {
 	return int(ic.Vtime) == ppu.V && ppu.H == 0
 }
 
+// apparently irq cannot be latched over H=339
 func irqX(ic *InterruptController, ppu *ppu.PPU) bool {
 	return ppu.H < 340 && int(ic.Htime) == ppu.H
 }
