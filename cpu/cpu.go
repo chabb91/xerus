@@ -2,7 +2,6 @@ package cpu
 
 import (
 	"SNES_emulator/memory"
-	"fmt"
 )
 
 const (
@@ -27,7 +26,6 @@ type CPU struct {
 	hwInterrupts []Instruction
 	bus          memory.Bus
 
-	//placeholder. TODO make it into a channel or something nice
 	abortSignal bool
 	resetSignal bool
 	NmiSignal   bool
@@ -53,7 +51,6 @@ func NewCPU(bus memory.Bus) *CPU {
 	return cpu
 }
 
-// TODO these signals should all be channels in the future
 func (c *CPU) StepCycle() bool {
 	if c.handleReset() {
 		return false
@@ -130,7 +127,6 @@ func (c *CPU) handleIRQ() bool {
 	}
 
 	if !hasFlag {
-		//fmt.Println("IRQ<<I not masked")
 		c.currentInstruction = c.hwInterrupts[irqId]
 		c.currentInstruction.Reset(c)
 		c.executionState = normalState
@@ -138,9 +134,7 @@ func (c *CPU) handleIRQ() bool {
 	}
 	if c.executionState == waitState {
 		c.executionState = normalState
-		fmt.Println("breaking wai")
 	}
-	//fmt.Println("IRQ<<I masked")
 	return false
 }
 

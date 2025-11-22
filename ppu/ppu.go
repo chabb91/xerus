@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const CHIP_5C77 = byte(1)
+const CHIP_5C77_VERSION = byte(1)
 const CHIP_5C78_VERSION = byte(3)
 
 type tileDataSource interface {

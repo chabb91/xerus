@@ -51,16 +51,17 @@ func (ppu *PPU) Step() {
 		ppu.performAction(draw)
 	}
 
-	if irqf := ppu.IrqFunc; irqf != nil && irqf() {
-		ppu.InterruptScheduler.FireIrq()
-		ppu.IrqTimeUpTimer = 20
+	if ppu.IrqTimeUpTimer > 0 {
+		ppu.IrqTimeUpTimer--
+		if ppu.IrqTimeUpTimer == 0 {
+			ppu.InterruptScheduler.SetTimeUp()
+		}
 	}
 
-	if ppu.IrqTimeUpTimer != 0 {
-		if ppu.IrqTimeUpTimer > 0 {
-			ppu.IrqTimeUpTimer--
-		} else {
-			ppu.InterruptScheduler.SetTimeUp()
+	if irqf := ppu.IrqFunc; irqf != nil && irqf() {
+		if !(ppu.V == 261 && ppu.H == 339) {
+			ppu.InterruptScheduler.FireIrq()
+			ppu.IrqTimeUpTimer = 3
 		}
 	}
 
@@ -137,7 +138,7 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 	case ActionHDMAReload:
 		ppu.HdmaScheduler.Reload()
 	case ActionShortLine:
-		if interlace == 0 {
+		if interlace == 0 && interlaceStep == 1 {
 			ppu.H++
 		}
 	case ActionLongLine:

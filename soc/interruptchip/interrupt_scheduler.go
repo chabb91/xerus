@@ -118,6 +118,7 @@ func (ic *InterruptController) SetNmitimen(value byte) {
 	case 0:
 		ic.ppu.IrqFunc = nil
 		ic.Timeup = 0
+		ic.cpu.IrqSignal = false
 	case 1:
 		ic.ppu.IrqFunc = func() bool { return irqX(ic, ic.ppu) }
 	case 2:
@@ -138,7 +139,7 @@ func (ic *InterruptController) SetHtimeL(value byte) {
 }
 
 func (ic *InterruptController) SetHtimeH(value byte) {
-	ic.Htime = (ic.Htime & 0xFF) | ((uint16(value) << 8) & 1)
+	ic.Htime = (ic.Htime & 0xFF) | (uint16(value&1) << 8)
 }
 
 func (ic *InterruptController) SetVtimeL(value byte) {
@@ -146,7 +147,7 @@ func (ic *InterruptController) SetVtimeL(value byte) {
 }
 
 func (ic *InterruptController) SetVtimeH(value byte) {
-	ic.Vtime = (ic.Vtime & 0xFF) | ((uint16(value) << 8) & 1)
+	ic.Vtime = (ic.Vtime & 0xFF) | (uint16(value&1) << 8)
 }
 
 // used as the actual register
@@ -185,13 +186,13 @@ func (ic *InterruptController) ReadTimeUp() byte {
 }
 
 func irqY(ic *InterruptController, ppu *ppu.PPU) bool {
-	return int(ic.Vtime+2) == ppu.V && ppu.H == 2 //HTIME=0 + 2.5
+	return int(ic.Vtime) == ppu.V && ppu.H == 0
 }
 
 func irqX(ic *InterruptController, ppu *ppu.PPU) bool {
-	return int(ic.Htime+3) == ppu.H
+	return ppu.H < 340 && int(ic.Htime) == ppu.H
 }
 
 func irqXY(ic *InterruptController, ppu *ppu.PPU) bool {
-	return int(ic.Htime+3) == ppu.H && int(ic.Vtime+2) == ppu.V
+	return ppu.H < 340 && int(ic.Htime) == ppu.H && int(ic.Vtime) == ppu.V
 }

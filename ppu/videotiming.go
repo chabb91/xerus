@@ -44,7 +44,7 @@ const (
 	PAL_TOTAL_SCANLINES = 312
 )
 
-const LONG_SHORT_SCANLINE_H_TRIGGER = 123
+const LONG_SHORT_SCANLINE_H_TRIGGER = 339
 
 type VisibilityEntry struct {
 	H, V      uint16
