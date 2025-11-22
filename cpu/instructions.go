@@ -54,11 +54,17 @@ func NewInstructionMap() []Instruction {
 	// CLC CLD CLI CLV SEC SED SEI
 	ret[0x18] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagC, true) }}
 	ret[0xD8] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagD, true) }}
-	ret[0x58] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagI, true) }}
+	ret[0x58] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) {
+		cpu.previousIFlag = int(cpu.r.P & FlagI)
+		cpu.r.setFlag(FlagI, true)
+	}}
 	ret[0xB8] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagV, true) }}
 	ret[0x38] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagC, false) }}
 	ret[0xF8] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagD, false) }}
-	ret[0x78] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) { cpu.r.setFlag(FlagI, false) }}
+	ret[0x78] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) {
+		cpu.previousIFlag = int(cpu.r.P & FlagI)
+		cpu.r.setFlag(FlagI, false)
+	}}
 
 	ret[0xC2] = &RepSep{reset: true}  //rep
 	ret[0xE2] = &RepSep{reset: false} //sep
@@ -1076,6 +1082,8 @@ func (i *RepSep) Step(cpu *CPU) bool {
 		i.state++
 	case 1:
 		newP := cpu.r.P
+		cpu.previousIFlag = int(newP & FlagI)
+
 		if i.reset {
 			newP &= ^i.operand
 		} else {

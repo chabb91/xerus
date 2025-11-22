@@ -79,6 +79,8 @@ func (i *Iplp) Step(cpu *CPU) bool {
 	case 1:
 		i.state++
 	case 2:
+		cpu.previousIFlag = int(cpu.r.P & FlagI)
+
 		newP := cpu.PopByte()
 		if cpu.r.E {
 			newP |= 0x30

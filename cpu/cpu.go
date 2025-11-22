@@ -2,6 +2,7 @@ package cpu
 
 import (
 	"SNES_emulator/memory"
+	"fmt"
 )
 
 const (
@@ -33,6 +34,9 @@ type CPU struct {
 	IrqSignal   bool
 
 	executionState int
+
+	//PLP, CLI, SEI, SEP #$04, and REP #$04 update the flags during their final CPU cycle, so the IRQ check will use the old value
+	previousIFlag int
 }
 
 func NewCPU(bus memory.Bus) *CPU {
@@ -42,6 +46,7 @@ func NewCPU(bus memory.Bus) *CPU {
 		hwInterrupts:       NewHWInterruptMap(),
 		instructions:       NewInstructionMap(),
 		currentInstruction: nil,
+		previousIFlag:      -1,
 
 		resetSignal: true,
 	}
@@ -111,33 +116,38 @@ func (c *CPU) handleNMI() bool {
 	return true
 }
 
+// irq is cleared by it reading TIMEUP
 func (c *CPU) handleIRQ() bool {
 	if !c.IrqSignal || c.currentInstruction != nil {
 		return false
 	}
-	if !c.r.hasFlag(FlagI) {
+
+	var hasFlag bool
+	if c.previousIFlag >= 0 {
+		hasFlag = c.previousIFlag > 0
+	} else {
+		hasFlag = c.r.hasFlag(FlagI)
+	}
+
+	if !hasFlag {
+		//fmt.Println("IRQ<<I not masked")
 		c.currentInstruction = c.hwInterrupts[irqId]
 		c.currentInstruction.Reset(c)
-		//c.IrqSignal = false
-		//irq should be cleared from the source that called it i just dont have one yet
-		//If /IRQ is kept LOW then same (old) interrupt is executed again as soon as setting I=0. If /NMI is kept LOW then no further NMIs can be executed.
-		//TODO
 		c.executionState = normalState
 		return true
 	}
 	if c.executionState == waitState {
-		//c.IrqSignal = false
-		//irq should be cleared from the source that called it i just dont have one yet
-		//If /IRQ is kept LOW then same (old) interrupt is executed again as soon as setting I=0. If /NMI is kept LOW then no further NMIs can be executed.
-		//TODO
 		c.executionState = normalState
+		fmt.Println("breaking wai")
 	}
+	//fmt.Println("IRQ<<I masked")
 	return false
 }
 
 func (c *CPU) executeNextInstruction() bool {
 	if c.currentInstruction == nil {
 		c.r.instrPC = c.r.PC
+		c.previousIFlag = -1
 		c.currentInstruction = c.instructions[c.fetchByte()]
 		c.currentInstruction.Reset(c)
 		return false
