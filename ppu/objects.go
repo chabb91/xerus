@@ -3,7 +3,7 @@ package ppu
 const OBJ_CHAR_PER_TABLE = 256
 
 type renderedSpriteOnDot struct {
-	color               uint16
+	color               int
 	priority            byte
 	partakesInColorMath bool
 }
@@ -53,7 +53,7 @@ func newObjects(ds tileDataSource, layer ppuLayer) *Objects {
 	return obj
 }
 
-func (ob *Objects) GetDotAt(H, V uint16, _ bool) (uint16, byte, bool) {
+func (ob *Objects) GetDotAt(H, V uint16, _ bool) (int, byte, bool) {
 	ret := ob.resolvedDotsOnScanLine[H]
 	return ret.color, ret.priority, ret.partakesInColorMath
 }
@@ -153,7 +153,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 	}
 }
 
-func (ob *Objects) drawASpriteByRef(sprite *Sprite, dimensions OBTileSize, H, V uint16, cgram []uint16) uint16 {
+func (ob *Objects) drawASpriteByRef(sprite *Sprite, dimensions OBTileSize, H, V uint16, cgram []uint16) int {
 	x := H - uint16(sprite.posX)
 	y := uint16(sprite.posY)
 	if V >= y {
@@ -184,7 +184,7 @@ func (ob *Objects) drawASpriteByRef(sprite *Sprite, dimensions OBTileSize, H, V 
 	if colorIndex&0xF == 0 {
 		return BG_BACKDROP_COLOR
 	} else {
-		return cgram[colorIndex]
+		return int(cgram[colorIndex])
 	}
 }
 

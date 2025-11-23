@@ -129,10 +129,10 @@ var bgModeLUT = [8]bgModeSetter{
 }
 
 func setMode0(ppu *PPU, _, _ bool) {
-	ppu.Bg1.colorDepth = bpp2
-	ppu.Bg2.colorDepth = bpp2
-	ppu.Bg3.colorDepth = bpp2
-	ppu.Bg4.colorDepth = bpp2
+	ppu.Bg1.setBgColorDepth(bpp2)
+	ppu.Bg2.setBgColorDepth(bpp2)
+	ppu.Bg3.setBgColorDepth(bpp2)
+	ppu.Bg4.setBgColorDepth(bpp2)
 
 	ppu.Bg1.getPaletteIndex = mode0ColorIndex
 	ppu.Bg2.getPaletteIndex = mode0ColorIndex
@@ -149,9 +149,9 @@ func setMode0(ppu *PPU, _, _ bool) {
 }
 
 func setMode1(ppu *PPU, mode1Prio, _ bool) {
-	ppu.Bg1.colorDepth = bpp4
-	ppu.Bg2.colorDepth = bpp4
-	ppu.Bg3.colorDepth = bpp2
+	ppu.Bg1.setBgColorDepth(bpp4)
+	ppu.Bg2.setBgColorDepth(bpp4)
+	ppu.Bg3.setBgColorDepth(bpp2)
 
 	ppu.Bg1.getPaletteIndex = modeNormalColorNo8bppIndex
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
@@ -171,8 +171,8 @@ func setMode1(ppu *PPU, mode1Prio, _ bool) {
 }
 
 func setMode2(ppu *PPU, _, _ bool) {
-	ppu.Bg1.colorDepth = bpp4
-	ppu.Bg2.colorDepth = bpp4
+	ppu.Bg1.setBgColorDepth(bpp4)
+	ppu.Bg2.setBgColorDepth(bpp4)
 
 	ppu.Bg1.getPaletteIndex = modeNormalColorNo8bppIndex
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
@@ -187,8 +187,8 @@ func setMode2(ppu *PPU, _, _ bool) {
 }
 
 func setMode3(ppu *PPU, _, _ bool) {
-	ppu.Bg1.colorDepth = bpp8
-	ppu.Bg2.colorDepth = bpp4
+	ppu.Bg1.setBgColorDepth(bpp8)
+	ppu.Bg2.setBgColorDepth(bpp4)
 
 	ppu.Bg1.getPaletteIndex = modeNormalColor8BppIndex
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
@@ -203,8 +203,8 @@ func setMode3(ppu *PPU, _, _ bool) {
 }
 
 func setMode4(ppu *PPU, _, _ bool) {
-	ppu.Bg1.colorDepth = bpp8
-	ppu.Bg2.colorDepth = bpp2
+	ppu.Bg1.setBgColorDepth(bpp8)
+	ppu.Bg2.setBgColorDepth(bpp2)
 
 	ppu.Bg1.getPaletteIndex = modeNormalColor8BppIndex
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
@@ -219,8 +219,8 @@ func setMode4(ppu *PPU, _, _ bool) {
 }
 
 func setMode5(ppu *PPU, _, _ bool) {
-	ppu.Bg1.colorDepth = bpp4
-	ppu.Bg2.colorDepth = bpp2
+	ppu.Bg1.setBgColorDepth(bpp4)
+	ppu.Bg2.setBgColorDepth(bpp2)
 
 	ppu.Bg1.getPaletteIndex = modeNormalColorNo8bppIndex
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
@@ -235,7 +235,7 @@ func setMode5(ppu *PPU, _, _ bool) {
 }
 
 func setMode6(ppu *PPU, _, _ bool) {
-	ppu.Bg1.colorDepth = bpp4
+	ppu.Bg1.setBgColorDepth(bpp4)
 
 	ppu.Bg1.getPaletteIndex = modeNormalColorNo8bppIndex
 
@@ -250,8 +250,8 @@ func setMode6(ppu *PPU, _, _ bool) {
 
 func setMode7(ppu *PPU, _, isExtBg bool) {
 	//TODO remember mode 7 this doesnt work yet
-	ppu.Bg1.colorDepth = bpp8
-	ppu.Bg2.colorDepth = bpp2
+	ppu.Bg1.setBgColorDepth(bpp8)
+	ppu.Bg2.setBgColorDepth(bpp2)
 
 	ppu.Bg1.getPaletteIndex = modeNormalColor8BppIndex
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
@@ -397,7 +397,7 @@ func (ppu *PPU) getLayerRenderer(layer ppuLayer) rendererFunction {
 }
 
 func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer, bool) {
-	var val uint16
+	var val int
 	var prio byte
 	var math bool
 	for _, v := range ppu.mainRenderPipeline {
@@ -424,13 +424,13 @@ func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer, bool) {
 		if val == BG_BACKDROP_COLOR || prio != v.priority {
 			continue
 		}
-		return val, v.layer, math
+		return uint16(val), v.layer, math
 	}
-	return ppu.CGRAM.CGRAM[BG_BACKDROP_COLOR], backdrop, true
+	return ppu.CGRAM.CGRAM[0], backdrop, true
 }
 
 func (ppu *PPU) renderSubScreen(H, V uint16) (uint16, ppuLayer, bool) {
-	var val uint16
+	var val int
 	var prio byte
 	var math bool
 	for _, v := range ppu.subRenderPipeline {
@@ -457,7 +457,7 @@ func (ppu *PPU) renderSubScreen(H, V uint16) (uint16, ppuLayer, bool) {
 		if val == BG_BACKDROP_COLOR || prio != v.priority {
 			continue
 		}
-		return val, v.layer, math
+		return uint16(val), v.layer, math
 	}
-	return ppu.CGRAM.CGRAM[BG_BACKDROP_COLOR], backdrop, true
+	return ppu.CGRAM.CGRAM[0], backdrop, true
 }

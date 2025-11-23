@@ -7,7 +7,7 @@ import (
 type colorDepth uint16
 type ppuLayer uint16
 
-const BG_BACKDROP_COLOR = 0
+const BG_BACKDROP_COLOR = -1
 
 const (
 	bg1      ppuLayer = 0
@@ -29,7 +29,7 @@ type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
 type optResolver func(*Background, uint16, uint16) (uint16, uint16)
 type VRAMAddressCalculator func(tileIndex byte) uint16
 type colorIndex func(ppuLayer, colorDepth, byte) byte
-type rendererFunction func(uint16, uint16, bool) (uint16, byte, bool)
+type rendererFunction func(uint16, uint16, bool) (int, byte, bool)
 
 type LayerEpochSource interface {
 	GetLayerSourceEpoch() uint64
@@ -51,7 +51,7 @@ type tileAndPixelCacheEntry struct {
 }
 
 type renderedDotCache struct {
-	color    uint16
+	color    int
 	priority byte
 }
 
@@ -66,6 +66,7 @@ type Background struct {
 	charTileAddressBase uint16
 	charTileSize        byte
 	colorDepth          colorDepth
+	paletteIndexMask    byte //used for quick transparency check
 	getPaletteIndex     colorIndex
 	isDirectColor       bool
 
@@ -108,6 +109,11 @@ func NewBackground(ds tileDataSource, layer ppuLayer) *Background {
 
 func (bg *Background) isActive() bool {
 	return bg.enabledOnMainScreen || bg.enabledOnSubScreen
+}
+
+func (bg *Background) setBgColorDepth(colorDepth colorDepth) {
+	bg.colorDepth = colorDepth
+	bg.paletteIndexMask = (1 << bg.colorDepth) - 1 //uint16 to uint8 ??
 }
 
 func (bg *Background) GetLayerSourceEpoch() uint64 {
@@ -166,7 +172,7 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 // save the char address in the chartile
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
-func (bg *Background) GetDotAt(H, V uint16, isSubscreen bool) (uint16, byte, bool) {
+func (bg *Background) GetDotAt(H, V uint16, isSubscreen bool) (int, byte, bool) {
 	if H < bg.renderCacheEnd {
 		ret := bg.renderCache[H]
 		return ret.color, ret.priority, true
@@ -203,7 +209,7 @@ func (bg *Background) GetDotAt(H, V uint16, isSubscreen bool) (uint16, byte, boo
 		}
 	}
 
-	var ret, color uint16
+	var ret, color int
 	charTile := tile.charTiles[charMapID]
 	flipXTtable := &tileFlipXLUT[tile.flipIndex]
 	rowData := charTile.getRowAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, row)
@@ -220,10 +226,15 @@ func (bg *Background) GetDotAt(H, V uint16, isSubscreen bool) (uint16, byte, boo
 					red := ((charData & 0x07) << 2) | ((tile.paletteNum & 0x01) << 1)
 					green := ((charData & 0x38) >> 1) | (tile.paletteNum & 0x02)
 					blue := ((charData & 0xC0) >> 3) | (tile.paletteNum & 0x04)
-					color = uint16(blue)<<10 | uint16(green)<<5 | uint16(red)
+					color = int(uint16(blue)<<10 | uint16(green)<<5 | uint16(red))
 				}
 			} else {
-				color = cgram[charData+bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum)]
+				pIndex := bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum) + charData
+				if pIndex&bg.paletteIndexMask == 0 {
+					color = BG_BACKDROP_COLOR
+				} else {
+					color = int(cgram[pIndex])
+				}
 			}
 			if i == H {
 				ret = color
