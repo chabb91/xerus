@@ -22,6 +22,7 @@ type JoypadDataHandler struct {
 
 func (jdh *JoypadDataHandler) ReadNextKey(state int) byte {
 	if jdh.positionCnt >= 16 {
+		//BSNES RETURNS 1 HERE
 		return 0
 	}
 	var ret byte

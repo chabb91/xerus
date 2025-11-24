@@ -51,7 +51,6 @@ func (fb *Framebuffer) Swap() {
 
 type EmulatorDisplay struct {
 	fb                *Framebuffer
-	img               *ebiten.Image
 	transformedBuffer []byte
 
 	ScreenWidth  int
@@ -64,13 +63,20 @@ type EmulatorDisplay struct {
 func NewEmulatorDisplay(fb *Framebuffer) *EmulatorDisplay {
 	return &EmulatorDisplay{
 		fb:                fb,
-		img:               ebiten.NewImage(MaxScreenWidth, MaxScreenHeight),
+		ActiveImage:       updateActiveImage(MaxScreenHeight),
 		transformedBuffer: make([]byte, 4*MaxScreenWidth*MaxScreenHeight),
 		ScreenWidth:       MaxScreenWidth,
 		ScreenHeight:      MaxScreenHeight,
 
 		Controller1: NewSnesControllerInput(0),
 	}
+}
+
+func updateActiveImage(height int) *ebiten.Image {
+	activeImage := ebiten.NewImage(MaxScreenWidth, height)
+	ebiten.SetWindowSize(int(float64(MaxScreenWidth)*ScalingFactor), int(float64(height)*ScalingFactor))
+
+	return activeImage
 }
 
 func (ed *EmulatorDisplay) Update() error {
@@ -80,8 +86,7 @@ func (ed *EmulatorDisplay) Update() error {
 		newHeight := ed.fb.CurrentHeight << 1
 		if ed.ScreenHeight != newHeight {
 			ed.ScreenHeight = newHeight
-			ed.ActiveImage = ebiten.NewImage(MaxScreenWidth, newHeight)
-			ebiten.SetWindowSize(int(float64(MaxScreenWidth)*ScalingFactor), int(float64(newHeight)*ScalingFactor))
+			ed.ActiveImage = updateActiveImage(newHeight)
 		}
 		ed.convertBGR15ToRGBA(frame)
 

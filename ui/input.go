@@ -99,6 +99,7 @@ func (c *SNESControllerInput) UpdateControllerState() {
 
 	var state uint16 = 0
 
+	//B, Y, Select, Start, Up, Down, Left, Right, A, X, L, R, 0, 0, 0, 0
 	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton0) {
 		state |= 1
 	}

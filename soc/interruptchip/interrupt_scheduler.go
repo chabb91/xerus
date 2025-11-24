@@ -93,7 +93,7 @@ func (ic *InterruptController) performAutoJoypadRead() {
 
 	ic.JOY1, ic.JOY2, ic.JOY3, ic.JOY4 = 0, 0, 0, 0
 
-	for i := range 16 {
+	for i := 15; i >= 0; i-- {
 		ca := uint16(ic.bus.ReadByte(0x4016))
 		db := uint16(ic.bus.ReadByte(0x4017))
 		ic.JOY1 |= (ca & 1) << i
