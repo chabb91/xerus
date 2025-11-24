@@ -20,11 +20,11 @@ func addColors(main, sub uint16, halve bool) uint16 {
 		halfShift = 1
 	}
 
-	r := min((main>>10&31+(sub>>10&31))>>halfShift, 0x1F)
+	b := min((main>>10&31+(sub>>10&31))>>halfShift, 0x1F)
 	g := min((main>>5&31+(sub>>5&31))>>halfShift, 0x1F)
-	b := min((main&31+(sub&31))>>halfShift, 0x1F)
+	r := min((main&31+(sub&31))>>halfShift, 0x1F)
 
-	return uint16((r << 10) | (g << 5) | b)
+	return (b << 10) | (g << 5) | r
 }
 
 // TODO subtraction using half colors is untested and might be wrong!
@@ -35,11 +35,11 @@ func subColors(main, sub uint16, halve bool) uint16 {
 	if halve {
 		halfShift = 1
 	}
-	r := max(int32(main>>10&31)-int32((sub>>10&31)), 0) >> halfShift
+	b := max(int32(main>>10&31)-int32((sub>>10&31)), 0) >> halfShift
 	g := max(int32(main>>5&31)-int32((sub>>5&31)), 0) >> halfShift
-	b := max(int32(main&31)-int32((sub&31)), 0) >> halfShift
+	r := max(int32(main&31)-int32((sub&31)), 0) >> halfShift
 
-	return uint16((r << 10) | (g << 5) | b)
+	return uint16((b << 10) | (g << 5) | r)
 }
 
 func mode0ColorIndex(layer ppuLayer, _ colorDepth, palette byte) byte {
