@@ -24,11 +24,11 @@ type SoC struct {
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/colourmath.sfc")
+	romData, err := cartridge.Load("/home/chabb/Downloads/Ladida_lol.sfc")
 	if err != nil {
 		panic(err)
 	}
-	bus := memory.NewBus(cartridge.NewCartridge(romData, cartridge.NewHiRom()))
+	bus := memory.NewBus(cartridge.NewCartridge(romData, cartridge.NewLoRom()))
 	soc := &SoC{
 		MulDiv: muldivchip.NewMulDiv(),
 		Dma:    dma.NewDma(bus),
@@ -129,8 +129,7 @@ func (soc *SoC) Write(addr uint16, value byte) error {
 	case 0x420B:
 		soc.Dma.Mdmaen = value
 	case 0x420C:
-		//soc.Dma.Hdmaen = value
-		soc.Dma.SetHdmaen(value)
+		soc.Dma.Hdmaen = value
 	case 0x420D:
 		soc.bus.SetMEMSEL(value)
 	default:

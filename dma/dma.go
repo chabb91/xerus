@@ -188,7 +188,9 @@ func (dma *Dma) Reload() {
 		dma.HdmaenLatch = dma.Hdmaen
 	}
 	for i := range 8 {
-		dma.hdmaOp[i].doTransfer = dma.Hdmaen != 0
+		channel := dma.hdmaOp[i]
+		channel.isTerminated = false
+		channel.doTransfer = dma.Hdmaen != 0
 	}
 }
 
@@ -200,20 +202,6 @@ func (dma *Dma) DoTransfer() {
 		dma.DmaState = HDMA_TRANSFER_INIT
 		dma.HdmaenLatch = dma.Hdmaen
 	}
-}
-
-// needed to properly enable midframe HDMA
-func (dma *Dma) SetHdmaen(value byte) {
-	for i := range 8 {
-		if /*(dma.Hdmaen>>i)&1 == 0 &&*/ (value>>i)&1 != 0 {
-			channel := dma.hdmaOp[i]
-			channel.isTerminated = false
-		} /*else {// not sure if it goes here or at Reload()
-			channel := dma.hdmaOp[i]
-			channel.doTransfer = false
-		}*/
-	}
-	dma.Hdmaen = value
 }
 
 func (dma *Dma) Read(addr uint16) (byte, error) {
