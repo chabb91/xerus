@@ -39,7 +39,7 @@ func (ppu *PPU) Step() {
 		}
 	}
 
-	if ppu.WINDOWS.dirtyMainWindows != 0 || ppu.WINDOWS.dirtySubWindows != 0 {
+	if ppu.WINDOWS.rebuildNeeded {
 		if ppu.WINDOWS.invalidationCounter > 0 {
 			ppu.WINDOWS.invalidationCounter--
 		} else {

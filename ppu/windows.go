@@ -20,11 +20,21 @@ type WindowController struct {
 	w1LeftPos, w1RightPos byte
 	w2LeftPos, w2RightPos byte
 
+	rebuildNeeded                     bool
 	dirtyMainWindows, dirtySubWindows byte
 	invalidationCounter               int
 
 	layers    [7]LayerWindowData
 	ColorMath ColorMath
+}
+
+func (wc *WindowController) prepareToRebuild() {
+	wc.rebuildNeeded = !wc.ColorMath.windowValid ||
+		wc.dirtyMainWindows != 0 ||
+		wc.dirtySubWindows != 0
+	if wc.rebuildNeeded {
+		wc.invalidationCounter = WINDOW_INVALIDATION_COUNTER
+	}
 }
 
 func (wc *WindowController) setMaskLogic(layer ppuLayer, logic wMaskLogic) {
@@ -98,7 +108,7 @@ func (wc *WindowController) W12SEL(value byte) {
 	wc.markLayerDirty(bg1)
 	setupLayerMasks(&wc.layers[bg2], value>>4)
 	wc.markLayerDirty(bg2)
-	wc.invalidationCounter = WINDOW_INVALIDATION_COUNTER
+	wc.prepareToRebuild()
 }
 
 func (wc *WindowController) W34SEL(value byte) {
@@ -106,7 +116,7 @@ func (wc *WindowController) W34SEL(value byte) {
 	wc.markLayerDirty(bg3)
 	setupLayerMasks(&wc.layers[bg4], value>>4)
 	wc.markLayerDirty(bg4)
-	wc.invalidationCounter = WINDOW_INVALIDATION_COUNTER
+	wc.prepareToRebuild()
 }
 
 func (wc *WindowController) WOBJSEL(value byte) {
@@ -114,7 +124,7 @@ func (wc *WindowController) WOBJSEL(value byte) {
 	wc.markLayerDirty(obj)
 	setupLayerMasks(&wc.ColorMath.colorWindowData, value>>4)
 	wc.ColorMath.windowValid = false
-	wc.invalidationCounter = WINDOW_INVALIDATION_COUNTER
+	wc.prepareToRebuild()
 }
 
 func (wc *WindowController) WBGLOG(value byte) {
@@ -122,14 +132,14 @@ func (wc *WindowController) WBGLOG(value byte) {
 	wc.setMaskLogic(bg2, getWMaskLogic(value>>2))
 	wc.setMaskLogic(bg3, getWMaskLogic(value>>4))
 	wc.setMaskLogic(bg4, getWMaskLogic(value>>6))
-	wc.invalidationCounter = WINDOW_INVALIDATION_COUNTER
+	wc.prepareToRebuild()
 }
 
 func (wc *WindowController) WOBJLOG(value byte) {
 	wc.setMaskLogic(obj, getWMaskLogic(value))
 	wc.ColorMath.colorWindowData.wMaskLogic = getWMaskLogic(value >> 2)
 	wc.ColorMath.windowValid = false
-	wc.invalidationCounter = WINDOW_INVALIDATION_COUNTER
+	wc.prepareToRebuild()
 }
 
 func (wc *WindowController) TMW(value byte) {
@@ -138,7 +148,7 @@ func (wc *WindowController) TMW(value byte) {
 	wc.maskMainScreen(bg3, value&4 != 0)
 	wc.maskMainScreen(bg4, value&8 != 0)
 	wc.maskMainScreen(obj, value&0x10 != 0)
-	wc.invalidationCounter = WINDOW_INVALIDATION_COUNTER
+	wc.prepareToRebuild()
 }
 
 func (wc *WindowController) TSW(value byte) {
@@ -147,14 +157,14 @@ func (wc *WindowController) TSW(value byte) {
 	wc.maskSubScreen(bg3, value&4 != 0)
 	wc.maskSubScreen(bg4, value&8 != 0)
 	wc.maskSubScreen(obj, value&0x10 != 0)
-	wc.invalidationCounter = WINDOW_INVALIDATION_COUNTER
+	wc.prepareToRebuild()
 }
 
 func (wc *WindowController) markAllWindowsDirty() {
 	wc.dirtyMainWindows = 0xFF
 	wc.dirtySubWindows = 0xFF
 	wc.ColorMath.windowValid = false
-	wc.invalidationCounter = WINDOW_INVALIDATION_COUNTER
+	wc.prepareToRebuild()
 }
 
 func (wc *WindowController) isDotInMask1Range(inverted bool, H uint16) bool {
@@ -263,6 +273,8 @@ func (wc *WindowController) rebuildDirtyLayerWindowCaches() {
 	wc.dirtyMainWindows = 0
 	wc.dirtySubWindows = 0
 	wc.ColorMath.windowValid = true
+
+	wc.rebuildNeeded = false
 }
 
 func (wc *WindowController) setCGADSUB(value byte) {
