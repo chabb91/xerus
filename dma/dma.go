@@ -187,6 +187,9 @@ func (dma *Dma) Reload() {
 		dma.DmaState = HDMA_RELOAD_INIT
 		dma.HdmaenLatch = dma.Hdmaen
 	}
+	for i := range 8 {
+		dma.hdmaOp[i].doTransfer = dma.Hdmaen != 0
+	}
 }
 
 func (dma *Dma) DoTransfer() {
@@ -205,8 +208,10 @@ func (dma *Dma) SetHdmaen(value byte) {
 		if /*(dma.Hdmaen>>i)&1 == 0 &&*/ (value>>i)&1 != 0 {
 			channel := dma.hdmaOp[i]
 			channel.isTerminated = false
+		} /*else {// not sure if it goes here or at Reload()
+			channel := dma.hdmaOp[i]
 			channel.doTransfer = false
-		}
+		}*/
 	}
 	dma.Hdmaen = value
 }
