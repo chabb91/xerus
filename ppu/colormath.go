@@ -15,29 +15,26 @@ func SNESColorToARGB(snesColor uint16) color.NRGBA {
 }
 
 func addColors(main, sub uint16, halve bool) uint16 {
-	r := main>>10&31 + (sub >> 10 & 31)
-	g := main>>5&31 + (sub >> 5 & 31)
-	b := main&31 + (sub & 31)
-
+	halfShift := uint16(0)
 	if halve {
-		r >>= 1
-		g >>= 1
-		b >>= 1
+		halfShift = 1
 	}
+
+	r := min((main>>10&31+(sub>>10&31))>>halfShift, 0x1F)
+	g := min((main>>5&31+(sub>>5&31))>>halfShift, 0x1F)
+	b := min((main&31+(sub&31))>>halfShift, 0x1F)
 
 	return uint16((r & 31 << 10) | (g & 31 << 5) | b&31)
 }
 
 func subColors(main, sub uint16, halve bool) uint16 {
-	r := main>>10&31 - (sub >> 10 & 31)
-	g := main>>5&31 - (sub >> 5 & 31)
-	b := main&31 - (sub & 31)
-
+	halfShift := int32(0)
 	if halve {
-		r >>= 1
-		g >>= 1
-		b >>= 1
+		halfShift = 1
 	}
+	r := max(int32(main>>10&31)-int32((sub>>10&31))>>halfShift, 0)
+	g := max(int32(main>>5&31)-int32((sub>>5&31))>>halfShift, 0)
+	b := max(int32(main&31)-int32((sub&31))>>halfShift, 0)
 
 	return uint16((r & 31 << 10) | (g & 31 << 5) | b&31)
 }

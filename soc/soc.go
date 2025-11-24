@@ -24,11 +24,11 @@ type SoC struct {
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/jonasquinn/nmi_irq/demo_irq_fix.smc")
+	romData, err := cartridge.Load("/home/chabb/Downloads/colourmath.sfc")
 	if err != nil {
 		panic(err)
 	}
-	bus := memory.NewBus(cartridge.NewCartridge(romData, cartridge.NewLoRom()))
+	bus := memory.NewBus(cartridge.NewCartridge(romData, cartridge.NewHiRom()))
 	soc := &SoC{
 		MulDiv: muldivchip.NewMulDiv(),
 		Dma:    dma.NewDma(bus),
@@ -59,6 +59,8 @@ func (soc *SoC) Read(addr uint16) (byte, error) {
 		return soc.InterruptController.ReadTimeUp(), nil
 	case 0x4212:
 		return soc.InterruptController.ReadHvbjoy(), nil
+	case 0x4213:
+		return soc.InterruptController.ReadRdio(), nil
 	case 0x4214:
 		return soc.MulDiv.Rddivl, nil
 	case 0x4215:

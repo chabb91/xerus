@@ -151,6 +151,14 @@ func (ic *InterruptController) SetVtimeH(value byte) {
 	ic.Vtime = (ic.Vtime & 0xFF) | (uint16(value&1) << 8)
 }
 
+// TODO incpmlete
+// 7 is shared with port2 pin6
+// 6 is port1 pin6
+// and the other bits are random external devices
+func (ic *InterruptController) ReadRdio() byte {
+	return ic.ppu.LatchFlag << 7 & (^ic.WRIO)
+}
+
 // used as the actual register
 func (ic *InterruptController) ReadRdnmi() byte {
 	ret := (ic.rdnmi & 0x8F) | (ic.bus.GetOpenBus() & 0x70)
@@ -179,8 +187,8 @@ func (ic *InterruptController) SetTimeUp() {
 func (ic *InterruptController) ReadTimeUp() byte {
 	ret := (ic.Timeup & 0x80) | (ic.bus.GetOpenBus() & 0x7F)
 	//if ic.ppu.IrqFunc == nil || !ic.ppu.IrqFunc() {
-		ic.Timeup = 0
-		ic.cpu.IrqSignal = false
+	ic.Timeup = 0
+	ic.cpu.IrqSignal = false
 	//}
 
 	return ret
