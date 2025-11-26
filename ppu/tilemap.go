@@ -35,21 +35,6 @@ type LayerEpochSource interface {
 	GetLayerSourceEpoch() uint64
 }
 
-type BackgroundI interface {
-	GetTileMapAddress() uint16
-	GetTileMapSize() byte
-	GetCharTileAddress() uint16
-	GetCharTileSize() byte
-	GetColorDepth() byte
-	IsOffsetPerTile() bool
-}
-
-type tileAndPixelCacheEntry struct {
-	px, row, charMapID byte
-	tileIndex          uint16
-	entryEpoch         uint64
-}
-
 type renderedDotCache struct {
 	color    int
 	priority byte
@@ -172,6 +157,7 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 // save the char address in the chartile
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
+// TODO isSubscreen isnt used by anything
 func (bg *Background) GetDotAt(H, V uint16, isSubscreen bool) (int, byte, bool) {
 	if H < bg.renderCacheEnd {
 		ret := bg.renderCache[H]

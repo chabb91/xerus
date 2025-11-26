@@ -43,6 +43,9 @@ type PPU struct {
 	Bg4     *Background
 	BGxnOFS *BGxnOFS
 
+	Mode7 *Mode7
+	M7x   *M7Registers
+
 	BGMODE byte
 
 	Obj *Objects
@@ -79,6 +82,7 @@ func NewPPU(bus memory.Bus) *PPU {
 	ppu := &PPU{
 		CGRAM:   NewCGRAM(),
 		BGxnOFS: &BGxnOFS{},
+		M7x:     &M7Registers{},
 		SETINI:  NewSETINI(NTSC_TIMING),
 		bus:     bus,
 	}
@@ -90,6 +94,8 @@ func NewPPU(bus memory.Bus) *PPU {
 	ppu.Bg3 = NewBackground(ppu, bg3)
 	ppu.Bg4 = NewBackground(ppu, bg4)
 	ppu.Obj = newObjects(ppu, obj)
+
+	ppu.Mode7 = newMode7(ppu)
 
 	ppu.bgEpochs[bg1] = &ppu.Bg1.currentEpoch
 	ppu.bgEpochs[bg2] = &ppu.Bg2.currentEpoch
@@ -116,6 +122,17 @@ func (ppu *PPU) Init() {
 // TODO
 func (ppu *PPU) Read(addr uint16) (byte, error) {
 	switch addr {
+	//TODO these 3 can only be read in fblank/vblank
+	//no idea if this is correct or not tbh
+	case 0x2134:
+		result := int32(ppu.Mode7.m7A) * int32(int8(ppu.Mode7.m7B>>8))
+		return byte(result), nil
+	case 0x2135:
+		result := int32(ppu.Mode7.m7A) * int32(int8(ppu.Mode7.m7B>>8))
+		return byte(result >> 8), nil
+	case 0x2136:
+		result := int32(ppu.Mode7.m7A) * int32(int8(ppu.Mode7.m7B>>8))
+		return byte(result >> 16), nil
 	case 0x2137:
 		ppu.LatchHV()
 		return ppu.bus.GetOpenBus(), nil
@@ -184,7 +201,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2104:
 		ppu.OAM.WriteOAMData(value)
 	case 0x2105:
-		//fmt.Println("BGMODE: ", value)
+		fmt.Println("BGMODE: ", value)
 		ppu.setBGMODE(value)
 		ppu.setHiresFlag()
 	case 0x2106:
@@ -239,8 +256,10 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	//TODO add mode 7 scrolling
 	case 0x210D:
 		ppu.Bg1.hScroll = ppu.BGxnOFS.hFormula(value)
+		ppu.Mode7.hScroll = ppu.M7x.setRegister(value)
 	case 0x210E:
 		ppu.Bg1.vScroll = ppu.BGxnOFS.vFormula(value)
+		ppu.Mode7.vScroll = ppu.M7x.setRegister(value)
 	case 0x210F:
 		ppu.Bg2.hScroll = ppu.BGxnOFS.hFormula(value)
 	case 0x2110:
@@ -266,6 +285,18 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.VRAM.WriteDataLow(value)
 	case 0x2119:
 		ppu.VRAM.WriteDataHigh(value)
+	case 0x211B:
+		ppu.Mode7.m7A = int16(ppu.M7x.setRegister(value))
+	case 0x211C:
+		ppu.Mode7.m7B = int16(ppu.M7x.setRegister(value))
+	case 0x211D:
+		ppu.Mode7.m7C = int16(ppu.M7x.setRegister(value))
+	case 0x211E:
+		ppu.Mode7.m7D = int16(ppu.M7x.setRegister(value))
+	case 0x211F:
+		ppu.Mode7.m7X = signExtend13(ppu.M7x.setRegister(value))
+	case 0x2120:
+		ppu.Mode7.m7Y = signExtend13(ppu.M7x.setRegister(value))
 	case 0x2121:
 		ppu.CGRAM.SetAddWord(value)
 	case 0x2122:

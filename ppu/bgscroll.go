@@ -19,10 +19,13 @@ func (bgofs *BGxnOFS) vFormula(current byte) uint16 {
 	return ret & 0x03FF
 }
 
-func (bgofs *BGxnOFS) setBg1V(bg1 *Background, value byte) {
-	bg1.vScroll = bgofs.vFormula(value)
+type M7Registers struct {
+	prev byte //shared by all m7 registers
 }
 
-func (bgofs *BGxnOFS) setBg1H(bg1 *Background, value byte) {
-	bg1.hScroll = bgofs.hFormula(value)
+func (m7 *M7Registers) setRegister(current byte) uint16 {
+	register := uint16(current)<<8 | uint16(m7.prev)
+	m7.prev = current
+
+	return register
 }
