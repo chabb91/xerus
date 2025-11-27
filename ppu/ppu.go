@@ -285,6 +285,9 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.VRAM.WriteDataLow(value)
 	case 0x2119:
 		ppu.VRAM.WriteDataHigh(value)
+	case 0x211A:
+		fmt.Println("M7SEL: ", value)
+		ppu.Mode7.setM7Sel(value)
 	case 0x211B:
 		ppu.Mode7.m7A = int16(ppu.M7x.setRegister(value))
 	case 0x211C:
