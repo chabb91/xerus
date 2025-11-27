@@ -32,6 +32,10 @@ func (bg *Mode7) GetDotAt(H, V uint16, _ bool) (int, byte, bool) {
 	if bg.fillFunc == nil {
 		X &= 1023
 		Y &= 1023
+	} else {
+		if X > 1023 || Y > 1023 {
+			return bg.fillFunc(bg.ds.getCGRAM()), 0, true
+		}
 	}
 
 	vram := bg.ds.getVRAM()
