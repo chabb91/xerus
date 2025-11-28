@@ -27,7 +27,7 @@ func (ppu *PPU) Step() {
 					ppu.Framebuffer.Back[h][v].SetColor(ss, ms, ppu.brightness)
 				}
 			} else {
-				/*ms, l1, math := ppu.renderMainScreen(h, v)
+				ms, l1, math := ppu.renderMainScreen(h, v)
 				if math {
 					ss, _, _ := ppu.renderSubScreen(h, v)
 					cm1 := ppu.WINDOWS.performColorMath(ms, ss, h, l1)
@@ -35,9 +35,6 @@ func (ppu *PPU) Step() {
 				} else {
 					ppu.Framebuffer.Back[h][v].SetColor(ms, ms, ppu.brightness)
 				}
-				*/
-				c, _, _ := ppu.Mode7.GetDotAt(h, v, false)
-				ppu.Framebuffer.Back[h][v].SetColor(uint16(c), uint16(c), ppu.brightness)
 			}
 		}
 	}

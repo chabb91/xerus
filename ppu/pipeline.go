@@ -91,7 +91,7 @@ var modePriorityOrder = map[byte][]pipelineTemplate{
 		{obj, 3, nil, nil, nil},
 		{obj, 2, nil, nil, nil},
 		{obj, 1, nil, nil, nil},
-		{bgMode7, 0, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
 		{obj, 0, nil, nil, nil},
 	},
 	8: {
@@ -257,9 +257,9 @@ func setMode7(ppu *PPU, _, isExtBg bool) {
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
 
 	if isExtBg {
-		ppu.modePriority = modePriorityOrder[7]
-	} else {
 		ppu.modePriority = modePriorityOrder[8]
+	} else {
+		ppu.modePriority = modePriorityOrder[7]
 	}
 
 	ppu.Bg1.optFunc = nil
@@ -382,7 +382,11 @@ func (ppu *PPU) setTS(value byte) {
 func (ppu *PPU) getLayerRenderer(layer ppuLayer) rendererFunction {
 	switch layer {
 	case bg1:
-		return ppu.Bg1.GetDotAt
+		if ppu.BGMODE != 7 {
+			return ppu.Bg1.GetDotAt
+		} else {
+			return ppu.Mode7.GetDotAt
+		}
 	case bg2:
 		return ppu.Bg2.GetDotAt
 	case bg3:

@@ -11,30 +11,44 @@ type Mode7 struct {
 
 	isFlippedHorizontally, isFlippedVertically bool
 	fillFunc                                   fillFunc
+
+	bg1Mosaic, bg2Mosaic, isDirectColor *bool
 }
 
-func newMode7(ds tileDataSource) *Mode7 {
-	return &Mode7{ds: ds}
+func newMode7(ds tileDataSource, bg1, bg2 *Background) *Mode7 {
+	return &Mode7{
+		ds:            ds,
+		isDirectColor: &bg1.isDirectColor,
+		bg1Mosaic:     &bg1.mosaic,
+		bg2Mosaic:     &bg2.mosaic,
+	}
 }
 
 func (bg *Mode7) GetDotAt(H, V uint16, _ bool) (int, byte, bool) {
+	if *bg.bg1Mosaic {
+		V = V - V%uint16(mosaicSize)
+		H = H - H%uint16(mosaicSize)
+	}
+
+	//which is horizontal which is vertical who knows
 	if bg.isFlippedHorizontally {
-		V = 255 - V
+		H = 255 - H
 	}
 	if bg.isFlippedVertically {
-		H = 255 - H
+		//is this how it should be who knows
+		V = (256 << interlace) - 1 - V
 	}
 
 	hScroll, vScroll := float32(int16(H+bg.hScroll))-float32(bg.m7X), float32(int16(V+bg.vScroll+(1<<interlace)))-float32(bg.m7Y)
-	X := uint16(float32(bg.m7A)*hScroll/256.0 + float32(bg.m7B)*vScroll/256.0 + float32(bg.m7X))
-	Y := uint16(float32(bg.m7C)*hScroll/256.0 + float32(bg.m7D)*vScroll/256.0 + float32(bg.m7Y))
+	X := uint16((float32(bg.m7A)*hScroll+float32(bg.m7B)*vScroll)/256.0 + float32(bg.m7X))
+	Y := uint16((float32(bg.m7C)*hScroll+float32(bg.m7D)*vScroll)/256.0 + float32(bg.m7Y))
 
 	if bg.fillFunc == nil {
 		X &= 1023
 		Y &= 1023
 	} else {
 		if X > 1023 || Y > 1023 {
-			return bg.fillFunc(bg.ds.getCGRAM()), 0, true
+			return bg.fillFunc(bg.ds.getCGRAM()), 1, true
 		}
 	}
 
@@ -43,11 +57,18 @@ func (bg *Mode7) GetDotAt(H, V uint16, _ bool) (int, byte, bool) {
 	char := byte(vram[((tile<<6)+((Y&7)<<3)+(X&7))] >> 8)
 	var color int
 	if char&255 == 0 {
-		color = int(bg.ds.getCGRAM()[0])
+		color = BG_BACKDROP_COLOR
 	} else {
-		color = int(bg.ds.getCGRAM()[char])
+		if *bg.isDirectColor {
+			red := char & 0x07
+			green := char & 0x38
+			blue := char & 0xC0
+			color = int(uint16(blue)<<7 | uint16(green)<<4 | uint16(red)<<2)
+		} else {
+			color = int(bg.ds.getCGRAM()[char])
+		}
 	}
-	return color, 0, true
+	return color, 1, true
 }
 
 func (bg *Mode7) setM7Sel(value byte) {
@@ -68,9 +89,8 @@ func fillWithCharZero(cgram []uint16) int {
 	return int(cgram[0])
 }
 
-// TODO rewrite this so it returns bg_transparent whatever
-func fillWithTransparent(cgram []uint16) int {
-	return int(cgram[0])
+func fillWithTransparent(_ []uint16) int {
+	return BG_BACKDROP_COLOR
 }
 
 func signExtend13(v uint16) int16 {

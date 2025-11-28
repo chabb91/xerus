@@ -95,7 +95,7 @@ func NewPPU(bus memory.Bus) *PPU {
 	ppu.Bg4 = NewBackground(ppu, bg4)
 	ppu.Obj = newObjects(ppu, obj)
 
-	ppu.Mode7 = newMode7(ppu)
+	ppu.Mode7 = newMode7(ppu, ppu.Bg1, ppu.Bg2)
 
 	ppu.bgEpochs[bg1] = &ppu.Bg1.currentEpoch
 	ppu.bgEpochs[bg2] = &ppu.Bg2.currentEpoch
