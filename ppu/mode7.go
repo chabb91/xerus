@@ -56,7 +56,7 @@ func (bg *Mode7) GetDotAt(H, V uint16, _ bool) (int, byte, bool) {
 	tile := vram[((Y&0xFFF8)<<4+(X>>3))] & 0x00FF
 	char := byte(vram[((tile<<6)+((Y&7)<<3)+(X&7))] >> 8)
 	var color int
-	if char&255 == 0 {
+	if char == 0 {
 		color = BG_BACKDROP_COLOR
 	} else {
 		if *bg.isDirectColor {
@@ -69,6 +69,47 @@ func (bg *Mode7) GetDotAt(H, V uint16, _ bool) (int, byte, bool) {
 		}
 	}
 	return color, 1, true
+}
+
+func (bg *Mode7) GetDotAtEXTBG(H, V uint16, _ bool) (int, byte, bool) {
+	if *bg.bg1Mosaic {
+		V = V - V%uint16(mosaicSize)
+	}
+	if *bg.bg2Mosaic {
+		H = H - H%uint16(mosaicSize)
+	}
+
+	//which is horizontal which is vertical who knows
+	if bg.isFlippedHorizontally {
+		H = 255 - H
+	}
+	if bg.isFlippedVertically {
+		//is this how it should be who knows
+		V = (256 << interlace) - 1 - V
+	}
+
+	hScroll, vScroll := float32(int16(H+bg.hScroll))-float32(bg.m7X), float32(int16(V+bg.vScroll+(1<<interlace)))-float32(bg.m7Y)
+	X := uint16((float32(bg.m7A)*hScroll+float32(bg.m7B)*vScroll)/256.0 + float32(bg.m7X))
+	Y := uint16((float32(bg.m7C)*hScroll+float32(bg.m7D)*vScroll)/256.0 + float32(bg.m7Y))
+
+	if bg.fillFunc == nil {
+		X &= 1023
+		Y &= 1023
+	} else {
+		if X > 1023 || Y > 1023 {
+			return bg.fillFunc(bg.ds.getCGRAM()), 0, true
+		}
+	}
+
+	vram := bg.ds.getVRAM()
+	tile := vram[((Y&0xFFF8)<<4+(X>>3))] & 0x00FF
+	char := byte(vram[((tile<<6)+((Y&7)<<3)+(X&7))] >> 8)
+	if char&127 == 0 {
+		return BG_BACKDROP_COLOR, 0, true
+	} else {
+		color := bg.ds.getCGRAM()[char&0x7F]
+		return int(color), (char & 0x80 >> 7), true
+	}
 }
 
 func (bg *Mode7) setM7Sel(value byte) {

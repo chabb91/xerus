@@ -357,6 +357,13 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.SETINI.setup(value)
 		ppu.Framebuffer.CurrentHeight = ppu.SETINI.getScreenHeight() // - (1 << interlace)
 		ppu.Framebuffer.Interlace = byte(interlace)
+
+		if ppu.BGMODE == 7 {
+			setMode7(ppu, false, ppu.SETINI.m7EXTBG)
+			ppu.regeneratePipelines()
+			ppu.invalidateAllBackgrounds()
+			ppu.markActiveWindowsDirty()
+		}
 	default:
 		return fmt.Errorf("invalid PPU register write at $%04X", addr)
 	}

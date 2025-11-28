@@ -97,9 +97,9 @@ var modePriorityOrder = map[byte][]pipelineTemplate{
 	8: {
 		{obj, 3, nil, nil, nil},
 		{obj, 2, nil, nil, nil},
-		{bg2, 1, nil, nil, nil}, //TODO i believe bg2 is bg1 and bg1 is mode7
+		{bg2, 1, nil, nil, nil},
 		{obj, 1, nil, nil, nil},
-		{bgMode7, 0, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
 		{obj, 0, nil, nil, nil},
 		{bg2, 0, nil, nil, nil},
 	},
@@ -249,24 +249,11 @@ func setMode6(ppu *PPU, _, _ bool) {
 }
 
 func setMode7(ppu *PPU, _, isExtBg bool) {
-	//TODO remember mode 7 this doesnt work yet
-	ppu.Bg1.setBgColorDepth(bpp8)
-	ppu.Bg2.setBgColorDepth(bpp2)
-
-	ppu.Bg1.getPaletteIndex = modeNormalColor8BppIndex
-	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
-
 	if isExtBg {
 		ppu.modePriority = modePriorityOrder[8]
 	} else {
 		ppu.modePriority = modePriorityOrder[7]
 	}
-
-	ppu.Bg1.optFunc = nil
-	ppu.Bg1.OPTMap = nil
-
-	ppu.Bg2.optFunc = nil
-	ppu.Bg2.OPTMap = nil
 }
 
 func (ppu *PPU) regeneratePipelines() {
@@ -388,7 +375,11 @@ func (ppu *PPU) getLayerRenderer(layer ppuLayer) rendererFunction {
 			return ppu.Mode7.GetDotAt
 		}
 	case bg2:
-		return ppu.Bg2.GetDotAt
+		if ppu.BGMODE != 7 {
+			return ppu.Bg2.GetDotAt
+		} else {
+			return ppu.Mode7.GetDotAtEXTBG
+		}
 	case bg3:
 		return ppu.Bg3.GetDotAt
 	case bg4:
