@@ -385,7 +385,7 @@ func (wc *WindowController) isDotInColorMask(H uint16) bool {
 	return false
 }
 
-func (wc *WindowController) performColorMath(mainColor, subColor, H uint16, layer ppuLayer) uint16 {
+func (wc *WindowController) performColorMath(mainColor, subColor, H uint16, mainLayer, subLayer ppuLayer) uint16 {
 	colorMath := &wc.ColorMath
 	inColorMask := colorMath.colorWindowData.mainCache[H]
 	if colorMath.clipToBlack(inColorMask) {
@@ -394,12 +394,16 @@ func (wc *WindowController) performColorMath(mainColor, subColor, H uint16, laye
 	if colorMath.preventMath(inColorMask) {
 		return mainColor
 	}
-	if !wc.layers[layer].colorMathActive {
+	if !wc.layers[mainLayer].colorMathActive {
 		return mainColor
 	}
 
 	var blendColor uint16
 	if colorMath.isSubscren {
+		if subLayer == backdrop {
+			//looks like the snes never blends main screen with backdrop this is just my guess tho
+			return mainColor
+		}
 		blendColor = subColor
 	} else {
 		blendColor = colorMath.fixedColor

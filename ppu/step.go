@@ -20,8 +20,8 @@ func (ppu *PPU) Step() {
 				if math {
 					//TODO subscreen color math unfortunately depends on the previous ms pixel. this matters in some cases
 					//try fixing it later
-					cm1 := ppu.WINDOWS.performColorMath(ms, ss, h, l1)
-					cm2 := ppu.WINDOWS.performColorMath(ss, ms, h, l2)
+					cm1 := ppu.WINDOWS.performColorMath(ms, ss, h, l1, l2)
+					cm2 := ppu.WINDOWS.performColorMath(ss, ms, h, l2, l1)
 					ppu.Framebuffer.Back[h][v].SetColor(cm2, cm1, ppu.brightness)
 				} else {
 					ppu.Framebuffer.Back[h][v].SetColor(ss, ms, ppu.brightness)
@@ -29,8 +29,8 @@ func (ppu *PPU) Step() {
 			} else {
 				ms, l1, math := ppu.renderMainScreen(h, v)
 				if math {
-					ss, _, _ := ppu.renderSubScreen(h, v)
-					cm1 := ppu.WINDOWS.performColorMath(ms, ss, h, l1)
+					ss, l2, _ := ppu.renderSubScreen(h, v)
+					cm1 := ppu.WINDOWS.performColorMath(ms, ss, h, l1, l2)
 					ppu.Framebuffer.Back[h][v].SetColor(cm1, cm1, ppu.brightness)
 				} else {
 					ppu.Framebuffer.Back[h][v].SetColor(ms, ms, ppu.brightness)
