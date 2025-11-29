@@ -2,7 +2,7 @@ package ppu
 
 // object attribute memory/sprites
 type OAMController struct {
-	ByteIndexLatch uint16
+	WordIndexLatch uint16
 	ByteIndex      uint16
 
 	LowByteLatch byte
@@ -24,14 +24,12 @@ func NewOAM(sv spriteValidator) *OAMController {
 }
 
 func (oam *OAMController) SetAddWordLow(value byte) {
-	oam.ByteIndexLatch = (oam.ByteIndexLatch & 0x0100) | uint16(value)
-	oam.ByteIndexLatch <<= 1
+	oam.WordIndexLatch = (oam.WordIndexLatch & 0x0100) | uint16(value)
 	oam.InvalidateInternalIndex()
 }
 
 func (oam *OAMController) SetAddWordHigh(value byte) {
-	oam.ByteIndexLatch = (oam.ByteIndexLatch & 0xFF) | (uint16(value&1) << 8)
-	oam.ByteIndexLatch <<= 1
+	oam.WordIndexLatch = (oam.WordIndexLatch & 0xFF) | (uint16(value&1) << 8)
 	oam.InvalidateInternalIndex()
 	oam.priorityRotation = value&0x80 == 0x80
 }
@@ -70,7 +68,7 @@ func (oam *OAMController) ReadOAMData() byte {
 }
 
 func (oam *OAMController) InvalidateInternalIndex() {
-	oam.ByteIndex = oam.ByteIndexLatch
+	oam.ByteIndex = oam.WordIndexLatch << 1
 }
 
 func isOAMHighTable(index uint16) bool {
