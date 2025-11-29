@@ -24,7 +24,7 @@ func newMode7(ds tileDataSource, bg1, bg2 *Background) *Mode7 {
 	}
 }
 
-func (bg *Mode7) GetDotAt(H, V uint16, _ bool) (int, byte, bool) {
+func (bg *Mode7) GetDotAt(H, V uint16) (int, byte, bool) {
 	if *bg.bg1Mosaic {
 		V = V - V%uint16(mosaicSize)
 		H = H - H%uint16(mosaicSize)
@@ -51,7 +51,7 @@ func (bg *Mode7) GetDotAt(H, V uint16, _ bool) (int, byte, bool) {
 	return color, 1, true
 }
 
-func (bg *Mode7) GetDotAtEXTBG(H, V uint16, _ bool) (int, byte, bool) {
+func (bg *Mode7) GetDotAtEXTBG(H, V uint16) (int, byte, bool) {
 	if *bg.bg1Mosaic {
 		V = V - V%uint16(mosaicSize)
 	}

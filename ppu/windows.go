@@ -24,7 +24,7 @@ type WindowController struct {
 	dirtyMainWindows, dirtySubWindows byte
 	invalidationCounter               int
 
-	layers    [7]LayerWindowData
+	layers    [6]LayerWindowData
 	ColorMath ColorMath
 }
 
@@ -284,7 +284,6 @@ func (wc *WindowController) setCGADSUB(value byte) {
 		wc.ColorMath.colorFunction = subColors
 	}
 	wc.ColorMath.halfColor = value&0x40 == 0x40
-	//TODO remember mode 7
 	wc.layers[bg1].colorMathActive = value&1 != 0
 	wc.layers[bg2].colorMathActive = value&2 != 0
 	wc.layers[bg3].colorMathActive = value&4 != 0

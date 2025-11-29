@@ -53,7 +53,7 @@ func newObjects(ds tileDataSource, layer ppuLayer) *Objects {
 	return obj
 }
 
-func (ob *Objects) GetDotAt(H, V uint16, _ bool) (int, byte, bool) {
+func (ob *Objects) GetDotAt(H, V uint16) (int, byte, bool) {
 	ret := ob.resolvedDotsOnScanLine[H]
 	return ret.color, ret.priority, ret.partakesInColorMath
 }

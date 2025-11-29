@@ -402,14 +402,14 @@ func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer, bool) {
 
 		if v.layer == obj {
 			if v.priority == 3 {
-				val, prio, math = v.renderer(H, V, false)
+				val, prio, math = v.renderer(H, V)
 				colorCache[v.layer], spritePrio, spriteMath = val, prio, math
 			} else {
 				val, prio, math = colorCache[v.layer], spritePrio, spriteMath
 			}
 		} else {
 			if v.priority == 1 {
-				val, prio, math = v.renderer(H<<uint16(hires)+uint16(hires), V, false)
+				val, prio, math = v.renderer(H<<uint16(hires)+uint16(hires), V)
 				colorCache[v.layer] = val
 			} else {
 				val, prio, math = colorCache[v.layer], 0, true
@@ -435,14 +435,14 @@ func (ppu *PPU) renderSubScreen(H, V uint16) (uint16, ppuLayer, bool) {
 
 		if v.layer == obj {
 			if v.priority == 3 {
-				val, prio, math = v.renderer(H, V, false)
+				val, prio, math = v.renderer(H, V)
 				colorCache[v.layer], spritePrio, spriteMath = val, prio, math
 			} else {
 				val, prio, math = colorCache[v.layer], spritePrio, spriteMath
 			}
 		} else {
 			if v.priority == 1 {
-				val, prio, math = v.renderer(H<<uint16(hires), V, false)
+				val, prio, math = v.renderer(H<<uint16(hires), V)
 				colorCache[v.layer] = val
 			} else {
 				val, prio, math = colorCache[v.layer], 0, true

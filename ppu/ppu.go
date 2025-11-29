@@ -64,7 +64,7 @@ type PPU struct {
 	mainRenderPipeline []pipelineTemplate
 	subRenderPipeline  []pipelineTemplate
 
-	bgEpochs [6]*uint64 //1 2 3 4 mode7 and obj
+	bgEpochs [5]*uint64 //1 2 3 4 and obj
 
 	InterruptScheduler InterruptScheduler
 	HdmaScheduler      HdmaScheduler
@@ -102,8 +102,6 @@ func NewPPU(bus memory.Bus) *PPU {
 	ppu.bgEpochs[bg3] = &ppu.Bg3.currentEpoch
 	ppu.bgEpochs[bg4] = &ppu.Bg4.currentEpoch
 	ppu.bgEpochs[obj] = &ppu.Obj.currentEpoch
-	//TODO placeholder to avoid nil
-	ppu.bgEpochs[bgMode7] = new(uint64)
 
 	ppu.VRAM = NewVRAM(ppu)
 	ppu.OAM = NewOAM(ppu)
@@ -253,7 +251,6 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.Bg4.charTileAddressBase = (uint16((value>>4)&0xF) << 12) & 0x7FFF
 		ppu.invalidateLayer(bg3)
 		ppu.invalidateLayer(bg4)
-	//TODO add mode 7 scrolling
 	case 0x210D:
 		ppu.Bg1.hScroll = ppu.BGxnOFS.hFormula(value)
 		ppu.Mode7.hScroll = ppu.M7x.setRegister(value)

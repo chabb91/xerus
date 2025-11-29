@@ -14,9 +14,8 @@ const (
 	bg2      ppuLayer = 1
 	bg3      ppuLayer = 2
 	bg4      ppuLayer = 3
-	bgMode7  ppuLayer = 4
-	obj      ppuLayer = 5
-	backdrop ppuLayer = 6
+	obj      ppuLayer = 4
+	backdrop ppuLayer = 5
 )
 
 const (
@@ -29,7 +28,7 @@ type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
 type optResolver func(*Background, uint16, uint16) (uint16, uint16)
 type VRAMAddressCalculator func(tileIndex byte) uint16
 type colorIndex func(ppuLayer, colorDepth, byte) byte
-type rendererFunction func(uint16, uint16, bool) (int, byte, bool)
+type rendererFunction func(uint16, uint16) (int, byte, bool)
 
 type LayerEpochSource interface {
 	GetLayerSourceEpoch() uint64
@@ -158,7 +157,7 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
 // TODO isSubscreen isnt used by anything
-func (bg *Background) GetDotAt(H, V uint16, isSubscreen bool) (int, byte, bool) {
+func (bg *Background) GetDotAt(H, V uint16) (int, byte, bool) {
 	if H < bg.renderCacheEnd {
 		ret := bg.renderCache[H]
 		return ret.color, ret.priority, true
