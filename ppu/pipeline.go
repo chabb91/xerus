@@ -1,6 +1,19 @@
 package ppu
 
-type bgModeSetter func(ppu *PPU, mode1Prio, isExtBg bool)
+const (
+	renderMode0 byte = iota
+	renderMode1
+	renderMode1Bg3Prio
+	renderMode2
+	renderMode3
+	renderMode4
+	renderMode5
+	renderMode6
+	renderMode7
+	renderMode7Extbg
+)
+
+type bgModeSetter func(ppu *PPU, mode1Prio bool)
 
 type pipelineTemplate struct {
 	layer    ppuLayer
@@ -13,7 +26,7 @@ type pipelineTemplate struct {
 }
 
 var modePriorityOrder = map[byte][]pipelineTemplate{
-	0: {
+	renderMode0: {
 		{obj, 3, nil, nil, nil},
 		{bg1, 1, nil, nil, nil},
 		{bg2, 1, nil, nil, nil},
@@ -27,7 +40,7 @@ var modePriorityOrder = map[byte][]pipelineTemplate{
 		{bg3, 0, nil, nil, nil},
 		{bg4, 0, nil, nil, nil},
 	},
-	1: {
+	renderMode1: {
 		{obj, 3, nil, nil, nil},
 		{bg1, 1, nil, nil, nil},
 		{bg2, 1, nil, nil, nil},
@@ -39,71 +52,7 @@ var modePriorityOrder = map[byte][]pipelineTemplate{
 		{obj, 0, nil, nil, nil},
 		{bg3, 0, nil, nil, nil},
 	},
-	2: {
-		{obj, 3, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{bg2, 1, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg1, 0, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
-		{bg2, 0, nil, nil, nil},
-	},
-	3: {
-		{obj, 3, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{bg2, 1, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg1, 0, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
-		{bg2, 0, nil, nil, nil},
-	},
-	4: {
-		{obj, 3, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{bg2, 1, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg1, 0, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
-		{bg2, 0, nil, nil, nil},
-	},
-	5: {
-		{obj, 3, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{bg2, 1, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg1, 0, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
-		{bg2, 0, nil, nil, nil},
-	},
-	6: {
-		{obj, 3, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg1, 0, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
-	},
-	7: {
-		{obj, 3, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
-	},
-	8: {
-		{obj, 3, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{bg2, 1, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
-		{bg2, 0, nil, nil, nil},
-	},
-	9: {
+	renderMode1Bg3Prio: {
 		{bg3, 1, nil, nil, nil},
 		{obj, 3, nil, nil, nil},
 		{bg1, 1, nil, nil, nil},
@@ -114,6 +63,70 @@ var modePriorityOrder = map[byte][]pipelineTemplate{
 		{obj, 1, nil, nil, nil},
 		{obj, 0, nil, nil, nil},
 		{bg3, 0, nil, nil, nil},
+	},
+	renderMode2: {
+		{obj, 3, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{bg2, 1, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{bg1, 0, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
+		{bg2, 0, nil, nil, nil},
+	},
+	renderMode3: {
+		{obj, 3, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{bg2, 1, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{bg1, 0, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
+		{bg2, 0, nil, nil, nil},
+	},
+	renderMode4: {
+		{obj, 3, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{bg2, 1, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{bg1, 0, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
+		{bg2, 0, nil, nil, nil},
+	},
+	renderMode5: {
+		{obj, 3, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{bg2, 1, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{bg1, 0, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
+		{bg2, 0, nil, nil, nil},
+	},
+	renderMode6: {
+		{obj, 3, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{bg1, 0, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
+	},
+	renderMode7: {
+		{obj, 3, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
+	},
+	renderMode7Extbg: {
+		{obj, 3, nil, nil, nil},
+		{obj, 2, nil, nil, nil},
+		{bg2, 1, nil, nil, nil},
+		{obj, 1, nil, nil, nil},
+		{bg1, 1, nil, nil, nil},
+		{obj, 0, nil, nil, nil},
+		{bg2, 0, nil, nil, nil},
 	},
 }
 
@@ -128,7 +141,7 @@ var bgModeLUT = [8]bgModeSetter{
 	setMode7,
 }
 
-func setMode0(ppu *PPU, _, _ bool) {
+func setMode0(ppu *PPU, _ bool) {
 	ppu.Bg1.setBgColorDepth(bpp2)
 	ppu.Bg2.setBgColorDepth(bpp2)
 	ppu.Bg3.setBgColorDepth(bpp2)
@@ -148,7 +161,7 @@ func setMode0(ppu *PPU, _, _ bool) {
 	ppu.Bg2.OPTMap = nil
 }
 
-func setMode1(ppu *PPU, mode1Prio, _ bool) {
+func setMode1(ppu *PPU, mode1Prio bool) {
 	ppu.Bg1.setBgColorDepth(bpp4)
 	ppu.Bg2.setBgColorDepth(bpp4)
 	ppu.Bg3.setBgColorDepth(bpp2)
@@ -158,9 +171,9 @@ func setMode1(ppu *PPU, mode1Prio, _ bool) {
 	ppu.Bg3.getPaletteIndex = modeNormalColorNo8bppIndex
 
 	if mode1Prio {
-		ppu.modePriority = modePriorityOrder[9]
+		ppu.modePriority = modePriorityOrder[renderMode1Bg3Prio]
 	} else {
-		ppu.modePriority = modePriorityOrder[1]
+		ppu.modePriority = modePriorityOrder[renderMode1]
 	}
 
 	ppu.Bg1.optFunc = nil
@@ -170,14 +183,14 @@ func setMode1(ppu *PPU, mode1Prio, _ bool) {
 	ppu.Bg2.OPTMap = nil
 }
 
-func setMode2(ppu *PPU, _, _ bool) {
+func setMode2(ppu *PPU, _ bool) {
 	ppu.Bg1.setBgColorDepth(bpp4)
 	ppu.Bg2.setBgColorDepth(bpp4)
 
 	ppu.Bg1.getPaletteIndex = modeNormalColorNo8bppIndex
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
 
-	ppu.modePriority = modePriorityOrder[2]
+	ppu.modePriority = modePriorityOrder[renderMode2]
 
 	ppu.Bg1.optFunc = resolveOPTMode26
 	ppu.Bg1.OPTMap = ppu.Bg3
@@ -186,14 +199,14 @@ func setMode2(ppu *PPU, _, _ bool) {
 	ppu.Bg2.OPTMap = ppu.Bg3
 }
 
-func setMode3(ppu *PPU, _, _ bool) {
+func setMode3(ppu *PPU, _ bool) {
 	ppu.Bg1.setBgColorDepth(bpp8)
 	ppu.Bg2.setBgColorDepth(bpp4)
 
 	ppu.Bg1.getPaletteIndex = modeNormalColor8BppIndex
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
 
-	ppu.modePriority = modePriorityOrder[3]
+	ppu.modePriority = modePriorityOrder[renderMode3]
 
 	ppu.Bg1.optFunc = nil
 	ppu.Bg1.OPTMap = nil
@@ -202,14 +215,14 @@ func setMode3(ppu *PPU, _, _ bool) {
 	ppu.Bg2.OPTMap = nil
 }
 
-func setMode4(ppu *PPU, _, _ bool) {
+func setMode4(ppu *PPU, _ bool) {
 	ppu.Bg1.setBgColorDepth(bpp8)
 	ppu.Bg2.setBgColorDepth(bpp2)
 
 	ppu.Bg1.getPaletteIndex = modeNormalColor8BppIndex
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
 
-	ppu.modePriority = modePriorityOrder[4]
+	ppu.modePriority = modePriorityOrder[renderMode4]
 
 	ppu.Bg1.optFunc = resolveOPTMode4
 	ppu.Bg1.OPTMap = ppu.Bg3
@@ -218,14 +231,14 @@ func setMode4(ppu *PPU, _, _ bool) {
 	ppu.Bg2.OPTMap = ppu.Bg3
 }
 
-func setMode5(ppu *PPU, _, _ bool) {
+func setMode5(ppu *PPU, _ bool) {
 	ppu.Bg1.setBgColorDepth(bpp4)
 	ppu.Bg2.setBgColorDepth(bpp2)
 
 	ppu.Bg1.getPaletteIndex = modeNormalColorNo8bppIndex
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
 
-	ppu.modePriority = modePriorityOrder[5]
+	ppu.modePriority = modePriorityOrder[renderMode5]
 
 	ppu.Bg1.optFunc = nil
 	ppu.Bg1.OPTMap = nil
@@ -234,12 +247,12 @@ func setMode5(ppu *PPU, _, _ bool) {
 	ppu.Bg2.OPTMap = nil
 }
 
-func setMode6(ppu *PPU, _, _ bool) {
+func setMode6(ppu *PPU, _ bool) {
 	ppu.Bg1.setBgColorDepth(bpp4)
 
 	ppu.Bg1.getPaletteIndex = modeNormalColorNo8bppIndex
 
-	ppu.modePriority = modePriorityOrder[6]
+	ppu.modePriority = modePriorityOrder[renderMode6]
 
 	ppu.Bg1.optFunc = resolveOPTMode26
 	ppu.Bg1.OPTMap = ppu.Bg3
@@ -248,11 +261,11 @@ func setMode6(ppu *PPU, _, _ bool) {
 	ppu.Bg2.OPTMap = nil
 }
 
-func setMode7(ppu *PPU, _, isExtBg bool) {
-	if isExtBg {
-		ppu.modePriority = modePriorityOrder[8]
+func setMode7(ppu *PPU, _ bool) {
+	if ppu.SETINI.m7EXTBG {
+		ppu.modePriority = modePriorityOrder[renderMode7Extbg]
 	} else {
-		ppu.modePriority = modePriorityOrder[7]
+		ppu.modePriority = modePriorityOrder[renderMode7]
 	}
 }
 
@@ -344,7 +357,7 @@ func (ppu *PPU) setBGMODE(value byte) {
 	ppu.Bg3.charTileSize = (value >> 6) & 1
 	ppu.Bg4.charTileSize = (value >> 7) & 1
 
-	bgModeLUT[value&7](ppu, (value&8) != 0, ppu.SETINI.m7EXTBG)
+	bgModeLUT[value&7](ppu, (value&8) != 0)
 
 	ppu.regeneratePipelines()
 	ppu.invalidateAllBackgrounds()

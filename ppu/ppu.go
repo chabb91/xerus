@@ -341,7 +341,6 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.WINDOWS.TSW(value)
 	case 0x2130:
 		fmt.Println("CGWSEL", value)
-		//TODO remember mode7
 		ppu.WINDOWS.ColorMath.setCGWSEL(value, &ppu.Bg1.isDirectColor)
 	case 0x2131:
 		fmt.Println("CGADSUB", value)
@@ -356,7 +355,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.Framebuffer.Interlace = byte(interlace)
 
 		if ppu.BGMODE == 7 {
-			setMode7(ppu, false, ppu.SETINI.m7EXTBG)
+			setMode7(ppu, false)
 			ppu.regeneratePipelines()
 			ppu.invalidateAllBackgrounds()
 			ppu.markActiveWindowsDirty()
