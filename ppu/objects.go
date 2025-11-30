@@ -112,7 +112,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 			wrapped = true
 		}
 		posY &= 0xFF
-		if (uint16(sprite.posY) <= V && posY > V) || (posY > V && wrapped) {
+		if (uint16(sprite.posY) <= V || wrapped) && posY > V {
 			if (-1*int16(dimensions.W) < sprite.posX && sprite.posX < SCREEN_WIDTH) || sprite.posX == -256 {
 				if spriteCnt == 32 {
 					//TODO set $213E
