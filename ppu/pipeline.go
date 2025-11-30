@@ -152,7 +152,7 @@ func setMode0(ppu *PPU, _ bool) {
 	ppu.Bg3.getPaletteIndex = mode0ColorIndex
 	ppu.Bg4.getPaletteIndex = mode0ColorIndex
 
-	ppu.modePriority = modePriorityOrder[0]
+	ppu.modePriority = modePriorityOrder[renderMode0]
 
 	ppu.Bg1.optFunc = nil
 	ppu.Bg1.OPTMap = nil
