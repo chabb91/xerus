@@ -211,8 +211,8 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 
 		ms := value>>4 + 1
 		if ms != mosaicSize {
-			if ppu.V > 0 && ppu.SETINI.Timing.TotalScanlines >= ppu.V {
-				mosaicStartLine = uint16(ppu.V + 1)
+			if ppu.V > 0 && ppu.SETINI.getScreenHeight() >= ppu.V {
+				mosaicStartLine = uint16(ppu.V)
 			} else {
 				mosaicStartLine = 0
 			}

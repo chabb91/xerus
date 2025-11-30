@@ -14,6 +14,8 @@ var spriteMath bool
 // used in step for tracking frame times
 var frameStartTime time.Time
 
+var currentTimingLUT VisibilityLUT
+
 // global mosaic values
 var mosaicSize byte
 var mosaicStartLine uint16

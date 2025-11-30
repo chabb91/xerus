@@ -8,7 +8,7 @@ import (
 func (ppu *PPU) Step() {
 	timing := &ppu.SETINI.Timing
 
-	draw := ppu.SETINI.TimingLUT[ppu.V*H_TOTAL+ppu.H]
+	draw := currentTimingLUT[ppu.V*H_TOTAL+ppu.H]
 	if !ppu.FBlank {
 		if draw.IsVisible {
 			h := draw.H
