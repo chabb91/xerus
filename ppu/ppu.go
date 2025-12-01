@@ -162,6 +162,10 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 		}
 		ppu.VHigh = !ppu.VHigh
 		return ret, nil
+	case 0x213E:
+		//bit 5 is some master/slave mode thing but seems to always be 0
+		//bit 4 is ppu1 open bus
+		return ppu.Obj.timeOver | ppu.Obj.rangeOver | CHIP_5C77_VERSION, nil
 	case 0x213F:
 		ppu.VHigh, ppu.HHigh = false, false
 		tmpLatch := ppu.LatchFlag

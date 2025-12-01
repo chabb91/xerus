@@ -117,6 +117,9 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 	case ActionVBlankEnd:
 		ppu.VBlank = false
 		ppu.InterruptScheduler.SetRdnmi(false)
+		if !ppu.FBlank {
+			ppu.Obj.resetTimeAndRange()
+		}
 	case ActionSetRdnmi:
 		ppu.InterruptScheduler.SetRdnmi(true)
 	case ActionHBlankStart:
@@ -159,9 +162,7 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 		ppu.InterruptScheduler.SetHvbjoyA(false)
 	case ActionCpuRefresh:
 	case ActionPrepareScanline:
-		if ppu.Obj.isActive() {
-			ppu.Obj.prepareScanLine(draw.V<<ppu.SETINI.objInterlace + interlace&interlaceStep)
-		}
+		ppu.Obj.prepareScanLine(draw.V<<ppu.SETINI.objInterlace + interlace&interlaceStep)
 
 		shouldReset := true
 		if hasMosaic && mosaicSize > 1 {

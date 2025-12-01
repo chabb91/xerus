@@ -27,6 +27,10 @@ type Objects struct {
 	layerId ppuLayer
 
 	enabledOnMainScreen, enabledOnSubScreen bool
+
+	//TODO fullsnes claims these flags are being set at a certain time gotta look into it
+	//Bit6 when V=OBJ.YLOC/H=OAM.INDEX*2, bit7 when V=OBJ.YLOC+1/H=0
+	timeOver, rangeOver byte
 }
 
 func newObjects(ds tileDataSource, layer ppuLayer) *Objects {
@@ -60,6 +64,10 @@ func (ob *Objects) GetDotAt(H, V uint16) (int, byte, bool) {
 
 func (ob *Objects) isActive() bool {
 	return ob.enabledOnMainScreen || ob.enabledOnSubScreen
+}
+
+func (ob *Objects) resetTimeAndRange() {
+	ob.timeOver, ob.rangeOver = 0, 0
 }
 
 func (ob *Objects) setupOBSEL(value byte) {
@@ -97,10 +105,6 @@ func (ob *Objects) prepareScanLine(V uint16) {
 	spriteCnt := 0
 	tileCnt := int16(0)
 	priority := ob.ds.getPriorityRotation()
-	cgram := ob.ds.getCGRAM()
-	for i := range SCREEN_WIDTH {
-		ob.resolvedDotsOnScanLine[i].color = BG_BACKDROP_COLOR
-	}
 	for i := range ob.Sprites {
 		sprite := &ob.Sprites[(priority+byte(i))&0x7F]
 		sprite.setup()
@@ -114,7 +118,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 		if (uint16(sprite.posY) <= V || wrapped) && posY > V {
 			if (-1*int16(dimensions.W) < sprite.posX && sprite.posX < SCREEN_WIDTH) || sprite.posX == -256 {
 				if spriteCnt == 32 {
-					//TODO set $213E
+					ob.rangeOver = 0x40
 					break
 				}
 
@@ -132,9 +136,16 @@ func (ob *Objects) prepareScanLine(V uint16) {
 		tileCnt += (min(SCREEN_WIDTH, sprite.posX+int16(dimensions.W)) - max(-8, sprite.posX)) >> 3
 		spriteCnt++
 		if tileCnt > 34 {
-			//TODO set $213E
+			ob.timeOver = 0x80
 			break
 		}
+	}
+	if !ob.isActive() {
+		return
+	}
+	cgram := ob.ds.getCGRAM()
+	for i := range SCREEN_WIDTH {
+		ob.resolvedDotsOnScanLine[i].color = BG_BACKDROP_COLOR
 	}
 	visibleSprites = visibleSprites[len(visibleSprites)-spriteCnt:]
 	for _, sprite := range visibleSprites {
