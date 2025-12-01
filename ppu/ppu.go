@@ -356,11 +356,12 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.WINDOWS.ColorMath.setCOLDATA(value)
 	case 0x2133:
 		fmt.Println("SETINI", value)
+		prevEXTBG := ppu.SETINI.m7EXTBG
 		ppu.SETINI.setup(value)
 		ppu.Framebuffer.CurrentHeight = ppu.SETINI.getScreenHeight() // - (1 << interlace)
 		ppu.Framebuffer.Interlace = byte(interlace)
 
-		if ppu.BGMODE == 7 {
+		if ppu.BGMODE == 7 && prevEXTBG != ppu.SETINI.m7EXTBG {
 			setMode7(ppu, false)
 			ppu.regeneratePipelines()
 			ppu.invalidateAllBackgrounds()
