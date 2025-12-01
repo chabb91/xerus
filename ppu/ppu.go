@@ -72,6 +72,7 @@ type PPU struct {
 	IrqFunc        func() bool
 	IrqTimeUpTimer byte
 
+	ppu1OB, ppu2OB byte
 	//required for like 1 thing only. unlucky
 	bus memory.Bus
 
@@ -80,7 +81,6 @@ type PPU struct {
 
 func NewPPU(bus memory.Bus) *PPU {
 	ppu := &PPU{
-		CGRAM:   NewCGRAM(),
 		BGxnOFS: &BGxnOFS{},
 		M7x:     &M7Registers{},
 		SETINI:  NewSETINI(NTSC_TIMING),
@@ -105,6 +105,7 @@ func NewPPU(bus memory.Bus) *PPU {
 
 	ppu.VRAM = NewVRAM(ppu)
 	ppu.OAM = NewOAM(ppu)
+	ppu.CGRAM = NewCGRAM(&ppu.ppu2OB)
 
 	return ppu
 }
@@ -124,58 +125,59 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 	//no idea if this is correct or not tbh
 	case 0x2134:
 		result := int32(ppu.Mode7.m7A) * int32(int8(ppu.Mode7.m7B>>8))
-		return byte(result), nil
+		return ppu.returnAndSetPpu1OB(byte(result)), nil
 	case 0x2135:
 		result := int32(ppu.Mode7.m7A) * int32(int8(ppu.Mode7.m7B>>8))
-		return byte(result >> 8), nil
+		return ppu.returnAndSetPpu1OB(byte(result >> 8)), nil
 	case 0x2136:
 		result := int32(ppu.Mode7.m7A) * int32(int8(ppu.Mode7.m7B>>8))
-		return byte(result >> 16), nil
+		return ppu.returnAndSetPpu1OB(byte(result >> 16)), nil
 	case 0x2137:
 		ppu.LatchHV()
 		return ppu.bus.GetOpenBus(), nil
 	case 0x2138:
-		return ppu.OAM.ReadOAMData(), nil
+		return ppu.returnAndSetPpu1OB(ppu.OAM.ReadOAMData()), nil
 	case 0x2139:
-		return ppu.VRAM.ReadDataLow(), nil
+		return ppu.returnAndSetPpu1OB(ppu.VRAM.ReadDataLow()), nil
 	case 0x213A:
-		return ppu.VRAM.ReadDataHigh(), nil
+		return ppu.returnAndSetPpu1OB(ppu.VRAM.ReadDataHigh()), nil
 	case 0x213B:
-		return ppu.CGRAM.ReadData(), nil
+		return ppu.returnAndSetPpu2OB(ppu.CGRAM.ReadData()), nil
 	case 0x213C:
 		var ret byte
 		if ppu.HHigh {
-			//7 bits are ppu2 open bus
-			ret = byte(ppu.HLatch>>8) & 1
+			ret = byte(ppu.HLatch>>8)&1 | ppu.ppu2OB&0xFE
 		} else {
 			ret = byte(ppu.HLatch)
 		}
 		ppu.HHigh = !ppu.HHigh
-		return ret, nil
+		return ppu.returnAndSetPpu2OB(ret), nil
 	case 0x213D:
 		var ret byte
 		if ppu.VHigh {
-			//7 bits are ppu2 open bus
-			ret = byte(ppu.VLatch>>8) & 1
+			ret = byte(ppu.VLatch>>8)&1 | ppu.ppu2OB&0xFE
 		} else {
 			ret = byte(ppu.VLatch)
 		}
 		ppu.VHigh = !ppu.VHigh
-		return ret, nil
+		return ppu.returnAndSetPpu2OB(ret), nil
 	case 0x213E:
 		//bit 5 is some master/slave mode thing but seems to always be 0
-		//bit 4 is ppu1 open bus
-		return ppu.Obj.timeOver | ppu.Obj.rangeOver | CHIP_5C77_VERSION, nil
+		return ppu.returnAndSetPpu1OB(ppu.Obj.timeOver | ppu.Obj.rangeOver | ppu.ppu1OB&0x10 | CHIP_5C77_VERSION), nil
 	case 0x213F:
 		ppu.VHigh, ppu.HHigh = false, false
 		tmpLatch := ppu.LatchFlag
 		if *ppu.Wrio >= 0x80 {
 			ppu.LatchFlag = 0
 		}
-		//bit 5 is ppu2 open bus TODO
-		return byte(interlaceStep&1)<<7 | tmpLatch<<6 | ppu.SETINI.Timing.RegionId<<4 | CHIP_5C78_VERSION, nil
+		return ppu.returnAndSetPpu2OB(
+			byte(interlaceStep&1)<<7 | tmpLatch<<6 | ppu.ppu2OB&0x20 | ppu.SETINI.Timing.RegionId<<4 | CHIP_5C78_VERSION), nil
 	default:
-		return 0, fmt.Errorf("invalid PPU register read at $%04X", addr)
+		if ppu.isPpu1WriteRegisterRead(addr) {
+			return ppu.ppu1OB, nil
+		} else {
+			return 0, fmt.Errorf("invalid PPU register read at $%04X", addr)
+		}
 	}
 }
 
@@ -477,4 +479,25 @@ func (ppu *PPU) LatchHV() {
 		ppu.VLatch = ppu.V
 		ppu.LatchFlag = 1
 	}
+}
+
+func (ppu *PPU) returnAndSetPpu1OB(value byte) byte {
+	ppu.ppu1OB = value
+	return value
+}
+
+func (ppu *PPU) returnAndSetPpu2OB(value byte) byte {
+	ppu.ppu2OB = value
+	return value
+}
+
+func (ppu *PPU) isPpu1WriteRegisterRead(addr uint16) bool {
+	if addr&0xFF00 != 0x2100 || (addr&0x00F0)>>4 > 2 {
+		return false
+	}
+	lowNibble := addr & 0xF
+	if (lowNibble >= 4 && lowNibble <= 6) || (lowNibble >= 8 && lowNibble <= 0xA) {
+		return true
+	}
+	return false
 }
