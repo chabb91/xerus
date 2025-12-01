@@ -7,7 +7,7 @@ package ppu
 import "time"
 
 // used in renderMainScreen and renderSubScreen for extremely fast access
-var colorCache [6]int
+var colorCache [5]int
 var spritePrio byte
 var spriteMath bool
 
