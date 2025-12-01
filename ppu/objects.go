@@ -91,9 +91,8 @@ func (ob *Objects) Invalidate(addr uint16) {
 	}
 }
 
-// TODO work in progress. its not detecting the correct sprite prio, it doesnt count tiles rendered it counts X and Y wrong
-// lots to do with this one
 // TODO if OAM didnt change between frames all this can be cached. need a mechanism for that
+// TODO implement the priority rotation oddity
 func (ob *Objects) prepareScanLine(V uint16) {
 	spriteCnt := 0
 	tileCnt := int16(0)
@@ -125,7 +124,6 @@ func (ob *Objects) prepareScanLine(V uint16) {
 		}
 	}
 	//this isnt 100% accurate because it can render more than 34 tiles but the flag is correctly set
-	//and its going to behave roughly the same IF ITS NOT BUGGED
 	visibleSprites := ob.spritesParticipatingOnScanLine[:spriteCnt]
 	spriteCnt = 0
 	for i := len(visibleSprites) - 1; i >= 0; i-- {
@@ -141,19 +139,20 @@ func (ob *Objects) prepareScanLine(V uint16) {
 	visibleSprites = visibleSprites[len(visibleSprites)-spriteCnt:]
 	for _, sprite := range visibleSprites {
 		dimensions := ob.tileSize[sprite.size]
-		for j := range int16(dimensions.W) {
-			screenPos := sprite.posX + j
+		limit := sprite.posX + int16(dimensions.W)
+		for screenPos := sprite.posX; screenPos < limit; {
 			if screenPos < int16(SCREEN_WIDTH) && screenPos >= 0 {
-				if renderDot := &ob.resolvedDotsOnScanLine[screenPos]; renderDot.color == BG_BACKDROP_COLOR {
-					renderDot.color, renderDot.priority = ob.drawASpriteByRef(sprite, dimensions, uint16(screenPos), V, cgram), sprite.priority
-					renderDot.partakesInColorMath = sprite.paletteNum >= 4
+				if ob.resolvedDotsOnScanLine[screenPos].color == BG_BACKDROP_COLOR {
+					screenPos += ob.drawASpriteTileRow(sprite, dimensions, uint16(screenPos), V, cgram)
+					continue
 				}
 			}
+			screenPos++
 		}
 	}
 }
 
-func (ob *Objects) drawASpriteByRef(sprite *Sprite, dimensions OBTileSize, H, V uint16, cgram []uint16) int {
+func (ob *Objects) drawASpriteTileRow(sprite *Sprite, dimensions OBTileSize, H, V uint16, cgram []uint16) int16 {
 	x := H - uint16(sprite.posX)
 	y := uint16(sprite.posY)
 	if V >= y {
@@ -175,17 +174,30 @@ func (ob *Objects) drawASpriteByRef(sprite *Sprite, dimensions OBTileSize, H, V 
 	tileColumn := (sprite.tileIndex + byte(column)) & 0xF
 	tileIndex := tileRow<<4 | tileColumn
 
-	px := tileFlipXLUT[sprite.flipIndex][x&7]
+	px := x & 7
+	flipXTtable := &tileFlipXLUT[sprite.flipIndex]
 	r := tileFlipYLUT[sprite.flipIndex][y&7]
 
 	char := &ob.charTiles[sprite.nameTable][tileIndex]
-	colorIndex := 128 + sprite.paletteNum<<4 + (char.getPixelAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, px, r))
+	rowData := char.getRowAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, r)
+	limit := min(8-px, SCREEN_WIDTH-H)
 
-	if colorIndex&0xF == 0 {
-		return BG_BACKDROP_COLOR
-	} else {
-		return int(cgram[colorIndex])
+	for i := uint16(0); i < limit; i++ {
+		renderDot := &ob.resolvedDotsOnScanLine[H+i]
+		if renderDot.color != BG_BACKDROP_COLOR {
+			continue
+		}
+
+		colorIndex := 128 + sprite.paletteNum<<4 + rowData[(flipXTtable[px+i])]
+		if colorIndex&0xF == 0 {
+			renderDot.color = BG_BACKDROP_COLOR
+		} else {
+			renderDot.color = int(cgram[colorIndex])
+		}
+		renderDot.priority = sprite.priority
+		renderDot.partakesInColorMath = sprite.paletteNum >= 4
 	}
+	return int16(limit)
 }
 
 type Sprite struct {
