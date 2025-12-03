@@ -23,10 +23,10 @@ type JmpAbs struct {
 func (i *JmpAbs) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		i.lo = cpu.psram[cpu.fetchByte()]
+		i.lo = cpu.fetchByte()
 		i.state++
 	case 1:
-		hi := cpu.psram[cpu.fetchByte()]
+		hi := cpu.fetchByte()
 		cpu.r.PC = uint16(hi)<<8 | uint16(i.lo)
 		return true
 	}
