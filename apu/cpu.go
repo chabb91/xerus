@@ -1,9 +1,7 @@
 package apu
 
-const PSRAM_SIZE = 0x10000
-
 type CPU struct {
-	psram [PSRAM_SIZE]byte
+	psram Memory
 
 	r registers
 
@@ -13,8 +11,9 @@ type CPU struct {
 	resetSignal bool
 }
 
-func NewCPU() *CPU {
+func NewCPU(psram Memory) *CPU {
 	return &CPU{
+		psram:              psram,
 		instructions:       NewInstructionMap(),
 		currentInstruction: nil,
 
@@ -36,7 +35,7 @@ func (cpu *CPU) StepCycle() bool {
 }
 
 func (cpu *CPU) fetchByte() byte {
-	ret := cpu.psram[cpu.r.PC]
+	ret := cpu.psram.Read8(cpu.r.PC)
 	cpu.r.PC++
 
 	return ret
@@ -44,12 +43,12 @@ func (cpu *CPU) fetchByte() byte {
 
 // PushByte pushes one byte onto the stack and updates SP.
 func (cpu *CPU) PushByte(val byte) {
-	cpu.psram[cpu.r.getStackAddr()] = val
+	cpu.psram.Write8(cpu.r.getStackAddr(), val)
 	cpu.r.SP--
 }
 
 // PopByte pops one byte from the stack and updates SP.
 func (cpu *CPU) PopByte() byte {
 	cpu.r.SP++
-	return cpu.psram[cpu.r.getStackAddr()]
+	return cpu.psram.Read8(cpu.r.getStackAddr())
 }
