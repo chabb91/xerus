@@ -6,6 +6,10 @@ import (
 	"os"
 )
 
+type ProcessorState interface {
+	CPUState | APUState
+}
+
 type CPUState struct {
 	PC  uint16 `json:"pc"`
 	S   uint16 `json:"s"`
@@ -20,17 +24,26 @@ type CPUState struct {
 	RAM Memory `json:"ram"`
 }
 
+type APUState struct {
+	PC  uint16 `json:"pc"`
+	A   uint8  `json:"a"`
+	X   uint8  `json:"x"`
+	Y   uint8  `json:"y"`
+	SP  uint8  `json:"sp"`
+	PSW uint8  `json:"psw"`
+	RAM Memory `json:"ram"`
+}
+
 type MemoryBlock struct {
 	Address uint32
 	Data    byte
 }
 
-type InstructionTest struct {
-	Name    string   `json:"name"`
-	Initial CPUState `json:"initial"`
-	Final   CPUState `json:"final"`
-	//TODO replace empty interface with an actual struct to be able to effectively test cycle accuracy
-	Cycles [][]any `json:"cycles"`
+type InstructionTest[T ProcessorState] struct {
+	Name    string  `json:"name"`
+	Initial T       `json:"initial"`
+	Final   T       `json:"final"`
+	Cycles  [][]any `json:"cycles"`
 }
 
 type Memory []MemoryBlock
@@ -52,12 +65,12 @@ func (m *Memory) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func LoadTests(path string) ([]InstructionTest, error) {
+func LoadTests[T ProcessorState](path string) ([]InstructionTest[T], error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var tests []InstructionTest
+	var tests []InstructionTest[T]
 	if err := json.Unmarshal(data, &tests); err != nil {
 		return nil, err
 	}

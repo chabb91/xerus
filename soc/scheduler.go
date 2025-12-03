@@ -8,6 +8,7 @@ func (soc SoC) Run() {
 	cpuTickRate := 3
 	//dmaTickRate := 4
 	ppuTickRate := 2
+	//spuTickRate := 12
 
 	cnt2 = uint64(ppuTickRate) - 1
 
