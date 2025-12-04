@@ -16,24 +16,40 @@ func NewInstructionMap() []Instruction {
 
 	//BBC
 	branchIfEqual := func(_ *CPU, b byte, _ uint16) bool { return b == 0 }
-	ret[0x13] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x01}}
-	ret[0x33] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x02}}
-	ret[0x53] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x04}}
-	ret[0x73] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x08}}
-	ret[0x93] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x10}}
-	ret[0xB3] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x20}}
-	ret[0xD3] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x40}}
-	ret[0xF3] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x80}}
+	ret[0x13] = &Relative{branchCondition: branchIfEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x01 }}}
+	ret[0x33] = &Relative{branchCondition: branchIfEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x02 }}}
+	ret[0x53] = &Relative{branchCondition: branchIfEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x04 }}}
+	ret[0x73] = &Relative{branchCondition: branchIfEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x08 }}}
+	ret[0x93] = &Relative{branchCondition: branchIfEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x10 }}}
+	ret[0xB3] = &Relative{branchCondition: branchIfEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x20 }}}
+	ret[0xD3] = &Relative{branchCondition: branchIfEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x40 }}}
+	ret[0xF3] = &Relative{branchCondition: branchIfEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x80 }}}
 	//BBS
 	branchIfNotEqual := func(_ *CPU, b byte, _ uint16) bool { return b != 0 }
-	ret[0x03] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x01}}
-	ret[0x23] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x02}}
-	ret[0x43] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x04}}
-	ret[0x63] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x08}}
-	ret[0x83] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x10}}
-	ret[0xA3] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x20}}
-	ret[0xC3] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x40}}
-	ret[0xE3] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x80}}
+	ret[0x03] = &Relative{branchCondition: branchIfNotEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x01 }}}
+	ret[0x23] = &Relative{branchCondition: branchIfNotEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x02 }}}
+	ret[0x43] = &Relative{branchCondition: branchIfNotEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x04 }}}
+	ret[0x63] = &Relative{branchCondition: branchIfNotEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x08 }}}
+	ret[0x83] = &Relative{branchCondition: branchIfNotEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x10 }}}
+	ret[0xA3] = &Relative{branchCondition: branchIfNotEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x20 }}}
+	ret[0xC3] = &Relative{branchCondition: branchIfNotEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x40 }}}
+	ret[0xE3] = &Relative{branchCondition: branchIfNotEqual,
+		am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x80 }}}
 	//DBNZ
 	ret[0x6E] = &Relative{branchCondition: func(c *CPU, b byte, a uint16) bool { b--; c.psram.Write8(a, b); return b != 0 },
 		am: &DirectPage{mode: DEFAULT, io: READ_RAM}}
@@ -53,6 +69,25 @@ func NewInstructionMap() []Instruction {
 	ret[0x50] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return !c.r.hasFlag(FlagV) }, am: nil}
 	ret[0x30] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return c.r.hasFlag(FlagN) }, am: nil}
 	ret[0x10] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return !c.r.hasFlag(FlagN) }, am: nil}
+
+	//SET1
+	ret[0x02] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x01 }}}
+	ret[0x22] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x02 }}}
+	ret[0x42] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x04 }}}
+	ret[0x62] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x08 }}}
+	ret[0x82] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x10 }}}
+	ret[0xA2] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x20 }}}
+	ret[0xC2] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x40 }}}
+	ret[0xE2] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x80 }}}
+	//CLR1
+	ret[0x12] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xFE }}}
+	ret[0x32] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xFD }}}
+	ret[0x52] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xFB }}}
+	ret[0x72] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xF7 }}}
+	ret[0x92] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xEF }}}
+	ret[0xB2] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xDF }}}
+	ret[0xD2] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xBF }}}
+	ret[0xF2] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x7F }}}
 
 	return ret
 }
@@ -147,4 +182,31 @@ func (i *Relative) Reset(cpu *CPU) {
 	} else {
 		i.state = 0
 	}
+}
+
+type SetClr1 struct {
+	am    AddressMode
+	state int
+
+	lo   byte
+	addr uint16
+}
+
+func (i *SetClr1) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		next, val, addr := i.am.step(cpu)
+		if next {
+			i.lo = val
+			i.addr = addr
+			i.state++
+		}
+	case 1:
+		cpu.psram.Write8(i.addr, i.lo)
+		return true
+	}
+	return false
+}
+func (i *SetClr1) Reset(cpu *CPU) {
+	i.state = 0
 }

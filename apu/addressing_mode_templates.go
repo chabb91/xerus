@@ -31,8 +31,9 @@ type DirectPage struct {
 	mode  int
 	state int
 
-	lo   byte
-	mask byte
+	lo byte
+
+	bitOp func(byte) byte
 
 	addr uint16
 }
@@ -67,7 +68,7 @@ func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16) {
 
 		dp.lo = cpu.psram.Read8(dp.addr)
 		if dp.mode == BIT {
-			dp.lo &= dp.mask
+			dp.lo = dp.bitOp(dp.lo)
 		}
 		return true, dp.lo, dp.addr
 	}
