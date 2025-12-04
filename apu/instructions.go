@@ -11,7 +11,8 @@ type Instruction interface {
 func NewInstructionMap() []Instruction {
 	ret := make([]Instruction, 0x100)
 
-	ret[0x5F] = &JmpAbs{}
+	ret[0x5F] = &JmpAbs{indirect: false}
+	ret[0x1F] = &JmpAbs{indirect: true}
 
 	//BBC
 	branchIfEqual := func(_ *CPU, b byte, _ uint16) bool { return b == 0 }
@@ -57,8 +58,11 @@ func NewInstructionMap() []Instruction {
 }
 
 type JmpAbs struct {
-	state int
-	lo    byte
+	state  int
+	lo, hi byte
+	addr   uint16
+
+	indirect bool
 }
 
 func (i *JmpAbs) Step(cpu *CPU) bool {
@@ -67,8 +71,22 @@ func (i *JmpAbs) Step(cpu *CPU) bool {
 		i.lo = cpu.fetchByte()
 		i.state++
 	case 1:
-		hi := cpu.fetchByte()
-		cpu.r.PC = uint16(hi)<<8 | uint16(i.lo)
+		i.hi = cpu.fetchByte()
+		i.addr = uint16(i.hi)<<8 | uint16(i.lo)
+		if !i.indirect {
+			cpu.r.PC = i.addr
+			return true
+		}
+		i.state++
+	case 2:
+		i.addr += uint16(cpu.r.X)
+		i.state++
+	case 3:
+		i.lo = cpu.psram.Read8(i.addr)
+		i.state++
+	case 4:
+		i.hi = cpu.psram.Read8(i.addr + 1)
+		cpu.r.PC = uint16(i.hi)<<8 | uint16(i.lo)
 		return true
 	}
 	return false
