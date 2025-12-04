@@ -14,23 +14,45 @@ func NewInstructionMap() []Instruction {
 	ret[0x5F] = &JmpAbs{}
 
 	//BBC
-	ret[0x13] = &DirectPageBitRelative{branchOnZero: true, mask: 0x01}
-	ret[0x33] = &DirectPageBitRelative{branchOnZero: true, mask: 0x02}
-	ret[0x53] = &DirectPageBitRelative{branchOnZero: true, mask: 0x04}
-	ret[0x73] = &DirectPageBitRelative{branchOnZero: true, mask: 0x08}
-	ret[0x93] = &DirectPageBitRelative{branchOnZero: true, mask: 0x10}
-	ret[0xB3] = &DirectPageBitRelative{branchOnZero: true, mask: 0x20}
-	ret[0xD3] = &DirectPageBitRelative{branchOnZero: true, mask: 0x40}
-	ret[0xF3] = &DirectPageBitRelative{branchOnZero: true, mask: 0x80}
+	branchIfEqual := func(_ *CPU, b byte, _ uint16) bool { return b == 0 }
+	ret[0x13] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x01}}
+	ret[0x33] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x02}}
+	ret[0x53] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x04}}
+	ret[0x73] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x08}}
+	ret[0x93] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x10}}
+	ret[0xB3] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x20}}
+	ret[0xD3] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x40}}
+	ret[0xF3] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x80}}
 	//BBS
-	ret[0x03] = &DirectPageBitRelative{branchOnZero: false, mask: 0x01}
-	ret[0x23] = &DirectPageBitRelative{branchOnZero: false, mask: 0x02}
-	ret[0x43] = &DirectPageBitRelative{branchOnZero: false, mask: 0x04}
-	ret[0x63] = &DirectPageBitRelative{branchOnZero: false, mask: 0x08}
-	ret[0x83] = &DirectPageBitRelative{branchOnZero: false, mask: 0x10}
-	ret[0xA3] = &DirectPageBitRelative{branchOnZero: false, mask: 0x20}
-	ret[0xC3] = &DirectPageBitRelative{branchOnZero: false, mask: 0x40}
-	ret[0xE3] = &DirectPageBitRelative{branchOnZero: false, mask: 0x80}
+	branchIfNotEqual := func(_ *CPU, b byte, _ uint16) bool { return b != 0 }
+	ret[0x03] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x01}}
+	ret[0x23] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x02}}
+	ret[0x43] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x04}}
+	ret[0x63] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x08}}
+	ret[0x83] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x10}}
+	ret[0xA3] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x20}}
+	ret[0xC3] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x40}}
+	ret[0xE3] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{io: READ_RAM, mode: BIT, mask: 0x80}}
+	//DBNZ
+	ret[0x6E] = &Relative{branchCondition: func(c *CPU, b byte, a uint16) bool { b--; c.psram.Write8(a, b); return b != 0 },
+		am: &DirectPage{mode: DEFAULT, io: READ_RAM}}
+	ret[0xFE] = &Relative{branchCondition: func(c *CPU, b byte, a uint16) bool { c.r.Y--; return c.r.Y != 0 },
+		am: &AccessRegister{mode: REGISTER_Y}}
+	//CBNE
+	branchIfAccumulatorNotEqual := func(c *CPU, b byte, _ uint16) bool { return b != c.r.A }
+	ret[0xDE] = &Relative{branchCondition: branchIfAccumulatorNotEqual, am: &DirectPage{mode: X_INDEXED, io: READ_RAM}}
+	ret[0x2E] = &Relative{branchCondition: branchIfAccumulatorNotEqual, am: &DirectPage{mode: DEFAULT, io: READ_RAM}}
+	//standard branch operations: BRA, BEQ, BNE, BCS, BCC, BVS, BVC, BMI, BPL
+	ret[0x2F] = &Relative{branchCondition: func(_ *CPU, _ byte, _ uint16) bool { return true }, am: nil}
+	ret[0xF0] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return c.r.hasFlag(FlagZ) }, am: nil}
+	ret[0xD0] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return !c.r.hasFlag(FlagZ) }, am: nil}
+	ret[0xB0] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return c.r.hasFlag(FlagC) }, am: nil}
+	ret[0x90] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return !c.r.hasFlag(FlagC) }, am: nil}
+	ret[0x70] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return c.r.hasFlag(FlagV) }, am: nil}
+	ret[0x50] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return !c.r.hasFlag(FlagV) }, am: nil}
+	ret[0x30] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return c.r.hasFlag(FlagN) }, am: nil}
+	ret[0x10] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return !c.r.hasFlag(FlagN) }, am: nil}
+
 	return ret
 }
 
@@ -56,29 +78,35 @@ func (i *JmpAbs) Reset(cpu *CPU) {
 	i.state = 0
 }
 
-// used for the 8 BBC and 8 BBS instructions
-type DirectPageBitRelative struct {
-	state        int
-	lo           byte
-	shouldBranch bool
+// all relative branch modes (29 instructions)
+type Relative struct {
+	am    AddressMode
+	state int
 
-	mask         byte
-	branchOnZero bool
+	lo   byte
+	addr uint16
+
+	branchCondition func(*CPU, byte, uint16) bool
+	shouldBranch    bool
 }
 
-func (i *DirectPageBitRelative) Step(cpu *CPU) bool {
+func (i *Relative) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		i.lo = cpu.fetchByte()
-		i.state++
+		next, val, addr := i.am.step(cpu)
+		if next {
+			i.lo = val
+			i.addr = addr
+			i.state++
+		}
 	case 1:
-		i.lo = cpu.psram.Read8(uint16(cpu.r.getDirectPageNum())<<8 | uint16(i.lo))
+		i.shouldBranch = i.branchCondition(cpu, i.lo, i.addr)
 		i.state++
+	//FOOTGUN: state is reset to 2 if there is no addressing mode for regular branches
 	case 2:
-		result := i.lo & i.mask
-		i.shouldBranch = (result == 0) == i.branchOnZero
-		i.state++
-	case 3:
+		if i.am == nil {
+			i.shouldBranch = i.branchCondition(cpu, i.lo, i.addr)
+		}
 		i.lo = cpu.fetchByte()
 		if i.shouldBranch {
 			cpu.r.PC += uint16(int8(i.lo))
@@ -86,15 +114,19 @@ func (i *DirectPageBitRelative) Step(cpu *CPU) bool {
 		} else {
 			return true
 		}
-	case 4:
+	case 3:
 		i.state++
-	case 5:
+	case 4:
 		i.state++
 		return true
 	}
 	return false
 }
 
-func (i *DirectPageBitRelative) Reset(cpu *CPU) {
-	i.state = 0
+func (i *Relative) Reset(cpu *CPU) {
+	if i.am == nil {
+		i.state = 2
+	} else {
+		i.state = 0
+	}
 }

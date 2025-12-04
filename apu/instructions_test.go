@@ -9,7 +9,7 @@ import (
 var cause string
 
 func TestSingleInstruction(t *testing.T) {
-	tests, err := debugger.LoadTests[debugger.APUState]("/home/chabb/Documents/snes_tests/spc700/f3.json")
+	tests, err := debugger.LoadTests[debugger.APUState]("/home/chabb/Documents/snes_tests/spc700/10.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,27 +67,34 @@ func compareCycles(got []CycleAccess, expected [][]any) bool {
 			return false
 		}
 
+		expValue := expected[i][1]
+		isDummyRead := expType == "read" && expValue == nil
+
+		if isDummyRead || expType == "wait" {
+			if got[i].Type != "wait" {
+				return false
+			}
+			continue
+		}
+
 		if got[i].Type != expType {
 			return false
 		}
 
-		if expType != "wait" {
-			expAddr, ok := expected[i][0].(float64)
-			if !ok {
-				return false
-			}
+		expAddr, ok := expected[i][0].(float64)
+		if !ok {
+			return false
+		}
 
-			expValue, ok := expected[i][1].(float64)
-			if !ok {
-				return false
-			}
+		expVal, ok := expValue.(float64)
+		if !ok {
+			return false
+		}
 
-			if got[i].Addr != uint16(expAddr) || got[i].Value != byte(expValue) {
-				return false
-			}
+		if got[i].Addr != uint16(expAddr) || got[i].Value != byte(expVal) {
+			return false
 		}
 	}
-
 	return true
 }
 
