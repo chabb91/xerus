@@ -9,7 +9,7 @@ import (
 var cause string
 
 func TestSingleInstruction(t *testing.T) {
-	tests, err := debugger.LoadTests[debugger.APUState]("/home/chabb/Documents/snes_tests/spc700/5f.json")
+	tests, err := debugger.LoadTests[debugger.APUState]("/home/chabb/Documents/snes_tests/spc700/f3.json")
 	if err != nil {
 		t.Fatal(err)
 	}

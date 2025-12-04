@@ -6,7 +6,7 @@ type TestMemory struct {
 }
 
 func newTestMemory() *TestMemory {
-	return &TestMemory{cycles: make([]CycleAccess, 10)}
+	return &TestMemory{cycles: make([]CycleAccess, 16)}
 }
 
 type CycleAccess struct {
