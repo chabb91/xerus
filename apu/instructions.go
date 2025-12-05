@@ -89,6 +89,15 @@ func NewInstructionMap() []Instruction {
 	ret[0xD2] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xBF }}}
 	ret[0xF2] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x7F }}}
 
+	ret[0x4A] = &MemBit{bitFunc: func(c *CPU, b bool) { c.r.setFlag(FlagC, !(c.r.hasFlag(FlagC) && b)) }}
+	ret[0x6A] = &MemBit{bitFunc: func(c *CPU, b bool) { c.r.setFlag(FlagC, !(c.r.hasFlag(FlagC) && !b)) }}
+	ret[0xAA] = &MemBit{bitFunc: func(c *CPU, b bool) { c.r.setFlag(FlagC, !b) }}
+	ret[0x0A] = &MemBit{bitFunc: func(c *CPU, b bool) { c.r.setFlag(FlagC, !(c.r.hasFlag(FlagC) || b)) }, extraCycle: true}
+	ret[0x2A] = &MemBit{bitFunc: func(c *CPU, b bool) { c.r.setFlag(FlagC, !(c.r.hasFlag(FlagC) || !b)) }, extraCycle: true}
+	ret[0x8A] = &MemBit{bitFunc: func(c *CPU, b bool) { c.r.setFlag(FlagC, c.r.hasFlag(FlagC) == b) }, extraCycle: true}
+	ret[0xCA] = &MemBit{bitFuncWrite: func(c *CPU, _ byte) bool { return !c.r.hasFlag(FlagC) }, isWrite: true, extraCycle: true}
+	ret[0xEA] = &MemBit{bitFuncWrite: func(_ *CPU, b byte) bool { return b != 0 }, isWrite: true, extraCycle: false}
+
 	return ret
 }
 
@@ -208,5 +217,64 @@ func (i *SetClr1) Step(cpu *CPU) bool {
 	return false
 }
 func (i *SetClr1) Reset(cpu *CPU) {
+	i.state = 0
+}
+
+type MemBit struct {
+	state int
+
+	lo, bit byte
+	addr    uint16
+
+	isWrite    bool
+	extraCycle bool
+
+	bitFunc      func(*CPU, bool)
+	bitFuncWrite func(*CPU, byte) bool
+}
+
+func (i *MemBit) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.lo = cpu.fetchByte()
+		i.state++
+	case 1:
+		hi := cpu.fetchByte()
+		i.addr = (uint16(hi)<<8 | uint16(i.lo)) & 0x1FFF
+		i.bit = hi >> 5
+		i.state++
+	case 2:
+		i.lo = cpu.psram.Read8(i.addr)
+		if i.extraCycle {
+			i.state = 3
+			return false
+		}
+		if i.isWrite {
+			i.state = 4
+			return false
+		}
+		hasBit := i.lo&(1<<i.bit) != 0
+		i.bitFunc(cpu, hasBit)
+		return true
+	case 3:
+		if i.isWrite {
+			i.state = 4
+			return false
+		}
+		hasBit := i.lo&(1<<i.bit) != 0
+		i.bitFunc(cpu, hasBit)
+		return true
+	case 4:
+		mask := byte(1 << i.bit)
+		if i.bitFuncWrite(cpu, i.lo&mask) {
+			cpu.psram.Write8(i.addr, i.lo&^mask)
+		} else {
+			cpu.psram.Write8(i.addr, i.lo|mask)
+		}
+		return true
+	}
+	return false
+}
+func (i *MemBit) Reset(cpu *CPU) {
 	i.state = 0
 }

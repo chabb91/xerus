@@ -9,7 +9,7 @@ import (
 var cause string
 
 func TestSingleInstruction(t *testing.T) {
-	tests, err := debugger.LoadTests[debugger.APUState]("/home/chabb/Documents/snes_tests/spc700/1f.json")
+	tests, err := debugger.LoadTests[debugger.APUState]("/home/chabb/Documents/snes_tests/spc700/ea.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,6 +50,9 @@ func TestSingleInstruction(t *testing.T) {
 			}
 			if strings.Contains(cause, "PC") {
 				t.Errorf("(PC) Expected: %v, Got: %v", tc.Final.PC, cpu.r.PC)
+			}
+			if strings.Contains(cause, "PSW") {
+				t.Errorf("(PSW) Expected: %v, Got: %v", tc.Final.PSW, cpu.r.PSW)
 			}
 		}
 		cause = ""
