@@ -71,23 +71,23 @@ func NewInstructionMap() []Instruction {
 	ret[0x10] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return !c.r.hasFlag(FlagN) }, am: nil}
 
 	//SET1
-	ret[0x02] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x01 }}}
-	ret[0x22] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x02 }}}
-	ret[0x42] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x04 }}}
-	ret[0x62] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x08 }}}
-	ret[0x82] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x10 }}}
-	ret[0xA2] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x20 }}}
-	ret[0xC2] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x40 }}}
-	ret[0xE2] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x80 }}}
+	ret[0x02] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x01 }}}
+	ret[0x22] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x02 }}}
+	ret[0x42] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x04 }}}
+	ret[0x62] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x08 }}}
+	ret[0x82] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x10 }}}
+	ret[0xA2] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x20 }}}
+	ret[0xC2] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x40 }}}
+	ret[0xE2] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b | 0x80 }}}
 	//CLR1
-	ret[0x12] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xFE }}}
-	ret[0x32] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xFD }}}
-	ret[0x52] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xFB }}}
-	ret[0x72] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xF7 }}}
-	ret[0x92] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xEF }}}
-	ret[0xB2] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xDF }}}
-	ret[0xD2] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xBF }}}
-	ret[0xF2] = &SetClr1{am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x7F }}}
+	ret[0x12] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xFE }}}
+	ret[0x32] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xFD }}}
+	ret[0x52] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xFB }}}
+	ret[0x72] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xF7 }}}
+	ret[0x92] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xEF }}}
+	ret[0xB2] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xDF }}}
+	ret[0xD2] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0xBF }}}
+	ret[0xF2] = &ExecAndWrite8{skipExec: true, am: &DirectPage{io: READ_RAM, mode: BIT, bitOp: func(b byte) byte { return b & 0x7F }}}
 
 	ret[0x4A] = &MemBit{bitFunc: func(c *CPU, b bool) { c.r.setFlag(FlagC, !(c.r.hasFlag(FlagC) && b)) }}
 	ret[0x6A] = &MemBit{bitFunc: func(c *CPU, b bool) { c.r.setFlag(FlagC, !(c.r.hasFlag(FlagC) && !b)) }}
@@ -99,8 +99,8 @@ func NewInstructionMap() []Instruction {
 	ret[0xEA] = &MemBit{bitFuncWrite: func(_ *CPU, b byte) bool { return b != 0 }, isWrite: true, extraCycle: false}
 
 	//TSET1 TCLR1
-	ret[0x0E] = &ExecuteAndWrite8BitOp{func8: tset1, am: &Absolute{io: READ_RAM, mode: DEFAULT}}
-	ret[0x4E] = &ExecuteAndWrite8BitOp{func8: tclr1, am: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0x0E] = &ExecAndWrite8{func8: tset1, am: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0x4E] = &ExecAndWrite8{func8: tclr1, am: &Absolute{io: READ_RAM, mode: DEFAULT}}
 
 	return ret
 }
@@ -206,26 +206,6 @@ type SetClr1 struct {
 	addr uint16
 }
 
-func (i *SetClr1) Step(cpu *CPU) bool {
-	switch i.state {
-	case 0:
-		next, val, addr := i.am.step(cpu)
-		if next {
-			i.lo = val
-			i.addr = addr
-			i.state++
-		}
-	case 1:
-		cpu.psram.Write8(i.addr, i.lo)
-		return true
-	}
-	return false
-}
-func (i *SetClr1) Reset() {
-	i.state = 0
-	i.am.reset()
-}
-
 type MemBit struct {
 	state int
 
@@ -285,24 +265,29 @@ func (i *MemBit) Reset() {
 	i.state = 0
 }
 
-type ExecuteAndWrite8BitOp struct {
+type ExecAndWrite8 struct {
 	am    AddressMode
 	state int
 
-	func8 InstructionFunc8
+	skipExec bool
+	func8    InstructionFunc8
 
 	lo   byte
 	addr uint16
 }
 
-func (i *ExecuteAndWrite8BitOp) Step(cpu *CPU) bool {
+func (i *ExecAndWrite8) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		next, val, addr := i.am.step(cpu)
 		if next {
 			i.lo = val
 			i.addr = addr
-			i.state++
+			if i.skipExec {
+				i.state = 2
+			} else {
+				i.state = 1
+			}
 		}
 	case 1:
 		i.lo = i.func8(cpu, i.lo, i.addr)
@@ -314,7 +299,7 @@ func (i *ExecuteAndWrite8BitOp) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *ExecuteAndWrite8BitOp) Reset() {
+func (i *ExecAndWrite8) Reset() {
 	i.state = 0
 	i.am.reset()
 }
