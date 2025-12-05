@@ -198,14 +198,6 @@ func (i *Relative) Reset() {
 	}
 }
 
-type SetClr1 struct {
-	am    AddressMode
-	state int
-
-	lo   byte
-	addr uint16
-}
-
 type MemBit struct {
 	state int
 
