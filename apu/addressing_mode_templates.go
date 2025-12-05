@@ -24,7 +24,7 @@ const (
 )
 
 type AddressMode interface {
-	step(*CPU) (bool, byte, uint16)
+	step(*CPU) (bool, byte, uint16, *byte)
 	reset()
 }
 
@@ -40,7 +40,7 @@ type DirectPage struct {
 	addr uint16
 }
 
-func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16) {
+func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16, *byte) {
 	switch dp.state {
 	case FETCH_BYTE1:
 		dp.lo = cpu.fetchByte()
@@ -63,16 +63,16 @@ func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16) {
 		dp.addr = uint16(cpu.r.getDirectPageNum())<<8 | uint16(dp.lo)
 
 		if dp.io == WRITE_RAM {
-			return true, dp.lo, dp.addr
+			return true, dp.lo, dp.addr, nil
 		}
 
 		dp.lo = cpu.psram.Read8(dp.addr)
 		if dp.mode == BIT {
 			dp.lo = dp.bitOp(dp.lo)
 		}
-		return true, dp.lo, dp.addr
+		return true, dp.lo, dp.addr, nil
 	}
-	return false, 0, 0
+	return false, 0, 0, nil
 }
 
 func (dp *DirectPage) reset() {
@@ -88,7 +88,7 @@ type Absolute struct {
 	addr        uint16
 }
 
-func (a *Absolute) step(cpu *CPU) (bool, byte, uint16) {
+func (a *Absolute) step(cpu *CPU) (bool, byte, uint16, *byte) {
 	switch a.state {
 	case FETCH_BYTE1:
 		a.lo = cpu.fetchByte()
@@ -115,14 +115,14 @@ func (a *Absolute) step(cpu *CPU) (bool, byte, uint16) {
 		a.addr = (uint16(a.hi)<<8 | uint16(a.lo)) + uint16(a.reg)
 
 		if a.io == WRITE_RAM {
-			return true, a.lo, a.addr
+			return true, a.lo, a.addr, nil
 		}
 
 		a.lo = cpu.psram.Read8(a.addr)
-		return true, a.lo, a.addr
+		return true, a.lo, a.addr, nil
 
 	}
-	return false, 0, 0
+	return false, 0, 0, nil
 }
 
 func (a *Absolute) reset() {
@@ -133,17 +133,17 @@ type AccessRegister struct {
 	mode int
 }
 
-func (r *AccessRegister) step(cpu *CPU) (bool, byte, uint16) {
+func (r *AccessRegister) step(cpu *CPU) (bool, byte, uint16, *byte) {
 	switch r.mode {
 	case REGISTER_X:
-		return true, cpu.r.X, 0
+		return true, cpu.r.X, 0, &cpu.r.X
 	case REGISTER_Y:
-		return true, cpu.r.Y, 0
+		return true, cpu.r.Y, 0, &cpu.r.Y
 	default:
 		//accumulator
-		return true, cpu.r.A, 0
+		return true, cpu.r.A, 0, &cpu.r.A
 	}
 }
 
-func (dp *AccessRegister) reset() {
+func (r *AccessRegister) reset() {
 }
