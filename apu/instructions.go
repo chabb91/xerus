@@ -102,6 +102,17 @@ func NewInstructionMap() []Instruction {
 	ret[0x0E] = &ExecAndWrite8{func8: tset1, am: &Absolute{io: READ_RAM, mode: DEFAULT}}
 	ret[0x4E] = &ExecAndWrite8{func8: tclr1, am: &Absolute{io: READ_RAM, mode: DEFAULT}}
 
+	//Stack Operations
+	ret[0x2D] = &StackOp{isPush: true, getVal: func(c *CPU) *byte { return &c.r.A }}
+	ret[0x4D] = &StackOp{isPush: true, getVal: func(c *CPU) *byte { return &c.r.X }}
+	ret[0x6D] = &StackOp{isPush: true, getVal: func(c *CPU) *byte { return &c.r.Y }}
+	ret[0x0D] = &StackOp{isPush: true, getVal: func(c *CPU) *byte { return &c.r.PSW }}
+
+	ret[0xAE] = &StackOp{isPush: false, getVal: func(c *CPU) *byte { return &c.r.A }}
+	ret[0xCE] = &StackOp{isPush: false, getVal: func(c *CPU) *byte { return &c.r.X }}
+	ret[0xEE] = &StackOp{isPush: false, getVal: func(c *CPU) *byte { return &c.r.Y }}
+	ret[0x8E] = &StackOp{isPush: false, getVal: func(c *CPU) *byte { return &c.r.PSW }}
+
 	return ret
 }
 
@@ -294,4 +305,37 @@ func (i *ExecAndWrite8) Step(cpu *CPU) bool {
 func (i *ExecAndWrite8) Reset() {
 	i.state = 0
 	i.am.reset()
+}
+
+type StackOp struct {
+	state int
+
+	getVal func(*CPU) *byte
+	isPush bool
+
+	valPointer *byte
+	addr       uint16
+}
+
+func (i *StackOp) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.valPointer = i.getVal(cpu)
+		i.state++
+	case 1:
+		if i.isPush {
+			cpu.PushByte(*i.valPointer)
+		}
+		i.state++
+	case 2:
+		if !i.isPush {
+			*i.valPointer = cpu.PopByte()
+		}
+		return true
+	}
+	return false
+}
+
+func (i *StackOp) Reset() {
+	i.state = 0
 }
