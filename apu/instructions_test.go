@@ -2,14 +2,40 @@ package apu
 
 import (
 	"SNES_emulator/debugger"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 var cause string
 
+func TestAllInstructions(t *testing.T) {
+	testDir := "/home/chabb/Documents/snes_tests/spc700"
+
+	entries, err := os.ReadDir(testDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+
+		testFile := filepath.Join(testDir, entry.Name())
+		t.Run(entry.Name(), func(t *testing.T) {
+			runInstructionTests(t, testFile)
+		})
+	}
+}
+
 func TestSingleInstruction(t *testing.T) {
-	tests, err := debugger.LoadTests[debugger.APUState]("/home/chabb/Documents/snes_tests/spc700/ea.json")
+	runInstructionTests(t, "/home/chabb/Documents/snes_tests/spc700/5f.json")
+}
+
+func runInstructionTests(t *testing.T, testFile string) {
+	tests, err := debugger.LoadTests[debugger.APUState](testFile)
 	if err != nil {
 		t.Fatal(err)
 	}

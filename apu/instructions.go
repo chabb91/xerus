@@ -190,8 +190,8 @@ func (i *Relative) Reset() {
 		i.state = 2
 	} else {
 		i.state = 0
+		i.am.reset()
 	}
-	i.am.reset()
 }
 
 type SetClr1 struct {
