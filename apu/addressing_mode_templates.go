@@ -24,6 +24,7 @@ const (
 
 type AddressMode interface {
 	step(*CPU) (bool, byte, uint16)
+	reset()
 }
 
 type DirectPage struct {
@@ -58,8 +59,6 @@ func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16) {
 		}
 		dp.state = RESOLVE_ADDRESS
 	case RESOLVE_ADDRESS:
-		dp.state = FETCH_BYTE1 //reset here
-
 		dp.addr = uint16(cpu.r.getDirectPageNum())<<8 | uint16(dp.lo)
 
 		if dp.io == WRITE_RAM {
@@ -73,6 +72,10 @@ func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16) {
 		return true, dp.lo, dp.addr
 	}
 	return false, 0, 0
+}
+
+func (dp *DirectPage) reset() {
+	dp.state = FETCH_BYTE1
 }
 
 type AccessRegister struct {
@@ -89,4 +92,7 @@ func (r *AccessRegister) step(cpu *CPU) (bool, byte, uint16) {
 		//accumulator
 		return true, cpu.r.A, 0
 	}
+}
+
+func (dp *AccessRegister) reset() {
 }

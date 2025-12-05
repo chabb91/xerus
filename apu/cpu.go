@@ -24,7 +24,7 @@ func NewCPU(psram Memory) *CPU {
 func (cpu *CPU) StepCycle() bool {
 	if cpu.currentInstruction == nil {
 		cpu.currentInstruction = cpu.instructions[cpu.fetchByte()]
-		cpu.currentInstruction.Reset(cpu)
+		cpu.currentInstruction.Reset()
 		return false
 	}
 	if cpu.currentInstruction.Step(cpu) {

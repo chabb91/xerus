@@ -5,7 +5,7 @@ type Instruction interface {
 	// Step performs one cycle of the instruction's execution.
 	// It returns true if the instruction is complete, false otherwise.
 	Step(cpu *CPU) bool
-	Reset(cpu *CPU)
+	Reset()
 }
 
 func NewInstructionMap() []Instruction {
@@ -136,7 +136,7 @@ func (i *JmpAbs) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JmpAbs) Reset(cpu *CPU) {
+func (i *JmpAbs) Reset() {
 	i.state = 0
 }
 
@@ -185,12 +185,13 @@ func (i *Relative) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *Relative) Reset(cpu *CPU) {
+func (i *Relative) Reset() {
 	if i.am == nil {
 		i.state = 2
 	} else {
 		i.state = 0
 	}
+	i.am.reset()
 }
 
 type SetClr1 struct {
@@ -216,8 +217,9 @@ func (i *SetClr1) Step(cpu *CPU) bool {
 	}
 	return false
 }
-func (i *SetClr1) Reset(cpu *CPU) {
+func (i *SetClr1) Reset() {
 	i.state = 0
+	i.am.reset()
 }
 
 type MemBit struct {
@@ -275,6 +277,6 @@ func (i *MemBit) Step(cpu *CPU) bool {
 	}
 	return false
 }
-func (i *MemBit) Reset(cpu *CPU) {
+func (i *MemBit) Reset() {
 	i.state = 0
 }
