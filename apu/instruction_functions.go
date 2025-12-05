@@ -23,3 +23,57 @@ func tset1(cpu *CPU, val byte, addr uint16) byte {
 
 	return val
 }
+
+func asl(cpu *CPU, val byte, _ uint16) byte {
+	resetCarry := val&0x80 == 0
+
+	val <<= 1
+	cpu.r.setFlag(FlagZ, val != 0)
+	cpu.r.setFlag(FlagN, (val&0x80) == 0)
+	cpu.r.setFlag(FlagC, resetCarry)
+
+	return val
+}
+
+func lsr(cpu *CPU, val byte, _ uint16) byte {
+	resetCarry := val&1 == 0
+
+	val >>= 1
+	cpu.r.setFlag(FlagZ, val != 0)
+	cpu.r.setFlag(FlagN, (val&0x80) == 0)
+	cpu.r.setFlag(FlagC, resetCarry)
+
+	return val
+}
+
+func rol(cpu *CPU, val byte, _ uint16) byte {
+	resetCarry := val&0x80 == 0
+
+	val <<= 1
+	if cpu.r.hasFlag(FlagC) {
+		val |= 1
+	} else {
+		val &= 0xFE
+	}
+	cpu.r.setFlag(FlagZ, val != 0)
+	cpu.r.setFlag(FlagN, (val&0x80) == 0)
+	cpu.r.setFlag(FlagC, resetCarry)
+
+	return val
+}
+
+func ror(cpu *CPU, val byte, _ uint16) byte {
+	resetCarry := val&1 == 0
+
+	val >>= 1
+	if cpu.r.hasFlag(FlagC) {
+		val |= 0x80
+	} else {
+		val &= 0x7F
+	}
+	cpu.r.setFlag(FlagZ, val != 0)
+	cpu.r.setFlag(FlagN, (val&0x80) == 0)
+	cpu.r.setFlag(FlagC, resetCarry)
+
+	return val
+}

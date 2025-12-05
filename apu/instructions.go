@@ -113,6 +113,26 @@ func NewInstructionMap() []Instruction {
 	ret[0xEE] = &StackOp{isPush: false, getVal: func(c *CPU) *byte { return &c.r.Y }}
 	ret[0x8E] = &StackOp{isPush: false, getVal: func(c *CPU) *byte { return &c.r.PSW }}
 
+	//8 bit shifts
+	ret[0x1C] = &Accumulator{func8: asl}
+	ret[0x0B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: asl, am: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x1B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: asl, am: &DirectPage{io: READ_RAM, mode: X_INDEXED}}
+	ret[0x0C] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: asl, am: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0x5C] = &Accumulator{func8: lsr}
+	ret[0x4B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: lsr, am: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x5B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: lsr, am: &DirectPage{io: READ_RAM, mode: X_INDEXED}}
+	ret[0x4C] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: lsr, am: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0x3C] = &Accumulator{func8: rol}
+	ret[0x2B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: rol, am: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x3B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: rol, am: &DirectPage{io: READ_RAM, mode: X_INDEXED}}
+	ret[0x2C] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: rol, am: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0x7C] = &Accumulator{func8: ror}
+	ret[0x6B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: ror, am: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x7B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: ror, am: &DirectPage{io: READ_RAM, mode: X_INDEXED}}
+	ret[0x6C] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: ror, am: &Absolute{io: READ_RAM, mode: DEFAULT}}
+
+	ret[0x9F] = &XCN{}
+
 	return ret
 }
 
@@ -268,12 +288,53 @@ func (i *MemBit) Reset() {
 	i.state = 0
 }
 
+type Accumulator struct {
+	func8 InstructionFunc8
+
+	addr uint16
+}
+
+func (i *Accumulator) Step(cpu *CPU) bool {
+	cpu.r.A = i.func8(cpu, cpu.r.A, i.addr)
+	return true
+}
+func (i *Accumulator) Reset() {
+}
+
+// super speshul 5 cycle exception for XCN only
+// shifting very hard
+type XCN struct {
+	state int
+
+	addr uint16
+}
+
+func (i *XCN) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0, 1, 2:
+		i.state++
+	case 3:
+		val := cpu.r.A
+		val = val<<4 | val>>4
+		cpu.r.setFlag(FlagZ, val != 0)
+		cpu.r.setFlag(FlagN, (val&0x80) == 0)
+
+		cpu.r.A = val
+		return true
+	}
+	return false
+}
+func (i *XCN) Reset() {
+	i.state = 0
+}
+
 type ExecAndWrite8 struct {
 	am    AddressMode
 	state int
 
-	skipExec bool
-	func8    InstructionFunc8
+	skipExec           bool
+	executeImmediately bool
+	func8              InstructionFunc8
 
 	lo   byte
 	addr uint16
@@ -286,6 +347,9 @@ func (i *ExecAndWrite8) Step(cpu *CPU) bool {
 		if next {
 			i.lo = val
 			i.addr = addr
+			if i.executeImmediately {
+				i.lo = i.func8(cpu, i.lo, i.addr)
+			}
 			if i.skipExec {
 				i.state = 2
 			} else {
