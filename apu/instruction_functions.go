@@ -77,3 +77,17 @@ func ror(cpu *CPU, val byte, _ uint16) byte {
 
 	return val
 }
+
+func inc(cpu *CPU, val byte, _ uint16) byte {
+	val++
+	cpu.r.setFlag(FlagZ, val != 0)
+	cpu.r.setFlag(FlagN, (val&0x80) == 0)
+	return val
+}
+
+func dec(cpu *CPU, val byte, _ uint16) byte {
+	val--
+	cpu.r.setFlag(FlagZ, val != 0)
+	cpu.r.setFlag(FlagN, (val&0x80) == 0)
+	return val
+}

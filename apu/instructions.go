@@ -133,6 +133,21 @@ func NewInstructionMap() []Instruction {
 
 	ret[0x9F] = &XCN{}
 
+	//8-bit inc/dec
+	ret[0xBC] = &ExecAndWrite8{func8: inc, am: &AccessRegister{mode: ACCUMULATOR}}
+	ret[0xAB] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: inc, am: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0xBB] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: inc, am: &DirectPage{io: READ_RAM, mode: X_INDEXED}}
+	ret[0xAC] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: inc, am: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0x3D] = &ExecAndWrite8{func8: inc, am: &AccessRegister{mode: REGISTER_X}}
+	ret[0xFC] = &ExecAndWrite8{func8: inc, am: &AccessRegister{mode: REGISTER_Y}}
+
+	ret[0x9C] = &ExecAndWrite8{func8: dec, am: &AccessRegister{mode: ACCUMULATOR}}
+	ret[0x8B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: dec, am: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x9B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: dec, am: &DirectPage{io: READ_RAM, mode: X_INDEXED}}
+	ret[0x8C] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: dec, am: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0x1D] = &ExecAndWrite8{func8: dec, am: &AccessRegister{mode: REGISTER_X}}
+	ret[0xDC] = &ExecAndWrite8{func8: dec, am: &AccessRegister{mode: REGISTER_Y}}
+
 	return ret
 }
 

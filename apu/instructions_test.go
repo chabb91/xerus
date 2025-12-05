@@ -31,7 +31,7 @@ func TestAllInstructions(t *testing.T) {
 }
 
 func TestSingleInstruction(t *testing.T) {
-	runInstructionTests(t, "/home/chabb/Documents/snes_tests/spc700/5c.json")
+	runInstructionTests(t, "/home/chabb/Documents/snes_tests/spc700/bc.json")
 }
 
 func runInstructionTests(t *testing.T, testFile string) {
