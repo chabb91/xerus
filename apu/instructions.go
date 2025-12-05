@@ -98,6 +98,10 @@ func NewInstructionMap() []Instruction {
 	ret[0xCA] = &MemBit{bitFuncWrite: func(c *CPU, _ byte) bool { return !c.r.hasFlag(FlagC) }, isWrite: true, extraCycle: true}
 	ret[0xEA] = &MemBit{bitFuncWrite: func(_ *CPU, b byte) bool { return b != 0 }, isWrite: true, extraCycle: false}
 
+	//TSET1 TCLR1
+	ret[0x0E] = &ExecuteAndWrite8BitOp{func8: tset1, am: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0x4E] = &ExecuteAndWrite8BitOp{func8: tclr1, am: &Absolute{io: READ_RAM, mode: DEFAULT}}
+
 	return ret
 }
 
@@ -279,4 +283,38 @@ func (i *MemBit) Step(cpu *CPU) bool {
 }
 func (i *MemBit) Reset() {
 	i.state = 0
+}
+
+type ExecuteAndWrite8BitOp struct {
+	am    AddressMode
+	state int
+
+	func8 InstructionFunc8
+
+	lo   byte
+	addr uint16
+}
+
+func (i *ExecuteAndWrite8BitOp) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		next, val, addr := i.am.step(cpu)
+		if next {
+			i.lo = val
+			i.addr = addr
+			i.state++
+		}
+	case 1:
+		i.lo = i.func8(cpu, i.lo, i.addr)
+		i.state++
+	case 2:
+		cpu.psram.Write8(i.addr, i.lo)
+		return true
+	}
+	return false
+}
+
+func (i *ExecuteAndWrite8BitOp) Reset() {
+	i.state = 0
+	i.am.reset()
 }
