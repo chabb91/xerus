@@ -99,3 +99,17 @@ func and(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
 	cpu.r.setFlag(FlagN, (val1&0x80) == 0)
 	return val1
 }
+
+func or(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
+	val1 |= val2
+	cpu.r.setFlag(FlagZ, val1 != 0)
+	cpu.r.setFlag(FlagN, (val1&0x80) == 0)
+	return val1
+}
+
+func eor(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
+	val1 ^= val2
+	cpu.r.setFlag(FlagZ, val1 != 0)
+	cpu.r.setFlag(FlagN, (val1&0x80) == 0)
+	return val1
+}

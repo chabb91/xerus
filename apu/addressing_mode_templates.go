@@ -151,10 +151,10 @@ func (a *Absolute) step(cpu *CPU) (bool, byte, uint16, *byte) {
 		}
 	case INDEX_DATA:
 		if a.mode == X_INDEXED {
-			a.reg += cpu.r.X
+			a.reg = cpu.r.X
 		}
 		if a.mode == Y_INDEXED {
-			a.reg += cpu.r.Y
+			a.reg = cpu.r.Y
 		}
 		a.state = RESOLVE_ADDRESS1
 	case RESOLVE_ADDRESS1:

@@ -148,20 +148,81 @@ func NewInstructionMap() []Instruction {
 	ret[0x1D] = &ExecAndWrite8{func8: dec, am: &AccessRegister{mode: REGISTER_X}}
 	ret[0xDC] = &ExecAndWrite8{func8: dec, am: &AccessRegister{mode: REGISTER_Y}}
 
-	ret[0x24] = &ExecAndWrite8x2Access{func8: and,
-		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
-	ret[0x26] = &ExecAndWrite8x2Access{func8: and,
+	//8-bit logical
+	ret[0x28] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Immediate{}}
+	ret[0x26] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X}}
-	ret[0x27] = &ExecAndWrite8x2Access{func8: and,
+	ret[0x24] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x34] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: X_INDEXED}}
+	ret[0x25] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0x35] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: X_INDEXED}}
+	ret[0x36] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: Y_INDEXED}}
+	ret[0x27] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDEXED_INDIRECT}}
-	ret[0x29] = &ExecAndWrite8x2Access{func8: and,
-		am1: &DirectPage{io: READ_RAM, mode: DEFAULT}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
-	ret[0x37] = &ExecAndWrite8x2Access{func8: and,
+	ret[0x37] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDIRECT_INDEXED}}
-	ret[0x38] = &ExecAndWrite8x2Access{func8: and,
-		am1: &Immediate{}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
 	ret[0x39] = &ExecAndWrite8x2Access{func8: and,
 		am1: &DirectPage{io: READ_RAM, mode: REGISTER_Y}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X, indexAndResolve: true}}
+	ret[0x29] = &ExecAndWrite8x2Access{func8: and,
+		am1: &DirectPage{io: READ_RAM, mode: DEFAULT}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x38] = &ExecAndWrite8x2Access{func8: and,
+		am1: &Immediate{}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+
+	ret[0x08] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Immediate{}}
+	ret[0x06] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X}}
+	ret[0x04] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x14] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: X_INDEXED}}
+	ret[0x05] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0x15] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: X_INDEXED}}
+	ret[0x16] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: Y_INDEXED}}
+	ret[0x07] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDEXED_INDIRECT}}
+	ret[0x17] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDIRECT_INDEXED}}
+	ret[0x19] = &ExecAndWrite8x2Access{func8: or,
+		am1: &DirectPage{io: READ_RAM, mode: REGISTER_Y}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X, indexAndResolve: true}}
+	ret[0x09] = &ExecAndWrite8x2Access{func8: or,
+		am1: &DirectPage{io: READ_RAM, mode: DEFAULT}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x18] = &ExecAndWrite8x2Access{func8: or,
+		am1: &Immediate{}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+
+	ret[0x48] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Immediate{}}
+	ret[0x46] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X}}
+	ret[0x44] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x54] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: X_INDEXED}}
+	ret[0x45] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0x55] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: X_INDEXED}}
+	ret[0x56] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: Y_INDEXED}}
+	ret[0x47] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDEXED_INDIRECT}}
+	ret[0x57] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDIRECT_INDEXED}}
+	ret[0x59] = &ExecAndWrite8x2Access{func8: eor,
+		am1: &DirectPage{io: READ_RAM, mode: REGISTER_Y}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X, indexAndResolve: true}}
+	ret[0x49] = &ExecAndWrite8x2Access{func8: eor,
+		am1: &DirectPage{io: READ_RAM, mode: DEFAULT}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x58] = &ExecAndWrite8x2Access{func8: eor,
+		am1: &Immediate{}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
 
 	return ret
 }
@@ -396,36 +457,30 @@ type ExecAndWrite8x2Access struct {
 	am1, am2 AddressMode
 	state    int
 
-	skipExec           bool
-	executeImmediately bool
-	func8              InstructionFunc8x2
+	func8 InstructionFunc8x2
 
 	val1, val2               byte
 	addr1, addr2             uint16
 	regPointer1, regPointer2 *byte
 
-	next bool
+	next, am1IsRegister bool
 }
 
 func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		i.next, i.val1, i.addr1, i.regPointer1 = i.am1.step(cpu)
+		i.next, i.val1, i.addr1, _ = i.am1.step(cpu)
 		if i.next {
 			i.state++
 		}
 	//another footgun. when its a register read its a cycle shorter
 	case 1:
-		_, ok := i.am1.(*AccessRegister)
-		if ok {
-			i.next, i.val1, i.addr1, i.regPointer1 = i.am1.step(cpu)
-			if !i.next {
-				return false
-			}
-		}
-		i.next, i.val2, i.addr2, i.regPointer2 = i.am2.step(cpu)
+		i.next, i.val2, i.addr2, _ = i.am2.step(cpu)
 		if !i.next {
 			return false
+		}
+		if i.am1IsRegister {
+			_, i.val1, _, i.regPointer1 = i.am1.step(cpu) //next is always true
 		}
 		if i.regPointer1 != nil {
 			*i.regPointer1 = i.func8(cpu, i.val1, i.val2, i.addr1, i.addr2)
@@ -442,8 +497,7 @@ func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 }
 
 func (i *ExecAndWrite8x2Access) Reset() {
-	_, ok := i.am1.(*AccessRegister)
-	if ok {
+	if i.am1IsRegister {
 		i.state = 1
 	} else {
 		i.state = 0
