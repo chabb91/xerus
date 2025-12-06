@@ -43,6 +43,8 @@ type DirectPage struct {
 
 	addr uint16
 	reg  uint16
+
+	indexAndResolve bool
 }
 
 func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16, *byte) {
@@ -65,6 +67,22 @@ func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16, *byte) {
 		}
 		if dp.mode == INDIRECT_INDEXED {
 			dp.reg = uint16(cpu.r.Y)
+		}
+		if dp.mode == REGISTER_X {
+			dp.lo = cpu.r.X
+			if dp.indexAndResolve {
+				dp.addr = uint16(cpu.r.getDirectPageNum())<<8 | uint16(dp.lo)
+				dp.lo = cpu.psram.Read8(dp.addr)
+				return true, dp.lo, dp.addr, nil
+			}
+		}
+		if dp.mode == REGISTER_Y {
+			dp.lo = cpu.r.Y
+			if dp.indexAndResolve {
+				dp.addr = uint16(cpu.r.getDirectPageNum())<<8 | uint16(dp.lo)
+				dp.lo = cpu.psram.Read8(dp.addr)
+				return true, dp.lo, dp.addr, nil
+			}
 		}
 		dp.state = RESOLVE_ADDRESS1
 	case RESOLVE_ADDRESS1:
@@ -97,7 +115,11 @@ func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16, *byte) {
 }
 
 func (dp *DirectPage) reset() {
-	dp.state = FETCH_BYTE1
+	if dp.mode == REGISTER_X || dp.mode == REGISTER_Y {
+		dp.state = INDEX_DATA
+	} else {
+		dp.state = FETCH_BYTE1
+	}
 }
 
 type Absolute struct {

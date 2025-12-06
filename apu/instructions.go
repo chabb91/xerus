@@ -150,12 +150,16 @@ func NewInstructionMap() []Instruction {
 
 	ret[0x24] = &ExecAndWrite8x2Access{func8: and,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
-	ret[0x29] = &ExecAndWrite8x2Access{func8: and,
-		am1: &DirectPage{io: READ_RAM, mode: DEFAULT}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x26] = &ExecAndWrite8x2Access{func8: and,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X}}
 	ret[0x27] = &ExecAndWrite8x2Access{func8: and,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDEXED_INDIRECT}}
+	ret[0x29] = &ExecAndWrite8x2Access{func8: and,
+		am1: &DirectPage{io: READ_RAM, mode: DEFAULT}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
 	ret[0x37] = &ExecAndWrite8x2Access{func8: and,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDIRECT_INDEXED}}
+	ret[0x39] = &ExecAndWrite8x2Access{func8: and,
+		am1: &DirectPage{io: READ_RAM, mode: REGISTER_Y}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X, indexAndResolve: true}}
 
 	return ret
 }
