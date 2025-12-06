@@ -1,6 +1,7 @@
 package apu
 
 type InstructionFunc8 func(*CPU, byte, uint16) byte
+type InstructionFunc8x2 func(*CPU, byte, byte, uint16, uint16) byte
 
 func tclr1(cpu *CPU, val byte, addr uint16) byte {
 	cpu.psram.Read8(addr) //dummy read
@@ -90,4 +91,11 @@ func dec(cpu *CPU, val byte, _ uint16) byte {
 	cpu.r.setFlag(FlagZ, val != 0)
 	cpu.r.setFlag(FlagN, (val&0x80) == 0)
 	return val
+}
+
+func and(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
+	val1 &= val2
+	cpu.r.setFlag(FlagZ, val1 != 0)
+	cpu.r.setFlag(FlagN, (val1&0x80) == 0)
+	return val1
 }

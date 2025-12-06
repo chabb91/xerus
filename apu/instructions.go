@@ -148,6 +148,11 @@ func NewInstructionMap() []Instruction {
 	ret[0x1D] = &ExecAndWrite8{func8: dec, am: &AccessRegister{mode: REGISTER_X}}
 	ret[0xDC] = &ExecAndWrite8{func8: dec, am: &AccessRegister{mode: REGISTER_Y}}
 
+	ret[0x24] = &ExecAndWrite8x2Access{func8: and,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x29] = &ExecAndWrite8x2Access{func8: and,
+		am1: &DirectPage{io: READ_RAM, mode: DEFAULT}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+
 	return ret
 }
 
@@ -338,8 +343,6 @@ type ExecAndWrite8 struct {
 	executeImmediately bool
 	func8              InstructionFunc8
 
-	register *byte
-
 	lo   byte
 	addr uint16
 }
@@ -377,6 +380,66 @@ func (i *ExecAndWrite8) Step(cpu *CPU) bool {
 func (i *ExecAndWrite8) Reset() {
 	i.state = 0
 	i.am.reset()
+}
+
+type ExecAndWrite8x2Access struct {
+	am1, am2 AddressMode
+	state    int
+
+	skipExec           bool
+	executeImmediately bool
+	func8              InstructionFunc8x2
+
+	val1, val2               byte
+	addr1, addr2             uint16
+	regPointer1, regPointer2 *byte
+
+	next bool
+}
+
+func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.next, i.val1, i.addr1, i.regPointer1 = i.am1.step(cpu)
+		if i.next {
+			i.state++
+		}
+	//another footgun. when its a register read its a cycle shorter
+	case 1:
+		_, ok := i.am1.(*AccessRegister)
+		if ok {
+			i.next, i.val1, i.addr1, i.regPointer1 = i.am1.step(cpu)
+			if !i.next {
+				return false
+			}
+		}
+		i.next, i.val2, i.addr2, i.regPointer2 = i.am2.step(cpu)
+		if !i.next {
+			return false
+		}
+		if i.regPointer1 != nil {
+			*i.regPointer1 = i.func8(cpu, i.val1, i.val2, i.addr1, i.addr2)
+			return true
+		} else {
+			i.val2 = i.func8(cpu, i.val1, i.val2, i.addr1, i.addr2)
+		}
+		i.state++
+	case 2:
+		cpu.psram.Write8(i.addr2, i.val2)
+		return true
+	}
+	return false
+}
+
+func (i *ExecAndWrite8x2Access) Reset() {
+	_, ok := i.am1.(*AccessRegister)
+	if ok {
+		i.state = 1
+	} else {
+		i.state = 0
+	}
+	i.am1.reset()
+	i.am2.reset()
 }
 
 type StackOp struct {
