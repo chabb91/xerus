@@ -31,7 +31,7 @@ func TestAllInstructions(t *testing.T) {
 }
 
 func TestSingleInstruction(t *testing.T) {
-	runInstructionTests(t, "/home/chabb/Documents/snes_tests/spc700/bc.json")
+	runInstructionTests(t, "/home/chabb/Documents/snes_tests/spc700/37.json")
 }
 
 func runInstructionTests(t *testing.T, testFile string) {
@@ -48,8 +48,13 @@ func runInstructionTests(t *testing.T, testFile string) {
 		setState(cpu, tc.Initial)
 		testMem.ClearCycles()
 		i := 0
+		timeout := 0
 		for {
 			ret := cpu.StepCycle()
+			timeout++
+			if timeout > 1000 {
+				t.Fatalf("TIMEOUT on test %d: %s", i, tc.Name)
+			}
 			i++
 			if len(testMem.cycles) != i {
 				testMem.RecordWait()

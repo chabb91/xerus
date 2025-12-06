@@ -4,6 +4,8 @@ const (
 	DEFAULT = iota
 	X_INDEXED
 	Y_INDEXED
+	INDEXED_INDIRECT //[+X]
+	INDIRECT_INDEXED //[]+Y
 	BIT
 
 	ACCUMULATOR
@@ -15,7 +17,9 @@ const (
 	FETCH_BYTE1 = iota
 	FETCH_BYTE2
 	INDEX_DATA
-	RESOLVE_ADDRESS
+	RESOLVE_ADDRESS1
+	RESOLVE_ADDRESS2
+	RESOLVE_INDIRECTION
 )
 
 const (
@@ -38,6 +42,7 @@ type DirectPage struct {
 	bitOp func(byte) byte
 
 	addr uint16
+	reg  uint16
 }
 
 func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16, *byte) {
@@ -46,23 +51,26 @@ func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16, *byte) {
 		dp.lo = cpu.fetchByte()
 
 		switch dp.mode {
-		case X_INDEXED, Y_INDEXED:
+		case X_INDEXED, Y_INDEXED, INDEXED_INDIRECT, INDIRECT_INDEXED:
 			dp.state = INDEX_DATA
 		case DEFAULT, BIT:
-			dp.state = RESOLVE_ADDRESS
+			dp.state = RESOLVE_ADDRESS1
 		}
 	case INDEX_DATA:
-		if dp.mode == X_INDEXED {
+		if dp.mode == X_INDEXED || dp.mode == INDEXED_INDIRECT {
 			dp.lo += cpu.r.X
 		}
 		if dp.mode == Y_INDEXED {
 			dp.lo += cpu.r.Y
 		}
-		dp.state = RESOLVE_ADDRESS
-	case RESOLVE_ADDRESS:
+		if dp.mode == INDIRECT_INDEXED {
+			dp.reg = uint16(cpu.r.Y)
+		}
+		dp.state = RESOLVE_ADDRESS1
+	case RESOLVE_ADDRESS1:
 		dp.addr = uint16(cpu.r.getDirectPageNum())<<8 | uint16(dp.lo)
 
-		if dp.io == WRITE_RAM {
+		if dp.io == WRITE_RAM && !(dp.mode == INDEXED_INDIRECT || dp.mode == INDIRECT_INDEXED) {
 			return true, dp.lo, dp.addr, nil
 		}
 
@@ -70,6 +78,19 @@ func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16, *byte) {
 		if dp.mode == BIT {
 			dp.lo = dp.bitOp(dp.lo)
 		}
+
+		if !(dp.mode == INDEXED_INDIRECT || dp.mode == INDIRECT_INDEXED) {
+			return true, dp.lo, dp.addr, nil
+		} else {
+			dp.state = RESOLVE_ADDRESS2
+		}
+	case RESOLVE_ADDRESS2:
+		addr := uint16(cpu.r.getDirectPageNum())<<8 | ((dp.addr + 1) & 0xFF)
+		dp.addr = (uint16(cpu.psram.Read8(addr))<<8 | uint16(dp.lo)) + dp.reg
+
+		dp.state = RESOLVE_INDIRECTION
+	case RESOLVE_INDIRECTION:
+		dp.lo = cpu.psram.Read8(dp.addr)
 		return true, dp.lo, dp.addr, nil
 	}
 	return false, 0, 0, nil
@@ -101,7 +122,7 @@ func (a *Absolute) step(cpu *CPU) (bool, byte, uint16, *byte) {
 			a.state = INDEX_DATA
 		case DEFAULT:
 			a.reg = 0
-			a.state = RESOLVE_ADDRESS
+			a.state = RESOLVE_ADDRESS1
 		}
 	case INDEX_DATA:
 		if a.mode == X_INDEXED {
@@ -110,8 +131,8 @@ func (a *Absolute) step(cpu *CPU) (bool, byte, uint16, *byte) {
 		if a.mode == Y_INDEXED {
 			a.reg += cpu.r.Y
 		}
-		a.state = RESOLVE_ADDRESS
-	case RESOLVE_ADDRESS:
+		a.state = RESOLVE_ADDRESS1
+	case RESOLVE_ADDRESS1:
 		a.addr = (uint16(a.hi)<<8 | uint16(a.lo)) + uint16(a.reg)
 
 		if a.io == WRITE_RAM {
