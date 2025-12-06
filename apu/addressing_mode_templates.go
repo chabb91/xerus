@@ -45,6 +45,7 @@ type DirectPage struct {
 	reg  uint16
 
 	indexAndResolve bool
+	autoIncrement   byte
 }
 
 func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16, *byte) {
@@ -70,6 +71,7 @@ func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16, *byte) {
 		}
 		if dp.mode == REGISTER_X {
 			dp.lo = cpu.r.X
+			cpu.r.X += dp.autoIncrement
 			if dp.indexAndResolve {
 				dp.addr = uint16(cpu.r.getDirectPageNum())<<8 | uint16(dp.lo)
 				dp.lo = cpu.psram.Read8(dp.addr)
@@ -78,6 +80,7 @@ func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16, *byte) {
 		}
 		if dp.mode == REGISTER_Y {
 			dp.lo = cpu.r.Y
+			cpu.r.Y += dp.autoIncrement
 			if dp.indexAndResolve {
 				dp.addr = uint16(cpu.r.getDirectPageNum())<<8 | uint16(dp.lo)
 				dp.lo = cpu.psram.Read8(dp.addr)
@@ -170,6 +173,16 @@ func (a *Absolute) step(cpu *CPU) (bool, byte, uint16, *byte) {
 
 func (a *Absolute) reset() {
 	a.state = FETCH_BYTE1
+}
+
+type Immediate struct {
+}
+
+func (r *Immediate) step(cpu *CPU) (bool, byte, uint16, *byte) {
+	return true, cpu.fetchByte(), 0, nil
+}
+
+func (r *Immediate) reset() {
 }
 
 type AccessRegister struct {
