@@ -11,6 +11,7 @@ const (
 	ACCUMULATOR
 	REGISTER_X
 	REGISTER_Y
+	STACK_POINTER
 )
 
 const (
@@ -195,6 +196,8 @@ func (r *AccessRegister) step(cpu *CPU) (bool, byte, uint16, *byte) {
 		return true, cpu.r.X, 0, &cpu.r.X
 	case REGISTER_Y:
 		return true, cpu.r.Y, 0, &cpu.r.Y
+	case STACK_POINTER:
+		return true, cpu.r.SP, 0, &cpu.r.SP
 	default:
 		//accumulator
 		return true, cpu.r.A, 0, &cpu.r.A

@@ -161,3 +161,13 @@ func cmp(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
 	cpu.r.setFlag(FlagN, (result8&0x80) == 0)
 	return val1
 }
+
+func movNoFlag(_ *CPU, _, val2 byte, _, _ uint16) byte {
+	return val2
+}
+
+func mov(cpu *CPU, _, val2 byte, _, _ uint16) byte {
+	cpu.r.setFlag(FlagZ, val2 != 0)
+	cpu.r.setFlag(FlagN, (val2&0x80) == 0)
+	return val2
+}

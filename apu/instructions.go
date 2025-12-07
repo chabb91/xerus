@@ -312,6 +312,23 @@ func NewInstructionMap() []Instruction {
 	ret[0x5E] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
 		am1: &AccessRegister{mode: REGISTER_Y}, am2: &Absolute{io: READ_RAM, mode: DEFAULT}}
 
+	ret[0xFA] = &ExecAndWrite8x2Access{func8: movNoFlag, writeImmediately: true,
+		am1: &DirectPage{io: READ_RAM, mode: DEFAULT}, am2: &DirectPage{io: WRITE_RAM, mode: DEFAULT}}
+	ret[0x8F] = &ExecAndWrite8x2Access{func8: movNoFlag,
+		am1: &Immediate{}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0xBD] = &ExecAndWrite8x2Access{func8: movNoFlag, am1IsRegister: true,
+		am1: &AccessRegister{mode: STACK_POINTER}, am2: &AccessRegister{mode: REGISTER_X}}
+	ret[0x9D] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: REGISTER_X}, am2: &AccessRegister{mode: STACK_POINTER}}
+	ret[0xFD] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: REGISTER_Y}, am2: &AccessRegister{mode: ACCUMULATOR}}
+	ret[0x5D] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: REGISTER_X}, am2: &AccessRegister{mode: ACCUMULATOR}}
+	ret[0xDD] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &AccessRegister{mode: REGISTER_Y}}
+	ret[0x7D] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &AccessRegister{mode: REGISTER_X}}
+
 	return ret
 }
 
@@ -551,7 +568,7 @@ type ExecAndWrite8x2Access struct {
 	addr1, addr2             uint16
 	regPointer1, regPointer2 *byte
 
-	next, am1IsRegister, skipWrite bool
+	next, am1IsRegister, skipWrite, writeImmediately bool
 }
 
 func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
@@ -578,6 +595,10 @@ func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 			return true
 		} else {
 			i.val2 = i.func8(cpu, i.val2, i.val1, i.addr2, i.addr1)
+			if i.writeImmediately { //mov instructions skip a write cycle sometimes
+				cpu.psram.Write8(i.addr2, i.val2)
+				return true
+			}
 		}
 		i.state++
 	case 2:
