@@ -277,6 +277,40 @@ func NewInstructionMap() []Instruction {
 
 	ret[0x68] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Immediate{}}
+	ret[0x66] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X}}
+	ret[0x64] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x74] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: X_INDEXED}}
+	ret[0x65] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0x75] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: X_INDEXED}}
+	ret[0x76] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: Y_INDEXED}}
+	ret[0x67] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDEXED_INDIRECT}}
+	ret[0x77] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDIRECT_INDEXED}}
+	ret[0x79] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
+		am1: &DirectPage{io: READ_RAM, mode: REGISTER_Y}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X, indexAndResolve: true}}
+	ret[0x69] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
+		am1: &DirectPage{io: READ_RAM, mode: DEFAULT}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x78] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
+		am1: &Immediate{}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0xC8] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+		am1: &AccessRegister{mode: REGISTER_X}, am2: &Immediate{}}
+	ret[0x3E] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+		am1: &AccessRegister{mode: REGISTER_X}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x1E] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+		am1: &AccessRegister{mode: REGISTER_X}, am2: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0xAD] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+		am1: &AccessRegister{mode: REGISTER_Y}, am2: &Immediate{}}
+	ret[0x7E] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+		am1: &AccessRegister{mode: REGISTER_Y}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x5E] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+		am1: &AccessRegister{mode: REGISTER_Y}, am2: &Absolute{io: READ_RAM, mode: DEFAULT}}
 
 	return ret
 }
