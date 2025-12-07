@@ -224,6 +224,60 @@ func NewInstructionMap() []Instruction {
 	ret[0x58] = &ExecAndWrite8x2Access{func8: eor,
 		am1: &Immediate{}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
 
+	//8-bit arithmetic
+	ret[0x88] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Immediate{}}
+	ret[0x86] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X}}
+	ret[0x84] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x94] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: X_INDEXED}}
+	ret[0x85] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0x95] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: X_INDEXED}}
+	ret[0x96] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: Y_INDEXED}}
+	ret[0x87] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDEXED_INDIRECT}}
+	ret[0x97] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDIRECT_INDEXED}}
+	ret[0x99] = &ExecAndWrite8x2Access{func8: adc,
+		am1: &DirectPage{io: READ_RAM, mode: REGISTER_Y}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X, indexAndResolve: true}}
+	ret[0x89] = &ExecAndWrite8x2Access{func8: adc,
+		am1: &DirectPage{io: READ_RAM, mode: DEFAULT}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x98] = &ExecAndWrite8x2Access{func8: adc,
+		am1: &Immediate{}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+
+	ret[0xA8] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Immediate{}}
+	ret[0xA6] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X}}
+	ret[0xA4] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0xB4] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: X_INDEXED}}
+	ret[0xA5] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0xB5] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: X_INDEXED}}
+	ret[0xB6] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: Y_INDEXED}}
+	ret[0xA7] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDEXED_INDIRECT}}
+	ret[0xB7] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDIRECT_INDEXED}}
+	ret[0xB9] = &ExecAndWrite8x2Access{func8: sbc,
+		am1: &DirectPage{io: READ_RAM, mode: REGISTER_Y}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X, indexAndResolve: true}}
+	ret[0xA9] = &ExecAndWrite8x2Access{func8: sbc,
+		am1: &DirectPage{io: READ_RAM, mode: DEFAULT}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0xB8] = &ExecAndWrite8x2Access{func8: sbc,
+		am1: &Immediate{}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+
+	ret[0x68] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Immediate{}}
+
 	return ret
 }
 
@@ -463,7 +517,7 @@ type ExecAndWrite8x2Access struct {
 	addr1, addr2             uint16
 	regPointer1, regPointer2 *byte
 
-	next, am1IsRegister bool
+	next, am1IsRegister, skipWrite bool
 }
 
 func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
@@ -483,14 +537,19 @@ func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 			_, i.val1, _, i.regPointer1 = i.am1.step(cpu) //next is always true
 		}
 		if i.regPointer1 != nil {
-			*i.regPointer1 = i.func8(cpu, i.val1, i.val2, i.addr1, i.addr2)
+			ret := i.func8(cpu, i.val1, i.val2, i.addr1, i.addr2)
+			if !i.skipWrite {
+				*i.regPointer1 = ret
+			}
 			return true
 		} else {
-			i.val2 = i.func8(cpu, i.val1, i.val2, i.addr1, i.addr2)
+			i.val2 = i.func8(cpu, i.val2, i.val1, i.addr2, i.addr1)
 		}
 		i.state++
 	case 2:
-		cpu.psram.Write8(i.addr2, i.val2)
+		if !i.skipWrite {
+			cpu.psram.Write8(i.addr2, i.val2)
+		}
 		return true
 	}
 	return false

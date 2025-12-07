@@ -113,3 +113,51 @@ func eor(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
 	cpu.r.setFlag(FlagN, (val1&0x80) == 0)
 	return val1
 }
+
+func adc(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
+	carryIn := cpu.r.PSW & FlagC
+
+	result16 := adcFlagSetter(cpu, val1, val2, carryIn)
+	cpu.r.setFlag(FlagC, result16 <= 0xFF)
+
+	return byte(result16)
+}
+
+func sbc(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
+	carryIn := (cpu.r.PSW + 1) & FlagC
+	result16 := uint16(val1) - (uint16(val2) + uint16(carryIn))
+	result8 := byte(result16)
+
+	// apparently for any integer A represented in twos complement form this holds true:
+	// -A = ~A +1 or in this case: ~A = -A -1
+	adcFlagSetter(cpu, val1, ^val2, 1-carryIn)
+	cpu.r.setFlag(FlagC, result16 > 0xFF)
+
+	return result8
+}
+
+func adcFlagSetter(cpu *CPU, val1, val2, carryIn byte) uint16 {
+	result16 := uint16(val1) + uint16(val2) + uint16(carryIn)
+	result8 := byte(result16)
+
+	tmp1 := (val1 & 0x0F) + carryIn
+	halfCarry := (((result16 & 0x0F) - uint16(tmp1)) & 0x10)
+	overflow := (^(val1 ^ val2)) & ((val1 ^ result8) & 0x80) // set when signs of inputs match but result sign differs
+
+	cpu.r.setFlag(FlagV, overflow == 0)
+	cpu.r.setFlag(FlagH, halfCarry == 0)
+	cpu.r.setFlag(FlagZ, result8 != 0)
+	cpu.r.setFlag(FlagN, (result8&0x80) == 0)
+
+	return result16
+}
+
+func cmp(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
+	result16 := int16(val1) - int16(val2)
+	result8 := byte(result16)
+
+	cpu.r.setFlag(FlagC, result16 < 0)
+	cpu.r.setFlag(FlagZ, result8 != 0)
+	cpu.r.setFlag(FlagN, (result8&0x80) == 0)
+	return val1
+}
