@@ -31,7 +31,7 @@ func TestAllInstructions(t *testing.T) {
 }
 
 func TestSingleInstruction(t *testing.T) {
-	runInstructionTests(t, "/home/chabb/Documents/snes_tests/spc700/7d.json")
+	runInstructionTests(t, "/home/chabb/Documents/snes_tests/spc700/f7.json")
 }
 
 func runInstructionTests(t *testing.T, testFile string) {
@@ -50,7 +50,12 @@ func runInstructionTests(t *testing.T, testFile string) {
 		i := 0
 		timeout := 0
 		for {
+			ioCntPre := len(testMem.cycles)
 			ret := cpu.StepCycle()
+			ioCntAfter := len(testMem.cycles)
+			if ioCntAfter-ioCntPre > 1 {
+				t.Fatalf("Fatal: multiple io operations in one cycle on test %d: %s", i, tc.Name)
+			}
 			timeout++
 			if timeout > 1000 {
 				t.Fatalf("TIMEOUT on test %d: %s", i, tc.Name)

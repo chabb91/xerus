@@ -363,6 +363,45 @@ func NewInstructionMap() []Instruction {
 	ret[0xCC] = &ExecAndWrite8x2Access{func8: movNoFlagInverse, writeAddr1: true, writeImmediately: true,
 		am2: &AccessRegister{mode: REGISTER_Y}, am1: &Absolute{io: READ_RAM, mode: DEFAULT}}
 
+	//8-bit read
+	ret[0xE8] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Immediate{}}
+	ret[0xE6] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X}}
+	ret[0xBF] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true, incrementXafter: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: REGISTER_X}}
+	ret[0xE4] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0xF4] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: X_INDEXED}}
+	ret[0xE5] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0xF5] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: X_INDEXED}}
+	ret[0xF6] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{io: READ_RAM, mode: Y_INDEXED}}
+	ret[0xE7] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDEXED_INDIRECT}}
+	ret[0xF7] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{io: READ_RAM, mode: INDIRECT_INDEXED}}
+
+	ret[0xCD] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: REGISTER_X}, am2: &Immediate{}}
+	ret[0xF8] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: REGISTER_X}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0xF9] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: REGISTER_X}, am2: &DirectPage{io: READ_RAM, mode: Y_INDEXED}}
+	ret[0xE9] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: REGISTER_X}, am2: &Absolute{io: READ_RAM, mode: DEFAULT}}
+	ret[0x8D] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: REGISTER_Y}, am2: &Immediate{}}
+	ret[0xEB] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: REGISTER_Y}, am2: &DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0xFB] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: REGISTER_Y}, am2: &DirectPage{io: READ_RAM, mode: X_INDEXED}}
+	ret[0xEC] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+		am1: &AccessRegister{mode: REGISTER_Y}, am2: &Absolute{io: READ_RAM, mode: DEFAULT}}
+
 	return ret
 }
 
@@ -603,6 +642,7 @@ type ExecAndWrite8x2Access struct {
 	regPointer1, regPointer2 *byte
 
 	next, am1IsRegister, skipWrite, writeImmediately, writeAddr1 bool
+	incrementXafter                                              bool //for one very special instruction
 }
 
 func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
@@ -626,7 +666,12 @@ func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 			if !i.skipWrite {
 				*i.regPointer1 = ret
 			}
-			return true
+			if !i.incrementXafter {
+				return true
+			} else {
+				i.state = 3
+				return false
+			}
 		} else {
 			i.val2 = i.func8(cpu, i.val2, i.val1, i.addr2, i.addr1)
 			if i.writeImmediately { //mov instructions skip a write cycle sometimes
@@ -647,6 +692,9 @@ func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 				cpu.psram.Write8(i.addr2, i.val2)
 			}
 		}
+		return true
+	case 3:
+		cpu.r.X++
 		return true
 	}
 	return false
