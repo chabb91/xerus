@@ -637,9 +637,9 @@ type ExecAndWrite8x2Access struct {
 
 	func8 InstructionFunc8x2
 
-	val1, val2               byte
-	addr1, addr2             uint16
-	regPointer1, regPointer2 *byte
+	val1, val2   byte
+	addr1, addr2 uint16
+	regPointer1  *byte
 
 	next, am1IsRegister, skipWrite, writeImmediately, writeAddr1 bool
 	incrementXafter                                              bool //for one very special instruction
@@ -660,8 +660,6 @@ func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 		}
 		if i.am1IsRegister {
 			_, i.val1, _, i.regPointer1 = i.am1.step(cpu) //next is always true
-		}
-		if i.regPointer1 != nil {
 			ret := i.func8(cpu, i.val1, i.val2, i.addr1, i.addr2)
 			if !i.skipWrite {
 				*i.regPointer1 = ret
