@@ -4,8 +4,9 @@ const (
 	DEFAULT = iota
 	X_INDEXED
 	Y_INDEXED
-	INDEXED_INDIRECT //[+X]
-	INDIRECT_INDEXED //[]+Y
+	INDEXED_INDIRECT      //[+X]
+	INDIRECT_INDEXED      //[]+Y
+	INDIRECT_INDEXED_LAST //[]+Y but as last step (cringe)
 	BIT
 
 	ACCUMULATOR
@@ -57,7 +58,7 @@ func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16, *byte) {
 		switch dp.mode {
 		case X_INDEXED, Y_INDEXED, INDEXED_INDIRECT, INDIRECT_INDEXED:
 			dp.state = INDEX_DATA
-		case DEFAULT, BIT:
+		case DEFAULT, BIT, INDIRECT_INDEXED_LAST:
 			dp.state = RESOLVE_ADDRESS1
 		}
 	case INDEX_DATA:
@@ -69,6 +70,11 @@ func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16, *byte) {
 		}
 		if dp.mode == INDIRECT_INDEXED {
 			dp.reg = uint16(cpu.r.Y)
+		}
+		if dp.mode == INDIRECT_INDEXED_LAST {
+			dp.reg = uint16(cpu.r.Y)
+			dp.state = RESOLVE_INDIRECTION
+			return false, 0, 0, nil
 		}
 		if dp.mode == REGISTER_X {
 			dp.lo = cpu.r.X
@@ -92,7 +98,7 @@ func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16, *byte) {
 	case RESOLVE_ADDRESS1:
 		dp.addr = uint16(cpu.r.getDirectPageNum())<<8 | uint16(dp.lo)
 
-		if dp.io == WRITE_RAM && !(dp.mode == INDEXED_INDIRECT || dp.mode == INDIRECT_INDEXED) {
+		if dp.io == WRITE_RAM && !(dp.mode == INDEXED_INDIRECT || dp.mode == INDIRECT_INDEXED || dp.mode == INDIRECT_INDEXED_LAST) {
 			return true, dp.lo, dp.addr, nil
 		}
 
@@ -101,17 +107,22 @@ func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16, *byte) {
 			dp.lo = dp.bitOp(dp.lo)
 		}
 
-		if !(dp.mode == INDEXED_INDIRECT || dp.mode == INDIRECT_INDEXED) {
+		if !(dp.mode == INDEXED_INDIRECT || dp.mode == INDIRECT_INDEXED || dp.mode == INDIRECT_INDEXED_LAST) {
 			return true, dp.lo, dp.addr, nil
 		} else {
 			dp.state = RESOLVE_ADDRESS2
 		}
 	case RESOLVE_ADDRESS2:
 		addr := uint16(cpu.r.getDirectPageNum())<<8 | ((dp.addr + 1) & 0xFF)
-		dp.addr = (uint16(cpu.psram.Read8(addr))<<8 | uint16(dp.lo)) + dp.reg
+		dp.addr = (uint16(cpu.psram.Read8(addr))<<8 | uint16(dp.lo))
 
-		dp.state = RESOLVE_INDIRECTION
+		if dp.mode == INDIRECT_INDEXED_LAST {
+			dp.state = INDEX_DATA
+		} else {
+			dp.state = RESOLVE_INDIRECTION
+		}
 	case RESOLVE_INDIRECTION:
+		dp.addr += dp.reg
 		dp.lo = cpu.psram.Read8(dp.addr)
 		return true, dp.lo, dp.addr, nil
 	}

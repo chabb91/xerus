@@ -171,3 +171,13 @@ func mov(cpu *CPU, _, val2 byte, _, _ uint16) byte {
 	cpu.r.setFlag(FlagN, (val2&0x80) == 0)
 	return val2
 }
+
+func movNoFlagInverse(_ *CPU, val1, _ byte, _, _ uint16) byte {
+	return val1
+}
+
+func movInverse(cpu *CPU, val1, _ byte, _, _ uint16) byte {
+	cpu.r.setFlag(FlagZ, val1 != 0)
+	cpu.r.setFlag(FlagN, (val1&0x80) == 0)
+	return val1
+}
