@@ -31,7 +31,7 @@ func TestAllInstructions(t *testing.T) {
 }
 
 func TestSingleInstruction(t *testing.T) {
-	runInstructionTests(t, "/home/chabb/Documents/snes_tests/spc700/9e.json")
+	runInstructionTests(t, "/home/chabb/Documents/snes_tests/spc700/df.json")
 }
 
 func runInstructionTests(t *testing.T, testFile string) {
@@ -89,6 +89,9 @@ func runInstructionTests(t *testing.T, testFile string) {
 			}
 			if strings.Contains(cause, "PSW") {
 				t.Errorf("(PSW) Expected: %v, Got: %v", tc.Final.PSW, cpu.r.PSW)
+			}
+			if strings.Contains(cause, "A") {
+				t.Errorf("(A) Expected: %v, Got: %v", tc.Final.A, cpu.r.A)
 			}
 		}
 		cause = ""

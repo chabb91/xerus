@@ -406,6 +406,8 @@ func NewInstructionMap() []Instruction {
 	ret[0xCF] = &Mul{}
 	ret[0x9E] = &Div{}
 
+	ret[0xDF] = &DecimalAdjust{iFunc: daAddition}
+	ret[0xBE] = &DecimalAdjust{iFunc: daSubtraction}
 	return ret
 }
 
@@ -773,6 +775,7 @@ type Div struct {
 }
 
 // thx mame
+// Y <- YA % X and A <- YA / X
 func (i *Div) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9:
@@ -793,7 +796,7 @@ func (i *Div) Step(cpu *CPU) bool {
 				ya = ((ya - x) & 0x1FFFF)
 			}
 		}
-		cpu.r.setFlag(FlagV, ya&0x100 <= 0)
+		cpu.r.setFlag(FlagV, ya&0x100 == 0)
 		ya = (((ya >> 9) & 0xFF) << 8) + (ya & 0xFF)
 		cpu.r.Y = byte(ya >> 8)
 		cpu.r.A = byte(ya)
@@ -806,5 +809,26 @@ func (i *Div) Step(cpu *CPU) bool {
 }
 
 func (i *Div) Reset() {
+	i.state = 0
+}
+
+type DecimalAdjust struct {
+	state int
+
+	iFunc ImpliedFunc
+}
+
+func (i *DecimalAdjust) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.state++
+	case 1:
+		i.iFunc(cpu)
+		return true
+	}
+	return false
+}
+
+func (i *DecimalAdjust) Reset() {
 	i.state = 0
 }

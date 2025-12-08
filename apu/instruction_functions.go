@@ -2,6 +2,7 @@ package apu
 
 type InstructionFunc8 func(*CPU, byte, uint16) byte
 type InstructionFunc8x2 func(*CPU, byte, byte, uint16, uint16) byte
+type ImpliedFunc func(*CPU)
 
 func tclr1(cpu *CPU, val byte, addr uint16) byte {
 	cpu.psram.Read8(addr) //dummy read
@@ -174,4 +175,38 @@ func mov(cpu *CPU, _, val2 byte, _, _ uint16) byte {
 	cpu.r.setFlag(FlagZ, val2 != 0)
 	cpu.r.setFlag(FlagN, (val2&0x80) == 0)
 	return val2
+}
+
+func daAddition(cpu *CPU) {
+	a := uint16(cpu.r.A)
+
+	if (a&0x0F) > 9 || cpu.r.hasFlag(FlagH) {
+		cpu.r.A += 0x06
+	}
+
+	if a > 0x99 || cpu.r.hasFlag(FlagC) {
+		cpu.r.A += 0x60
+		cpu.r.setFlag(FlagC, false)
+	} else {
+		cpu.r.setFlag(FlagC, true)
+	}
+
+	cpu.r.setFlag(FlagZ, cpu.r.A != 0)
+	cpu.r.setFlag(FlagN, (cpu.r.A&0x80) == 0)
+}
+
+func daSubtraction(cpu *CPU) {
+	a := uint16(cpu.r.A)
+
+	if (a&0x0F) > 9 || !cpu.r.hasFlag(FlagH) {
+		cpu.r.A -= 0x06
+	}
+
+	if a > 0x99 || !cpu.r.hasFlag(FlagC) {
+		cpu.r.A -= 0x60
+		cpu.r.setFlag(FlagC, true)
+	}
+
+	cpu.r.setFlag(FlagZ, cpu.r.A != 0)
+	cpu.r.setFlag(FlagN, (cpu.r.A&0x80) == 0)
 }
