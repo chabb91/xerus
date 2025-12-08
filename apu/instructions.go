@@ -402,6 +402,10 @@ func NewInstructionMap() []Instruction {
 	ret[0xEC] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
 		am1: &AccessRegister{mode: REGISTER_Y}, am2: &Absolute{io: READ_RAM, mode: DEFAULT}}
 
+	//mul/div
+	ret[0xCF] = &Mul{}
+	ret[0x9E] = &Div{}
+
 	return ret
 }
 
@@ -738,5 +742,69 @@ func (i *StackOp) Step(cpu *CPU) bool {
 }
 
 func (i *StackOp) Reset() {
+	i.state = 0
+}
+
+type Mul struct {
+	state int
+}
+
+func (i *Mul) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0, 1, 2, 3, 4, 5, 6:
+		i.state++
+	case 7:
+		ya := uint16(cpu.r.Y) * uint16(cpu.r.A)
+		y := byte(ya >> 8)
+		cpu.r.Y, cpu.r.A = y, byte(ya)
+		cpu.r.setFlag(FlagZ, y != 0)
+		cpu.r.setFlag(FlagN, (y&0x80) == 0)
+		return true
+	}
+	return false
+}
+
+func (i *Mul) Reset() {
+	i.state = 0
+}
+
+type Div struct {
+	state int
+}
+
+// thx mame
+func (i *Div) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9:
+		i.state++
+	case 10:
+		ya := uint32(cpu.r.Y)<<8 | uint32(cpu.r.A)
+		x := uint32(cpu.r.X) << 9
+		cpu.r.setFlag(FlagH, (cpu.r.Y&0xF) < (cpu.r.X&0xF))
+		for range 9 {
+			ya <<= 1
+			if ya&0x20000 > 0 {
+				ya = ya&0x1FFFF | 1
+			}
+			if ya >= x {
+				ya ^= 1
+			}
+			if ya&1 > 0 {
+				ya = ((ya - x) & 0x1FFFF)
+			}
+		}
+		cpu.r.setFlag(FlagV, ya&0x100 <= 0)
+		ya = (((ya >> 9) & 0xFF) << 8) + (ya & 0xFF)
+		cpu.r.Y = byte(ya >> 8)
+		cpu.r.A = byte(ya)
+
+		cpu.r.setFlag(FlagZ, byte(ya) != 0)
+		cpu.r.setFlag(FlagN, (byte(ya)&0x80) == 0)
+		return true
+	}
+	return false
+}
+
+func (i *Div) Reset() {
 	i.state = 0
 }
