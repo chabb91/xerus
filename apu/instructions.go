@@ -431,6 +431,25 @@ func NewInstructionMap() []Instruction {
 	ret[0xA0] = &DecimalAdjust{iFunc: func(c *CPU) { c.r.setFlag(FlagI, false) }}
 	ret[0xC0] = &DecimalAdjust{iFunc: func(c *CPU) { c.r.setFlag(FlagI, true) }}
 
+	//TCALL/BRK
+	ret[0x01] = &TcallBrk{vector: 0xFFDE}
+	ret[0x11] = &TcallBrk{vector: 0xFFDC}
+	ret[0x21] = &TcallBrk{vector: 0xFFDA}
+	ret[0x31] = &TcallBrk{vector: 0xFFD8}
+	ret[0x41] = &TcallBrk{vector: 0xFFD6}
+	ret[0x51] = &TcallBrk{vector: 0xFFD4}
+	ret[0x61] = &TcallBrk{vector: 0xFFD2}
+	ret[0x71] = &TcallBrk{vector: 0xFFD0}
+	ret[0x81] = &TcallBrk{vector: 0xFFCE}
+	ret[0x91] = &TcallBrk{vector: 0xFFCC}
+	ret[0xA1] = &TcallBrk{vector: 0xFFCA}
+	ret[0xB1] = &TcallBrk{vector: 0xFFC8}
+	ret[0xC1] = &TcallBrk{vector: 0xFFC6}
+	ret[0xD1] = &TcallBrk{vector: 0xFFC4}
+	ret[0xE1] = &TcallBrk{vector: 0xFFC2}
+	ret[0xF1] = &TcallBrk{vector: 0xFFC0}
+	ret[0x0F] = &TcallBrk{vector: 0xFFDE, isBrk: true}
+
 	return ret
 }
 
@@ -991,4 +1010,53 @@ func (i *IncWDecW) Step(cpu *CPU) bool {
 func (i *IncWDecW) Reset() {
 	i.state = 0
 	i.am.reset()
+}
+
+type TcallBrk struct {
+	state int
+
+	vector uint16
+	isBrk  bool
+}
+
+func (i *TcallBrk) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		if i.isBrk {
+			i.state = 2
+		} else {
+			cpu.psram.Read8(cpu.r.PC) //dummy read
+			i.state = 1
+		}
+	case 1:
+		i.state++
+	case 2:
+		cpu.PushByte(byte(cpu.r.PC >> 8))
+		i.state++
+	case 3:
+		cpu.PushByte(byte(cpu.r.PC))
+		i.state++
+	case 4:
+		if i.isBrk {
+			cpu.PushByte(cpu.r.PSW)
+			cpu.r.setFlag(FlagB, false)
+			cpu.r.setFlag(FlagI, true)
+			i.state = 7
+		} else {
+			i.state = 5
+		}
+	case 5:
+		cpu.r.PC = (cpu.r.PC & 0xFF00) | uint16(cpu.psram.Read8(i.vector))
+		i.state++
+	case 6:
+		cpu.r.PC = (cpu.r.PC & 0xFF) | uint16(cpu.psram.Read8(i.vector+1))<<8
+		return true
+	case 7:
+		i.state = 5
+	}
+	return false
+}
+
+func (i *TcallBrk) Reset() {
+	i.state = 0
 }
