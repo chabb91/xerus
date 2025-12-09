@@ -421,6 +421,16 @@ func NewInstructionMap() []Instruction {
 	ret[0xBA] = &Exec16{func16: mov16, am: DirectPage{io: READ_RAM, mode: DEFAULT}}
 	ret[0xDA] = &ExecAndWrite16{am: DirectPage{io: READ_RAM, mode: DEFAULT}} //mov16 the other way requires a new struct
 
+	//PSW operations
+	ret[0x60] = &TwoCycleImplied{iFunc: func(c *CPU) { c.r.setFlag(FlagC, true) }}
+	ret[0x80] = &TwoCycleImplied{iFunc: func(c *CPU) { c.r.setFlag(FlagC, false) }}
+	ret[0xE0] = &TwoCycleImplied{iFunc: func(c *CPU) { c.r.setFlag(FlagH, true); c.r.setFlag(FlagV, true) }}
+	ret[0x20] = &TwoCycleImplied{iFunc: func(c *CPU) { c.r.setFlag(FlagP, true) }}
+	ret[0x40] = &TwoCycleImplied{iFunc: func(c *CPU) { c.r.setFlag(FlagP, false) }}
+	ret[0xED] = &DecimalAdjust{iFunc: func(c *CPU) { c.r.PSW ^= FlagC }}
+	ret[0xA0] = &DecimalAdjust{iFunc: func(c *CPU) { c.r.setFlag(FlagI, false) }}
+	ret[0xC0] = &DecimalAdjust{iFunc: func(c *CPU) { c.r.setFlag(FlagI, true) }}
+
 	return ret
 }
 
@@ -845,6 +855,18 @@ func (i *DecimalAdjust) Step(cpu *CPU) bool {
 
 func (i *DecimalAdjust) Reset() {
 	i.state = 0
+}
+
+type TwoCycleImplied struct {
+	iFunc ImpliedFunc
+}
+
+func (i *TwoCycleImplied) Step(cpu *CPU) bool {
+	i.iFunc(cpu)
+	return true
+}
+
+func (i *TwoCycleImplied) Reset() {
 }
 
 type Exec16 struct {
