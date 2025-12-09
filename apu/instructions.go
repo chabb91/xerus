@@ -449,6 +449,9 @@ func NewInstructionMap() []Instruction {
 	ret[0xE1] = &TcallBrk{vector: 0xFFC2}
 	ret[0xF1] = &TcallBrk{vector: 0xFFC0}
 	ret[0x0F] = &TcallBrk{vector: 0xFFDE, isBrk: true}
+	//ret/reti
+	ret[0x6F] = &RetReti{}
+	ret[0x7F] = &RetReti{isReti: true}
 
 	return ret
 }
@@ -1059,4 +1062,40 @@ func (i *TcallBrk) Step(cpu *CPU) bool {
 
 func (i *TcallBrk) Reset() {
 	i.state = 0
+}
+
+type RetReti struct {
+	state int
+
+	isReti bool
+	pcl    byte
+}
+
+func (i *RetReti) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.state++
+	case 1:
+		i.state++
+	case 2:
+		if i.isReti {
+			cpu.r.PSW = cpu.PopByte()
+		}
+		i.state++
+	case 3:
+		i.pcl = cpu.PopByte()
+		i.state++
+	case 4:
+		cpu.r.PC = (uint16(cpu.PopByte())<<8 | uint16(i.pcl))
+		return true
+	}
+	return false
+}
+
+func (i *RetReti) Reset() {
+	if i.isReti {
+		i.state = 0
+	} else {
+		i.state = 1
+	}
 }
