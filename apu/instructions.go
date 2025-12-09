@@ -409,7 +409,17 @@ func NewInstructionMap() []Instruction {
 	ret[0xDF] = &DecimalAdjust{iFunc: daAddition}
 	ret[0xBE] = &DecimalAdjust{iFunc: daSubtraction}
 
-	ret[0x7a] = &AddW{am: DirectPage{io: READ_RAM, mode: DEFAULT}}
+	//16-bit addw subw cmpw
+	ret[0x7A] = &Exec16{func16: addW, am: DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x9A] = &Exec16{func16: subW, am: DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0x5A] = &Exec16{func16: cmpW, am: DirectPage{io: READ_RAM, mode: DEFAULT}, skipIdleCycle: true}
+	//incW decW
+	ret[0x1A] = &IncWDecW{am: DirectPage{io: READ_RAM, mode: DEFAULT}, amount: 0xFF}
+	ret[0x3A] = &IncWDecW{am: DirectPage{io: READ_RAM, mode: DEFAULT}, amount: 0x1}
+
+	//16-bit mov
+	ret[0xBA] = &Exec16{func16: mov16, am: DirectPage{io: READ_RAM, mode: DEFAULT}}
+	ret[0xDA] = &ExecAndWrite16{am: DirectPage{io: READ_RAM, mode: DEFAULT}} //mov16 the other way requires a new struct
 
 	return ret
 }
@@ -837,7 +847,48 @@ func (i *DecimalAdjust) Reset() {
 	i.state = 0
 }
 
-type AddW struct {
+type Exec16 struct {
+	state int
+	am    DirectPage
+
+	addr          uint16
+	lo            byte
+	func16        InstructionFunc16
+	skipIdleCycle bool
+}
+
+func (i *Exec16) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		next, val, addr, _ := i.am.step(cpu)
+		if next {
+			i.lo, i.addr = val, addr
+			if i.skipIdleCycle {
+				i.state = 2
+			} else {
+				i.state = 1
+			}
+		}
+	case 1:
+		i.state++
+	case 2:
+		hi := cpu.psram.Read8(uint16(cpu.r.getDirectPageNum())<<8 | ((i.addr + 1) & 0xFF))
+		ya := uint16(cpu.r.Y)<<8 | uint16(cpu.r.A)
+		word := uint16(hi)<<8 | uint16(i.lo)
+
+		i.func16(cpu, ya, word)
+		return true
+	}
+	return false
+}
+
+func (i *Exec16) Reset() {
+	i.state = 0
+	i.am.reset()
+}
+
+// basically 1 very special 16 bit mov instruction
+type ExecAndWrite16 struct {
 	state int
 	am    DirectPage
 
@@ -845,7 +896,40 @@ type AddW struct {
 	lo   byte
 }
 
-func (i *AddW) Step(cpu *CPU) bool {
+func (i *ExecAndWrite16) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		next, val, addr, _ := i.am.step(cpu)
+		if next {
+			i.lo, i.addr = val, addr
+			i.state = 1
+		}
+	case 1:
+		cpu.psram.Write8(i.addr, cpu.r.A)
+		i.state++
+	case 2:
+		cpu.psram.Write8(uint16(cpu.r.getDirectPageNum())<<8|((i.addr+1)&0xFF), cpu.r.Y)
+		return true
+	}
+	return false
+}
+
+func (i *ExecAndWrite16) Reset() {
+	i.state = 0
+	i.am.reset()
+}
+
+type IncWDecW struct {
+	state int
+	am    DirectPage
+
+	addr   uint16
+	lo, hi byte
+	carry  bool
+	amount byte
+}
+
+func (i *IncWDecW) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		next, val, addr, _ := i.am.step(cpu)
@@ -854,17 +938,35 @@ func (i *AddW) Step(cpu *CPU) bool {
 			i.state++
 		}
 	case 1:
+		result := uint16(i.lo) + uint16(i.amount)
+		if i.amount == 1 {
+			i.carry = result > 0xFF
+		} else {
+			i.carry = i.lo == 0
+		}
+
+		cpu.psram.Write8(i.addr, byte(result))
 		i.state++
 	case 2:
-		hi := cpu.psram.Read8(uint16(cpu.r.getDirectPageNum())<<8 | ((i.addr + 1) & 0xFF))
+		i.addr = uint16(cpu.r.getDirectPageNum())<<8 | ((i.addr + 1) & 0xFF)
+		i.hi = cpu.psram.Read8(i.addr)
+		word := uint16(i.hi)<<8 | uint16(i.lo)
 
-		addW(cpu, uint16(hi)<<8|uint16(i.lo))
+		cpu.r.setFlag(FlagZ, word != 0)
+		cpu.r.setFlag(FlagN, (word&0x8000) == 0)
+		i.state++
+	case 3:
+		if i.carry {
+			cpu.psram.Write8(i.addr, i.hi+i.amount)
+		} else {
+			cpu.psram.Write8(i.addr, i.hi)
+		}
 		return true
 	}
 	return false
 }
 
-func (i *AddW) Reset() {
+func (i *IncWDecW) Reset() {
 	i.state = 0
 	i.am.reset()
 }

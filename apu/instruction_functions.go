@@ -3,6 +3,7 @@ package apu
 type InstructionFunc8 func(*CPU, byte, uint16) byte
 type InstructionFunc8x2 func(*CPU, byte, byte, uint16, uint16) byte
 type ImpliedFunc func(*CPU)
+type InstructionFunc16 func(*CPU, uint16, uint16)
 
 func tclr1(cpu *CPU, val byte, addr uint16) byte {
 	cpu.psram.Read8(addr) //dummy read
@@ -211,9 +212,7 @@ func daSubtraction(cpu *CPU) {
 	cpu.r.setFlag(FlagN, (cpu.r.A&0x80) == 0)
 }
 
-func addW(cpu *CPU, word uint16) {
-	ya := uint16(cpu.r.Y)<<8 | uint16(cpu.r.A)
-
+func addW(cpu *CPU, ya, word uint16) {
 	result32 := uint32(ya) + uint32(word)
 	result := uint16(result32)
 
@@ -228,4 +227,38 @@ func addW(cpu *CPU, word uint16) {
 
 	cpu.r.Y = byte(result >> 8)
 	cpu.r.A = byte(result)
+}
+
+func subW(cpu *CPU, ya, word uint16) {
+	result32 := uint32(ya) - uint32(word)
+	result := uint16(result32)
+
+	halfCarry := ((ya & 0xFFF) - (word & 0xFFF)) > 0xFFF
+	overflow := (ya ^ word) & ((ya ^ result) & 0x8000) //signs of inputs match but result sign differs (bit 15)
+
+	cpu.r.setFlag(FlagC, result32 > 0xFFFF)
+	cpu.r.setFlag(FlagH, halfCarry)
+	cpu.r.setFlag(FlagV, overflow == 0)
+	cpu.r.setFlag(FlagZ, result != 0)
+	cpu.r.setFlag(FlagN, (result&0x8000) == 0)
+
+	cpu.r.Y = byte(result >> 8)
+	cpu.r.A = byte(result)
+}
+
+func cmpW(cpu *CPU, ya, word uint16) {
+	result32 := int32(ya) - int32(word)
+	result16 := uint16(result32)
+
+	cpu.r.setFlag(FlagC, result32 < 0)
+	cpu.r.setFlag(FlagZ, result16 != 0)
+	cpu.r.setFlag(FlagN, (result16&0x8000) == 0)
+}
+
+func mov16(cpu *CPU, _, word uint16) {
+	cpu.r.setFlag(FlagZ, word != 0)
+	cpu.r.setFlag(FlagN, (word&0x8000) == 0)
+
+	cpu.r.Y = byte(word >> 8)
+	cpu.r.A = byte(word)
 }
