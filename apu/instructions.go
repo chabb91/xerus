@@ -457,6 +457,13 @@ func NewInstructionMap() []Instruction {
 	ret[0x3F] = &CallPcall{}
 	ret[0x4F] = &CallPcall{isPcall: true}
 
+	//other instructions
+	//nop
+	ret[0x00] = &TwoCycleImplied{iFunc: func(_ *CPU) {}}
+	//stp/wai
+	ret[0xEF] = &Stop{}
+	ret[0xFF] = &Stop{}
+
 	return ret
 }
 
@@ -1145,5 +1152,24 @@ func (i *CallPcall) Step(cpu *CPU) bool {
 }
 
 func (i *CallPcall) Reset() {
+	i.state = 0
+}
+
+type Stop struct {
+	state int
+}
+
+func (i *Stop) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0, 1, 2, 3, 4:
+		i.state++
+	case 5:
+		cpu.stopped = true
+		return true
+	}
+	return false
+}
+
+func (i *Stop) Reset() {
 	i.state = 0
 }

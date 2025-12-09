@@ -9,6 +9,7 @@ type CPU struct {
 	currentInstruction Instruction
 
 	resetSignal bool
+	stopped     bool //apparently there is no way to wake up this cpu on the snes so stop and sleep are the same thing.
 }
 
 func NewCPU(psram Memory) *CPU {
@@ -22,6 +23,9 @@ func NewCPU(psram Memory) *CPU {
 }
 
 func (cpu *CPU) StepCycle() bool {
+	if cpu.stopped {
+		return false
+	}
 	if cpu.currentInstruction == nil {
 		cpu.currentInstruction = cpu.instructions[cpu.fetchByte()]
 		cpu.currentInstruction.Reset()
@@ -31,7 +35,14 @@ func (cpu *CPU) StepCycle() bool {
 		cpu.currentInstruction = nil
 		return true
 	}
+
 	return false
+}
+
+// TODO
+func (cpu *CPU) Reset() {
+	cpu.stopped = false
+	//cpu.r.PC = readResetVector()
 }
 
 func (cpu *CPU) fetchByte() byte {

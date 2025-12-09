@@ -43,8 +43,10 @@ func runInstructionTests(t *testing.T, testFile string) {
 	cpu := NewCPU(testMem)
 
 	cpu.resetSignal = false
+	cpu.Reset()
 
 	for _, tc := range tests {
+		cpu.stopped = false
 		setState(cpu, tc.Initial)
 		testMem.ClearCycles()
 		i := 0
