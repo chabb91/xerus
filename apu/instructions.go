@@ -431,6 +431,7 @@ func NewInstructionMap() []Instruction {
 	ret[0xA0] = &DecimalAdjust{iFunc: func(c *CPU) { c.r.setFlag(FlagI, false) }}
 	ret[0xC0] = &DecimalAdjust{iFunc: func(c *CPU) { c.r.setFlag(FlagI, true) }}
 
+	//subroutine instructions
 	//TCALL/BRK
 	ret[0x01] = &TcallBrk{vector: 0xFFDE}
 	ret[0x11] = &TcallBrk{vector: 0xFFDC}
@@ -452,6 +453,9 @@ func NewInstructionMap() []Instruction {
 	//ret/reti
 	ret[0x6F] = &RetReti{}
 	ret[0x7F] = &RetReti{isReti: true}
+	//call/pcall
+	ret[0x3F] = &CallPcall{}
+	ret[0x4F] = &CallPcall{isPcall: true}
 
 	return ret
 }
@@ -1098,4 +1102,48 @@ func (i *RetReti) Reset() {
 	} else {
 		i.state = 1
 	}
+}
+
+type CallPcall struct {
+	state int
+
+	isPcall  bool
+	pcl, pch byte
+}
+
+func (i *CallPcall) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		i.pcl = cpu.fetchByte()
+		if i.isPcall {
+			i.pch = 0xFF
+			i.state = 2
+		} else {
+			i.state = 1
+		}
+	case 1:
+		i.pch = cpu.fetchByte()
+		i.state++
+	case 2:
+		i.state++
+	case 3:
+		cpu.PushByte(byte(cpu.r.PC >> 8))
+		i.state++
+	case 4:
+		cpu.PushByte(byte(cpu.r.PC))
+		i.state++
+	case 5:
+		cpu.r.PC = uint16(i.pch)<<8 | uint16(i.pcl)
+		if i.isPcall {
+			return true
+		}
+		i.state++
+	case 6:
+		return true
+	}
+	return false
+}
+
+func (i *CallPcall) Reset() {
+	i.state = 0
 }
