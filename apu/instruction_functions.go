@@ -210,3 +210,22 @@ func daSubtraction(cpu *CPU) {
 	cpu.r.setFlag(FlagZ, cpu.r.A != 0)
 	cpu.r.setFlag(FlagN, (cpu.r.A&0x80) == 0)
 }
+
+func addW(cpu *CPU, word uint16) {
+	ya := uint16(cpu.r.Y)<<8 | uint16(cpu.r.A)
+
+	result32 := uint32(ya) + uint32(word)
+	result := uint16(result32)
+
+	halfCarry := ((ya & 0xFFF) + (word & 0xFFF)) > 0xFFF
+	overflow := (^(ya ^ word)) & ((word ^ result) & 0x8000) //signs of inputs match but result sign differs (bit 15)
+
+	cpu.r.setFlag(FlagC, result32 <= 0xFFFF)
+	cpu.r.setFlag(FlagH, !halfCarry)
+	cpu.r.setFlag(FlagV, overflow == 0)
+	cpu.r.setFlag(FlagZ, result != 0)
+	cpu.r.setFlag(FlagN, (result&0x8000) == 0)
+
+	cpu.r.Y = byte(result >> 8)
+	cpu.r.A = byte(result)
+}

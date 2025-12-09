@@ -408,6 +408,9 @@ func NewInstructionMap() []Instruction {
 
 	ret[0xDF] = &DecimalAdjust{iFunc: daAddition}
 	ret[0xBE] = &DecimalAdjust{iFunc: daSubtraction}
+
+	ret[0x7a] = &AddW{am: DirectPage{io: READ_RAM, mode: DEFAULT}}
+
 	return ret
 }
 
@@ -812,6 +815,7 @@ func (i *Div) Reset() {
 	i.state = 0
 }
 
+// TODO make this into a more generic 3cycleImplied template if possible
 type DecimalAdjust struct {
 	state int
 
@@ -831,4 +835,36 @@ func (i *DecimalAdjust) Step(cpu *CPU) bool {
 
 func (i *DecimalAdjust) Reset() {
 	i.state = 0
+}
+
+type AddW struct {
+	state int
+	am    DirectPage
+
+	addr uint16
+	lo   byte
+}
+
+func (i *AddW) Step(cpu *CPU) bool {
+	switch i.state {
+	case 0:
+		next, val, addr, _ := i.am.step(cpu)
+		if next {
+			i.lo, i.addr = val, addr
+			i.state++
+		}
+	case 1:
+		i.state++
+	case 2:
+		hi := cpu.psram.Read8(uint16(cpu.r.getDirectPageNum())<<8 | ((i.addr + 1) & 0xFF))
+
+		addW(cpu, uint16(hi)<<8|uint16(i.lo))
+		return true
+	}
+	return false
+}
+
+func (i *AddW) Reset() {
+	i.state = 0
+	i.am.reset()
 }
