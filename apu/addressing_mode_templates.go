@@ -35,7 +35,6 @@ type AddressMode interface {
 }
 
 type DirectPage struct {
-	io    int
 	mode  int
 	state int
 
@@ -45,6 +44,8 @@ type DirectPage struct {
 
 	addr uint16
 	reg  uint16
+
+	skipRead bool
 
 	indexAndResolve bool
 	autoIncrement   byte
@@ -98,7 +99,7 @@ func (dp *DirectPage) step(cpu *CPU) (bool, byte, uint16, *byte) {
 	case RESOLVE_ADDRESS1:
 		dp.addr = uint16(cpu.r.getDirectPageNum())<<8 | uint16(dp.lo)
 
-		if dp.io == WRITE_RAM && !(dp.mode == INDEXED_INDIRECT || dp.mode == INDIRECT_INDEXED || dp.mode == INDIRECT_INDEXED_LAST) {
+		if dp.skipRead {
 			return true, dp.lo, dp.addr, nil
 		}
 
@@ -138,7 +139,6 @@ func (dp *DirectPage) reset() {
 }
 
 type Absolute struct {
-	io    int
 	mode  int
 	state int
 
@@ -171,10 +171,6 @@ func (a *Absolute) step(cpu *CPU) (bool, byte, uint16, *byte) {
 		a.state = RESOLVE_ADDRESS1
 	case RESOLVE_ADDRESS1:
 		a.addr = (uint16(a.hi)<<8 | uint16(a.lo)) + uint16(a.reg)
-
-		if a.io == WRITE_RAM {
-			return true, a.lo, a.addr, nil
-		}
 
 		a.lo = cpu.psram.Read8(a.addr)
 		return true, a.lo, a.addr, nil
