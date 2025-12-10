@@ -1,7 +1,7 @@
 package apu
 
 type InstructionFunc8 func(*CPU, byte, uint16) byte
-type InstructionFunc8x2 func(*CPU, byte, byte, uint16, uint16) byte
+type InstructionFunc8x2 func(*CPU, byte, byte) byte
 type ImpliedFunc func(*CPU)
 type InstructionFunc16 func(*CPU, uint16, uint16)
 
@@ -95,28 +95,28 @@ func dec(cpu *CPU, val byte, _ uint16) byte {
 	return val
 }
 
-func and(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
+func and(cpu *CPU, val1, val2 byte) byte {
 	val1 &= val2
 	cpu.r.setFlag(FlagZ, val1 != 0)
 	cpu.r.setFlag(FlagN, (val1&0x80) == 0)
 	return val1
 }
 
-func or(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
+func or(cpu *CPU, val1, val2 byte) byte {
 	val1 |= val2
 	cpu.r.setFlag(FlagZ, val1 != 0)
 	cpu.r.setFlag(FlagN, (val1&0x80) == 0)
 	return val1
 }
 
-func eor(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
+func eor(cpu *CPU, val1, val2 byte) byte {
 	val1 ^= val2
 	cpu.r.setFlag(FlagZ, val1 != 0)
 	cpu.r.setFlag(FlagN, (val1&0x80) == 0)
 	return val1
 }
 
-func adc(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
+func adc(cpu *CPU, val1, val2 byte) byte {
 	carryIn := cpu.r.PSW & FlagC
 
 	result16 := adcFlagSetter(cpu, val1, val2, carryIn)
@@ -125,7 +125,7 @@ func adc(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
 	return byte(result16)
 }
 
-func sbc(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
+func sbc(cpu *CPU, val1, val2 byte) byte {
 	carryIn := (cpu.r.PSW + 1) & FlagC
 	result16 := uint16(val1) - (uint16(val2) + uint16(carryIn))
 	result8 := byte(result16)
@@ -154,7 +154,7 @@ func adcFlagSetter(cpu *CPU, val1, val2, carryIn byte) uint16 {
 	return result16
 }
 
-func cmp(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
+func cmp(cpu *CPU, val1, val2 byte) byte {
 	result16 := int16(val1) - int16(val2)
 	result8 := byte(result16)
 
@@ -164,15 +164,15 @@ func cmp(cpu *CPU, val1, val2 byte, _, _ uint16) byte {
 	return val1
 }
 
-func movNoFlag(_ *CPU, _, val2 byte, _, _ uint16) byte {
+func movNoFlag(_ *CPU, _, val2 byte) byte {
 	return val2
 }
 
-func movNoFlagInverse(_ *CPU, val1, _ byte, _, _ uint16) byte {
+func movNoFlagInverse(_ *CPU, val1, _ byte) byte {
 	return val1
 }
 
-func mov(cpu *CPU, _, val2 byte, _, _ uint16) byte {
+func mov(cpu *CPU, _, val2 byte) byte {
 	cpu.r.setFlag(FlagZ, val2 != 0)
 	cpu.r.setFlag(FlagN, (val2&0x80) == 0)
 	return val2

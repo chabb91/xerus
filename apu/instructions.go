@@ -390,8 +390,9 @@ func NewInstructionMap() []Instruction {
 	ret[0xCF] = &Mul{}
 	ret[0x9E] = &Div{}
 
-	ret[0xDF] = &DecimalAdjust{iFunc: daAddition}
-	ret[0xBE] = &DecimalAdjust{iFunc: daSubtraction}
+	//DecimalAdjust
+	ret[0xDF] = &ThreeCycleImplied{iFunc: daAddition}
+	ret[0xBE] = &ThreeCycleImplied{iFunc: daSubtraction}
 
 	//16-bit addw subw cmpw
 	ret[0x7A] = &Exec16{func16: addW, am: DirectPage{mode: DEFAULT}}
@@ -411,9 +412,9 @@ func NewInstructionMap() []Instruction {
 	ret[0xE0] = &TwoCycleImplied{iFunc: func(c *CPU) { c.r.setFlag(FlagH, true); c.r.setFlag(FlagV, true) }}
 	ret[0x20] = &TwoCycleImplied{iFunc: func(c *CPU) { c.r.setFlag(FlagP, true) }}
 	ret[0x40] = &TwoCycleImplied{iFunc: func(c *CPU) { c.r.setFlag(FlagP, false) }}
-	ret[0xED] = &DecimalAdjust{iFunc: func(c *CPU) { c.r.PSW ^= FlagC }}
-	ret[0xA0] = &DecimalAdjust{iFunc: func(c *CPU) { c.r.setFlag(FlagI, false) }}
-	ret[0xC0] = &DecimalAdjust{iFunc: func(c *CPU) { c.r.setFlag(FlagI, true) }}
+	ret[0xED] = &ThreeCycleImplied{iFunc: func(c *CPU) { c.r.PSW ^= FlagC }}
+	ret[0xA0] = &ThreeCycleImplied{iFunc: func(c *CPU) { c.r.setFlag(FlagI, false) }}
+	ret[0xC0] = &ThreeCycleImplied{iFunc: func(c *CPU) { c.r.setFlag(FlagI, true) }}
 
 	//subroutine instructions
 	//TCALL/BRK
@@ -706,7 +707,7 @@ func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 		}
 		if i.am1IsRegister {
 			_, i.val1, _, i.regPointer1 = i.am1.step(cpu) //next is always true
-			ret := i.func8(cpu, i.val1, i.val2, i.addr1, i.addr2)
+			ret := i.func8(cpu, i.val1, i.val2)
 			if !i.skipWrite {
 				*i.regPointer1 = ret
 			}
@@ -717,7 +718,7 @@ func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 				return false
 			}
 		} else {
-			i.val2 = i.func8(cpu, i.val2, i.val1, i.addr2, i.addr1)
+			i.val2 = i.func8(cpu, i.val2, i.val1)
 			if i.writeImmediately { //mov instructions skip a write cycle sometimes
 				if i.writeAddr1 {
 					cpu.psram.Write8(i.addr1, i.val2)
@@ -853,13 +854,13 @@ func (i *Div) Reset() {
 }
 
 // TODO make this into a more generic 3cycleImplied template if possible
-type DecimalAdjust struct {
+type ThreeCycleImplied struct {
 	state int
 
 	iFunc ImpliedFunc
 }
 
-func (i *DecimalAdjust) Step(cpu *CPU) bool {
+func (i *ThreeCycleImplied) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.state++
@@ -870,7 +871,7 @@ func (i *DecimalAdjust) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *DecimalAdjust) Reset() {
+func (i *ThreeCycleImplied) Reset() {
 	i.state = 0
 }
 
