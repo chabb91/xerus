@@ -8,6 +8,8 @@ type CPU struct {
 	instructions       []Instruction
 	currentInstruction Instruction
 
+	Timers [3]*Timer
+
 	resetSignal bool
 	stopped     bool //apparently there is no way to wake up this cpu on the snes so stop and sleep are the same thing.
 }
@@ -17,6 +19,11 @@ func NewCPU(psram Memory) *CPU {
 		psram:              psram,
 		instructions:       NewInstructionMap(),
 		currentInstruction: nil,
+		Timers: [3]*Timer{
+			NewTimer(128),
+			NewTimer(128),
+			NewTimer(16),
+		},
 
 		//resetSignal: true,
 	}
@@ -25,6 +32,10 @@ func NewCPU(psram Memory) *CPU {
 }
 
 func (cpu *CPU) StepCycle() bool {
+	cpu.Timers[0].Tick()
+	cpu.Timers[1].Tick()
+	cpu.Timers[2].Tick()
+
 	if cpu.stopped {
 		return false
 	}

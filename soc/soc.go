@@ -48,6 +48,7 @@ func NewSoC(framebuffer *ui.Framebuffer) *SoC {
 
 	psram := apu.NewSPCMemory()
 	soc.Spu = apu.NewCPU(psram)
+	psram.Timers = &soc.Spu.Timers
 
 	bus.RegisterRange(0x2140, 0x217F, psram, "APU")
 	bus.RegisterRange(0x4200, 0x421F, soc, "internal CPU")

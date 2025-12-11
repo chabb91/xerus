@@ -20,7 +20,7 @@ type SPCMemory struct {
 	dspAddr byte //fake it till you make it
 	dspRegs [128]byte
 	ports   [4]IOPort
-	timers  [3]Timer
+	Timers  *[3]*Timer
 }
 
 func NewSPCMemory() *SPCMemory {
@@ -36,6 +36,7 @@ type IOPort struct {
 	towardCPU byte
 }
 
+/*
 type Timer struct {
 	counter byte //s1
 	divider byte //s2
@@ -43,6 +44,7 @@ type Timer struct {
 	target  byte
 	enabled bool
 }
+*/
 
 func (s *SPCMemory) Read8(addr uint16) byte {
 	switch {
@@ -59,7 +61,10 @@ func (s *SPCMemory) Read8(addr uint16) byte {
 	case addr >= 0xFA && addr <= 0xFC:
 		return 0
 	case addr >= 0xFD && addr <= 0xFF:
-		return s.timers[addr-0xFD].output
+		idx := addr - 0xFD
+		ret := s.Timers[idx].output & 0xF
+		s.Timers[idx].output = 0
+		return ret
 	case addr >= 0xFFC0:
 		if s.control >= 0x80 {
 			return iplRom[addr-0xFFC0]
@@ -85,21 +90,21 @@ func (s *SPCMemory) Write8(addr uint16, val byte) {
 			s.ports[2].fromCPU = 0
 			s.ports[3].fromCPU = 0
 		}
-		s.timers[0].enabled = val&1 != 0
-		s.timers[1].enabled = val&2 != 0
-		s.timers[2].enabled = val&4 != 0
+		s.Timers[0].enabled = val&1 != 0
+		s.Timers[1].enabled = val&2 != 0
+		s.Timers[2].enabled = val&4 != 0
 
 		if s.control&1 == 0 && val&1 != 0 {
-			s.timers[0].divider = 0
-			s.timers[0].output = 0
+			s.Timers[0].stage2Counter = 0
+			s.Timers[0].output = 0
 		}
 		if s.control&2 == 0 && val&2 != 0 {
-			s.timers[1].divider = 0
-			s.timers[1].output = 0
+			s.Timers[1].stage2Counter = 0
+			s.Timers[1].output = 0
 		}
 		if s.control&4 == 0 && val&4 != 0 {
-			s.timers[2].divider = 0
-			s.timers[2].output = 0
+			s.Timers[2].stage2Counter = 0
+			s.Timers[2].output = 0
 		}
 
 		s.control = val
@@ -112,7 +117,7 @@ func (s *SPCMemory) Write8(addr uint16, val byte) {
 	case addr >= 0xF4 && addr <= 0xF7:
 		s.ports[addr-0xF4].towardCPU = val
 	case addr >= 0xFA && addr <= 0xFC:
-		s.timers[addr-0xFA].target = val
+		s.Timers[addr-0xFA].target = val
 	}
 }
 

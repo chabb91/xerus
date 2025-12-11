@@ -83,7 +83,7 @@ func NewPPU(bus memory.Bus) *PPU {
 	ppu := &PPU{
 		BGxnOFS: &BGxnOFS{},
 		M7x:     &M7Registers{},
-		SETINI:  NewSETINI(NTSC_TIMING),
+		SETINI:  NewSETINI(PAL_TIMING),
 		bus:     bus,
 	}
 	ppu.mainRenderPipeline = make([]pipelineTemplate, 0, 12)
