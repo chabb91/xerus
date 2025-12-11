@@ -13,13 +13,15 @@ type CPU struct {
 }
 
 func NewCPU(psram Memory) *CPU {
-	return &CPU{
+	ret := &CPU{
 		psram:              psram,
 		instructions:       NewInstructionMap(),
 		currentInstruction: nil,
 
-		resetSignal: true,
+		//resetSignal: true,
 	}
+	ret.r.PC = 0xFFC0
+	return ret
 }
 
 func (cpu *CPU) StepCycle() bool {

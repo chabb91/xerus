@@ -1,6 +1,7 @@
 package soc
 
 import (
+	"SNES_emulator/apu"
 	"SNES_emulator/cartridge"
 	"SNES_emulator/cpu"
 	"SNES_emulator/dma"
@@ -19,16 +20,17 @@ type SoC struct {
 	Dma                 *dma.Dma
 	Cpu                 *cpu.CPU
 	Ppu                 *ppu.PPU
+	Spu                 *apu.CPU
 
 	bus memory.Bus
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/timing_test.sfc")
+	romData, err := cartridge.Load("/home/chabb/Downloads/Lion King, The (Europe).sfc")
 	if err != nil {
 		panic(err)
 	}
-	bus := memory.NewBus(cartridge.NewCartridge(romData, cartridge.NewLoRom()))
+	bus := memory.NewBus(cartridge.NewCartridge(romData, cartridge.NewHiRom()))
 	soc := &SoC{
 		MulDiv: muldivchip.NewMulDiv(),
 		Dma:    dma.NewDma(bus),
@@ -44,6 +46,10 @@ func NewSoC(framebuffer *ui.Framebuffer) *SoC {
 	soc.Ppu.Wrio = &soc.InterruptController.WRIO
 	soc.Ppu.Init()
 
+	psram := apu.NewSPCMemory()
+	soc.Spu = apu.NewCPU(psram)
+
+	bus.RegisterRange(0x2140, 0x217F, psram, "APU")
 	bus.RegisterRange(0x4200, 0x421F, soc, "internal CPU")
 	bus.RegisterRange(0x2100, 0x213F, soc.Ppu, "PPU")
 	bus.RegisterRange(0x4016, 0x4017, soc.JoypadController, "Joypad")

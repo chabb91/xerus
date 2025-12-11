@@ -20,7 +20,15 @@ type SPCMemory struct {
 	dspAddr byte //fake it till you make it
 	dspRegs [128]byte
 	ports   [4]IOPort
-	timers  [3]*Timer
+	timers  [3]Timer
+}
+
+func NewSPCMemory() *SPCMemory {
+	ret := &SPCMemory{}
+	ret.test = 0xA
+	ret.control = 0xB0
+
+	return ret
 }
 
 type IOPort struct {
@@ -106,4 +114,15 @@ func (s *SPCMemory) Write8(addr uint16, val byte) {
 	case addr >= 0xFA && addr <= 0xFC:
 		s.timers[addr-0xFA].target = val
 	}
+}
+
+// cpu side
+func (s *SPCMemory) Read(addr uint16) (byte, error) {
+	ioNum := (addr - 0x2140) & 3
+	return s.ports[ioNum].towardCPU, nil
+}
+func (s *SPCMemory) Write(addr uint16, value byte) error {
+	ioNum := (addr - 0x2140) & 3
+	s.ports[ioNum].fromCPU = value
+	return nil
 }

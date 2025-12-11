@@ -985,22 +985,24 @@ func (i *IncWDecW) Step(cpu *CPU) bool {
 			i.carry = i.lo == 0
 		}
 
-		cpu.psram.Write8(i.addr, byte(result))
+		i.lo = byte(result)
+
+		cpu.psram.Write8(i.addr, i.lo)
 		i.state++
 	case 2:
 		i.addr = uint16(cpu.r.getDirectPageNum())<<8 | ((i.addr + 1) & 0xFF)
 		i.hi = cpu.psram.Read8(i.addr)
-		word := uint16(i.hi)<<8 | uint16(i.lo)
-
-		cpu.r.setFlag(FlagZ, word != 0)
-		cpu.r.setFlag(FlagN, (word&0x8000) == 0)
 		i.state++
 	case 3:
 		if i.carry {
-			cpu.psram.Write8(i.addr, i.hi+i.amount)
-		} else {
-			cpu.psram.Write8(i.addr, i.hi)
+			i.hi = i.hi + i.amount
 		}
+		cpu.psram.Write8(i.addr, i.hi)
+
+		finalWord := uint16(i.hi)<<8 | uint16(i.lo)
+		cpu.r.setFlag(FlagZ, finalWord != 0)
+		cpu.r.setFlag(FlagN, (finalWord&0x8000) == 0)
+
 		return true
 	}
 	return false
