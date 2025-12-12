@@ -318,7 +318,7 @@ type BgTile struct {
 }
 
 func (bt *BgTile) setup(tileIndex uint16, currentEpoch uint64) {
-	params := bt.bg.ds.getVRAM()[bt.bg.tileMapAddress+tileIndex]
+	params := bt.bg.ds.getVRAM()[(bt.bg.tileMapAddress+tileIndex)&0x7FFF]
 	bt.flipIndex = byte((params >> 14) & 3)
 	bt.priority = byte(params>>13) & 1
 	bt.paletteNum = byte(params>>10) & 7
