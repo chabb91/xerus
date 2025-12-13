@@ -687,6 +687,7 @@ func (i *RTI) Step(cpu *CPU) bool {
 		i.lowByte = cpu.PopByte()
 		if cpu.r.E {
 			//TODO check B-flag weirdness Note: RTI cannot modify the B-Flag or the unused flag.
+			//i.lowByte |= FlagM
 			i.lowByte |= 0x30 //m and x flags are always 1 in emulation mode
 		}
 		cpu.r.setP(i.lowByte)
@@ -1030,15 +1031,7 @@ type ResetSequence struct {
 // TODO unsure if this is correct or not but i heard reset takes 6-9 instructions and this with the signal catch is 8
 func (i *ResetSequence) Step(cpu *CPU) bool {
 	switch i.state {
-	case 0:
-		i.state++
-	case 1:
-		i.state++
-	case 2:
-		i.state++
-	case 3:
-		i.state++
-	case 4:
+	case 0, 1, 2, 3, 4:
 		i.state++
 	case 5:
 		i.lowByte = cpu.bus.ReadByte(i.eAddress)

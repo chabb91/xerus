@@ -18,7 +18,7 @@ const (
 )
 
 type CPU struct {
-	r *registers
+	r registers
 
 	instructions       []Instruction
 	currentInstruction Instruction
@@ -40,7 +40,6 @@ type CPU struct {
 func NewCPU(bus memory.Bus) *CPU {
 	cpu := &CPU{
 		bus:                bus,
-		r:                  &registers{},
 		hwInterrupts:       NewHWInterruptMap(),
 		instructions:       NewInstructionMap(),
 		currentInstruction: nil,
@@ -120,11 +119,15 @@ func (c *CPU) handleIRQ() bool {
 	}
 
 	var hasFlag bool
+	/*  FIXME this is supposedly hardware accurate but right now it introduces breaking issues
+	because some other timing related things i guess. has to be turned back on later
 	if c.previousIFlag >= 0 {
 		hasFlag = c.previousIFlag > 0
 	} else {
 		hasFlag = c.r.hasFlag(FlagI)
 	}
+	*/
+	hasFlag = c.r.hasFlag(FlagI)
 
 	if !hasFlag {
 		c.currentInstruction = c.hwInterrupts[irqId]

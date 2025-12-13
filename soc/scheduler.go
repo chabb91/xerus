@@ -6,6 +6,8 @@ func (soc SoC) Run() {
 	var cnt1 uint64
 	var cnt2 uint64
 
+	var prevDmaProgress bool
+
 	cpuTickRate := 3
 	//dmaTickRate := 4
 	ppuTickRate := 2
@@ -34,12 +36,13 @@ func (soc SoC) Run() {
 
 		//TODO if i keep decrementing like this in the future the cycle counts should be adjusted instead
 		//so theres no unnecessary subtraction
-		if soc.Dma.IsInProgress() {
-			cycles := soc.Dma.Step()
-			cnt = cycles - 1
-		} else {
+		if currentDmaProgress := soc.Dma.IsInProgress(); !currentDmaProgress || (currentDmaProgress && !prevDmaProgress) {
+			prevDmaProgress = currentDmaProgress
 			soc.Cpu.StepCycle()
 			cnt = uint64(cpuTickRate) - 1
+		} else {
+			cycles := soc.Dma.Step()
+			cnt = cycles - 1
 		}
 	}
 }
