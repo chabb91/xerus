@@ -6,6 +6,7 @@ func (soc SoC) Run() {
 	var cnt1 uint64
 	var cnt2 uint64
 	var cyclesSinceReset uint64
+	var cyclesSincePause uint64
 
 	var prevDmaActive bool
 
@@ -49,10 +50,12 @@ func (soc SoC) Run() {
 		// TODO if i keep decrementing like this in the future the cycle counts should be adjusted instead
 		// so theres no unnecessary subtraction
 		dmaActive := soc.Dma.IsInProgress()
-		if !dmaActive || (dmaActive && !prevDmaActive) {
+		dmaHandoff := dmaActive && !prevDmaActive
+		if !dmaActive || dmaHandoff {
 			soc.Cpu.StepCycle()
 
-			if dmaActive && !prevDmaActive {
+			if dmaHandoff {
+				cyclesSincePause = cyclesSinceReset
 				alignment := (4 - (cyclesSinceReset & 3)) // TODO this should be sinceReset+nextCycleCnt
 				cnt = 4 + alignment - 1
 			} else {
@@ -64,7 +67,7 @@ func (soc SoC) Run() {
 			cycles := soc.Dma.Step()
 			dmaStillActive := soc.Dma.IsInProgress()
 			if !dmaStillActive {
-				alignment := (4 - (cyclesSinceReset & 3)) //FIXME this should be cycles after pause not after reset
+				alignment := (4 - (((cyclesSinceReset + cycles) - cyclesSincePause) & 3)) & 3
 				cnt = cycles + alignment - 1
 			} else {
 				cnt = cycles - 1
