@@ -7,7 +7,7 @@ type Mode7 struct {
 
 	m7A, m7B, m7C, m7D int16
 	m7X, m7Y           int16 //13 bit twos complement signed
-	hScroll, vScroll   uint16
+	hScroll, vScroll   int16 //13 bit twos complement signed
 
 	isFlippedHorizontally, isFlippedVertically bool
 	fillFunc                                   fillFunc
@@ -82,7 +82,7 @@ func (bg *Mode7) getCharTile(H, V uint16) (byte, bool) {
 		V = (256 << interlace) - 1 - V
 	}
 
-	hScroll, vScroll := float32(int16(H+bg.hScroll)-bg.m7X), float32(int16(V+bg.vScroll+(1<<interlace))-bg.m7Y)
+	hScroll, vScroll := float32(int16(H)+bg.hScroll-bg.m7X), float32(int16(V)+bg.vScroll+(1<<interlace)-bg.m7Y)
 	X := uint16((float32(bg.m7A)*hScroll+float32(bg.m7B)*vScroll)/256.0 + float32(bg.m7X))
 	Y := uint16((float32(bg.m7C)*hScroll+float32(bg.m7D)*vScroll)/256.0 + float32(bg.m7Y))
 
@@ -102,7 +102,7 @@ func (bg *Mode7) getCharTile(H, V uint16) (byte, bool) {
 
 func (bg *Mode7) setM7Sel(value byte) {
 	bg.isFlippedHorizontally = value&1 == 1
-	bg.isFlippedVertically = value&2 == 1
+	bg.isFlippedVertically = value&2 == 2
 
 	switch value & 0xC0 {
 	case 0x80:
@@ -115,6 +115,7 @@ func (bg *Mode7) setM7Sel(value byte) {
 }
 
 func fillWithCharZero(cgram []uint16) int {
+	//FIXME big whoopsie this is waay more complicated
 	return int(cgram[0])
 }
 

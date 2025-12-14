@@ -37,6 +37,12 @@ func (ppu *PPU) Step() {
 				}
 			}
 		}
+	} else {
+		if draw.IsVisible {
+			h := draw.H
+			v := draw.V<<interlace + (interlaceStep & interlace)
+			ppu.Framebuffer.Back[h][v].SetColor(0, 0, ppu.brightness)
+		}
 	}
 
 	if ppu.WINDOWS.rebuildNeeded {
@@ -105,6 +111,7 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 	case ActionVBlankStart:
 		ppu.VBlank = true
 		ppu.InterruptScheduler.FireNmi()
+		ppu.InterruptScheduler.SetRdnmi(true)
 		if interlace == 1 {
 			if interlaceStep == 1 {
 				ppu.Framebuffer.Swap()
@@ -120,8 +127,6 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 		if !ppu.FBlank {
 			ppu.Obj.resetTimeAndRange()
 		}
-	case ActionSetRdnmi:
-		ppu.InterruptScheduler.SetRdnmi(true)
 	case ActionHBlankStart:
 		ppu.HBlank = true
 	case ActionHBlankEnd:
@@ -161,6 +166,7 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 	case ActionJoypadReadEnd:
 		ppu.InterruptScheduler.SetHvbjoyA(false)
 	case ActionCpuRefresh:
+		ppu.Refresh = true
 	case ActionPrepareScanline:
 		ppu.Obj.prepareScanLine(draw.V<<ppu.SETINI.objInterlace + interlace&interlaceStep)
 

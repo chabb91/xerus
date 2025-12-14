@@ -72,6 +72,8 @@ type PPU struct {
 	IrqFunc        func() bool
 	IrqTimeUpTimer byte
 
+	Refresh bool
+
 	ppu1OB, ppu2OB byte
 	//required for like 1 thing only. unlucky
 	bus memory.Bus
@@ -83,7 +85,7 @@ func NewPPU(bus memory.Bus) *PPU {
 	ppu := &PPU{
 		BGxnOFS: &BGxnOFS{},
 		M7x:     &M7Registers{},
-		SETINI:  NewSETINI(PAL_TIMING),
+		SETINI:  NewSETINI(NTSC_TIMING),
 		bus:     bus,
 	}
 	ppu.mainRenderPipeline = make([]pipelineTemplate, 0, 12)
@@ -259,10 +261,10 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.invalidateLayer(bg4)
 	case 0x210D:
 		ppu.Bg1.hScroll = ppu.BGxnOFS.hFormula(value)
-		ppu.Mode7.hScroll = ppu.M7x.setRegister(value)
+		ppu.Mode7.hScroll = signExtend13(ppu.M7x.setRegister(value))
 	case 0x210E:
 		ppu.Bg1.vScroll = ppu.BGxnOFS.vFormula(value)
-		ppu.Mode7.vScroll = ppu.M7x.setRegister(value)
+		ppu.Mode7.vScroll = signExtend13(ppu.M7x.setRegister(value))
 	case 0x210F:
 		ppu.Bg2.hScroll = ppu.BGxnOFS.hFormula(value)
 	case 0x2110:
