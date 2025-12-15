@@ -60,7 +60,7 @@ func (soc SoC) Run() {
 
 			dmaStillActive := soc.Dma.IsInProgress()
 			if !dmaStillActive {
-				alignment := (4 - (((cyclesSinceReset + cnt) - cyclesSincePause) & 3)) & 3
+				alignment := (4 - (((cyclesSinceReset + cnt) - cyclesSincePause) & 3))
 				cnt += alignment
 			}
 			prevDmaActive = dmaStillActive
