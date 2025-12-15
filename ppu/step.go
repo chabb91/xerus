@@ -9,10 +9,12 @@ func (ppu *PPU) Step() {
 	timing := &ppu.SETINI.Timing
 
 	draw := currentTimingLUT[ppu.V*H_TOTAL+ppu.H]
-	if !ppu.FBlank {
-		if draw.IsVisible {
-			h := draw.H
-			v := draw.V<<interlace + (interlaceStep & interlace)
+	if draw.IsVisible {
+		h := draw.H
+		v := draw.V<<interlace + (interlaceStep & interlace)
+		if ppu.FBlank {
+			ppu.Framebuffer.Back[h][v].SetColor(0, 0, ppu.brightness)
+		} else {
 			if hires == 1 || pseudoHires == 1 {
 				//flipping this causes artifacts because the subscreen is always first in the rendering order
 				ss, l2, _ := ppu.renderSubScreen(h, v)
@@ -36,12 +38,6 @@ func (ppu *PPU) Step() {
 					ppu.Framebuffer.Back[h][v].SetColor(ms, ms, ppu.brightness)
 				}
 			}
-		}
-	} else {
-		if draw.IsVisible {
-			h := draw.H
-			v := draw.V<<interlace + (interlaceStep & interlace)
-			ppu.Framebuffer.Back[h][v].SetColor(0, 0, ppu.brightness)
 		}
 	}
 
