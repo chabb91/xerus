@@ -7,6 +7,10 @@ import (
 
 const WRAM_SIZE = 0x20000 // 128 KB
 
+const FAST_REGION = byte(3)
+const SLOW_REGION = byte(4)
+const XSLOW_REGION = byte(6)
+
 type Bus interface {
 	ReadByte(address uint32) byte
 	WriteByte(address uint32, value byte)
@@ -16,6 +20,7 @@ type Bus interface {
 	//does nothing for fast roms
 	SetMEMSEL(value byte)
 	GetOpenBus() byte
+	GetAccessClass(address uint32) byte
 }
 
 type RealBus struct {
@@ -25,12 +30,13 @@ type RealBus struct {
 
 	WRAM      [WRAM_SIZE]byte
 	cartridge *cartridge.Cartridge
-	memsel    bool
+	memsel    byte
 }
 
 func NewBus(cartridge *cartridge.Cartridge) *RealBus {
 	rb := &RealBus{
 		cartridge: cartridge,
+		memsel:    SLOW_REGION,
 	}
 	SetupRegisterSystem(rb)
 	return rb
@@ -121,9 +127,38 @@ func (b *RealBus) RegisterRange(start, end uint16, handler RegisterHandler, name
 }
 
 func (b *RealBus) SetMEMSEL(value byte) {
-	b.memsel = value&1 == 1
+
+	if value&1 == 1 {
+		b.memsel = FAST_REGION
+	} else {
+		b.memsel = SLOW_REGION
+	}
 }
 
 func (b *RealBus) GetOpenBus() byte {
 	return b.openBus
+}
+
+func (b *RealBus) GetAccessClass(address uint32) byte {
+	bank := byte(address >> 16)
+	offset := byte(address >> 8)
+
+	if bank >= 0x40 && bank <= 0x7F {
+		return SLOW_REGION
+	}
+
+	if bank >= 0xC0 || ((bank >= 0x80 && bank <= 0xBF) && offset >= 0x80) {
+		return b.memsel
+	}
+
+	//[00-3F] or [80-BF]
+	if offset >= 0x20 && offset <= 0x5F {
+		return FAST_REGION
+	}
+
+	if offset == 0x40 || offset == 0x41 {
+		return XSLOW_REGION
+	}
+
+	return SLOW_REGION
 }
