@@ -118,7 +118,7 @@ func (i *Umbrella) WriteHi(cpu *CPU) {
 		cpu.r.SetStack(cpu.r.S)
 		cpu.PushByteNewOpCode(getHighByte(i.result))
 	} else {
-		cpu.bus.WriteByte(i.addressHi, getHighByte(i.result))
+		cpu.writeByte(i.addressHi, getHighByte(i.result))
 	}
 	i.state = WRITE_LO
 }
@@ -129,7 +129,7 @@ func (i *Umbrella) WriteLo(cpu *CPU) {
 		cpu.PushByteNewOpCode(getLowByte(i.result))
 		cpu.r.SetStack(cpu.r.S)
 	} else {
-		cpu.bus.WriteByte(i.addressLo, getLowByte(i.result))
+		cpu.writeByte(i.addressLo, getLowByte(i.result))
 	}
 	i.state = WRITE_HI
 }
@@ -227,7 +227,7 @@ func (i *Direct) Step(cpu *CPU, u *Umbrella) bool {
 			return true
 		}
 
-		u.lowByte = cpu.bus.ReadByte(u.addressLo)
+		u.lowByte = cpu.readByte(u.addressLo)
 		//TODO unsure how this will pan out. check later
 		if u.is8Bit(cpu) && !i.isPointer() {
 			return true
@@ -235,7 +235,7 @@ func (i *Direct) Step(cpu *CPU, u *Umbrella) bool {
 			i.state = READ_HI
 		}
 	case READ_HI:
-		u.highByte = cpu.bus.ReadByte(u.addressHi)
+		u.highByte = cpu.readByte(u.addressHi)
 		if !i.isPointer() {
 			return true
 		}
@@ -273,17 +273,17 @@ func (i *Direct) Step(cpu *CPU, u *Umbrella) bool {
 			}
 		}
 	case RESOLVE_POINTER_LO:
-		u.lowByte = cpu.bus.ReadByte(u.addressLo)
+		u.lowByte = cpu.readByte(u.addressLo)
 		if u.is8Bit(cpu) {
 			return true
 		} else {
 			i.state = RESOLVE_POINTER_HI
 		}
 	case RESOLVE_POINTER_HI:
-		u.highByte = cpu.bus.ReadByte(u.addressHi)
+		u.highByte = cpu.readByte(u.addressHi)
 		return true
 	case READ_BANK:
-		u.bankByte = cpu.bus.ReadByte(u.addressBank)
+		u.bankByte = cpu.readByte(u.addressBank)
 		u.addressLo = mask24(createAddress(u.lowByte, u.highByte, u.bankByte) + uint32(i.register))
 		u.addressHi = mask24(u.addressLo + 1)
 		if u.mode != READ_RAM {
@@ -401,7 +401,7 @@ func (i *Absolute) Step(cpu *CPU, u *Umbrella) bool {
 			return true
 		}
 
-		u.lowByte = cpu.bus.ReadByte(u.addressLo)
+		u.lowByte = cpu.readByte(u.addressLo)
 
 		if u.is8Bit(cpu) && !i.isPointer() {
 			return true
@@ -409,7 +409,7 @@ func (i *Absolute) Step(cpu *CPU, u *Umbrella) bool {
 			i.state = READ_HI
 		}
 	case READ_HI:
-		u.highByte = cpu.bus.ReadByte(u.addressHi)
+		u.highByte = cpu.readByte(u.addressHi)
 		if !i.isPointer() {
 			return true
 		}
@@ -428,7 +428,7 @@ func (i *Absolute) Step(cpu *CPU, u *Umbrella) bool {
 		}
 		return true
 	case READ_BANK:
-		u.bankByte = cpu.bus.ReadByte(u.addressBank)
+		u.bankByte = cpu.readByte(u.addressBank)
 		i.state = RESOLVE_POINTER_LO
 		//return true
 	case EXTRA_CYCLE_P:
@@ -488,14 +488,14 @@ func (i *Long) Step(cpu *CPU, u *Umbrella) bool {
 			return true
 		}
 
-		u.lowByte = cpu.bus.ReadByte(u.addressLo)
+		u.lowByte = cpu.readByte(u.addressLo)
 		if u.is8Bit(cpu) {
 			return true
 		} else {
 			i.state = READ_HI
 		}
 	case READ_HI:
-		u.highByte = cpu.bus.ReadByte(u.addressHi)
+		u.highByte = cpu.readByte(u.addressHi)
 		return true
 	}
 	return false
@@ -560,7 +560,7 @@ func (i *StackS) Step(cpu *CPU, u *Umbrella) bool {
 		if u.executeInFetch && u.mode == WRITE_RAM && !i.isPointer() {
 			return true
 		}
-		u.lowByte = cpu.bus.ReadByte(u.addressLo)
+		u.lowByte = cpu.readByte(u.addressLo)
 
 		if !i.isPointer() && u.is8Bit(cpu) {
 			return true
@@ -568,7 +568,7 @@ func (i *StackS) Step(cpu *CPU, u *Umbrella) bool {
 			i.state = READ_HI
 		}
 	case READ_HI:
-		u.highByte = cpu.bus.ReadByte(u.addressHi)
+		u.highByte = cpu.readByte(u.addressHi)
 		if !i.isPointer() {
 			return true
 		}
@@ -581,7 +581,7 @@ func (i *StackS) Step(cpu *CPU, u *Umbrella) bool {
 			return true
 		}
 
-		u.lowByte = cpu.bus.ReadByte(u.addressLo)
+		u.lowByte = cpu.readByte(u.addressLo)
 		if u.is8Bit(cpu) {
 			return true
 		} else {
@@ -589,7 +589,7 @@ func (i *StackS) Step(cpu *CPU, u *Umbrella) bool {
 
 		}
 	case RESOLVE_POINTER_HI:
-		u.highByte = cpu.bus.ReadByte(u.addressHi)
+		u.highByte = cpu.readByte(u.addressHi)
 		return true
 	}
 	return false

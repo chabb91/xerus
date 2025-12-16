@@ -296,10 +296,10 @@ func (i *SrcDest) Step(cpu *CPU) bool {
 		i.srcAddr = mapOffsetToBank(cpu.fetchByte(), cpu.r.GetX())
 		i.state++
 	case 2:
-		i.srcVal = cpu.bus.ReadByte(i.srcAddr)
+		i.srcVal = cpu.readByte(i.srcAddr)
 		i.state++
 	case 3:
-		cpu.bus.WriteByte(i.destAddr, i.srcVal)
+		cpu.writeByte(i.destAddr, i.srcVal)
 		i.state++
 	case 4:
 		i.state++

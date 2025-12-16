@@ -2,7 +2,6 @@ package soc
 
 const PPU_TICK_RATE = uint64(2)
 const DMA_OVERHEAD = uint64(4)
-const CPU_BASE_TICK_RATE = uint64(3)
 const SPU_TICK_RATE = uint64(12)
 const CPU_REFRESH_DURATION = uint64(20)
 
@@ -47,7 +46,7 @@ func (soc SoC) Run() {
 		dmaHandoff := dmaActive && !prevDmaActive
 		if !dmaActive || dmaHandoff {
 			soc.Cpu.StepCycle()
-			cnt = CPU_BASE_TICK_RATE //TODO introduce variable cycle count
+			cnt = soc.Cpu.CyclesTaken
 
 			if dmaHandoff {
 				cyclesSincePause = cyclesSinceReset + cnt

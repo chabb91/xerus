@@ -17,6 +17,9 @@ const (
 	stopState
 )
 
+const CPU_BASE_TICK_RATE = uint64(3)
+const CPU_WAKEUP_COST = uint64(6)
+
 type CPU struct {
 	r registers
 
@@ -35,6 +38,7 @@ type CPU struct {
 
 	//PLP, CLI, SEI, SEP #$04, and REP #$04 update the flags during their final CPU cycle, so the IRQ check will use the old value
 	previousIFlag int
+	CyclesTaken   uint64
 }
 
 func NewCPU(bus memory.Bus) *CPU {
@@ -51,6 +55,8 @@ func NewCPU(bus memory.Bus) *CPU {
 }
 
 func (c *CPU) StepCycle() bool {
+	c.CyclesTaken = CPU_BASE_TICK_RATE
+
 	if c.handleReset() {
 		return false
 	}
@@ -105,10 +111,15 @@ func (c *CPU) handleNMI() bool {
 	if !c.NmiSignal || c.currentInstruction != nil {
 		return false
 	}
+	if c.executionState == waitState {
+		c.executionState = normalState
+		c.CyclesTaken = CPU_WAKEUP_COST
+		return true
+	}
+	c.CyclesTaken = uint64(c.bus.GetAccessClass(mapOffsetToBank(c.r.PB, c.r.PC)))
 	c.currentInstruction = c.hwInterrupts[nmiId]
 	c.currentInstruction.Reset(c)
 	c.NmiSignal = false
-	c.executionState = normalState
 	return true
 }
 
@@ -116,6 +127,12 @@ func (c *CPU) handleNMI() bool {
 func (c *CPU) handleIRQ() bool {
 	if !c.IrqSignal || c.currentInstruction != nil {
 		return false
+	}
+
+	if c.executionState == waitState {
+		c.executionState = normalState
+		c.CyclesTaken = CPU_WAKEUP_COST
+		return true
 	}
 
 	var hasFlag bool
@@ -130,13 +147,11 @@ func (c *CPU) handleIRQ() bool {
 	hasFlag = c.r.hasFlag(FlagI)
 
 	if !hasFlag {
+		c.CyclesTaken = uint64(c.bus.GetAccessClass(mapOffsetToBank(c.r.PB, c.r.PC)))
 		c.currentInstruction = c.hwInterrupts[irqId]
 		c.currentInstruction.Reset(c)
 		c.executionState = normalState
 		return true
-	}
-	if c.executionState == waitState {
-		c.executionState = normalState
 	}
 	return false
 }
@@ -159,15 +174,27 @@ func (c *CPU) executeNextInstruction() bool {
 // fetchByte maps PC to 24 bit then goes and reads a byte from memory
 // then increases PC by 1
 func (c *CPU) fetchByte() byte {
-	ret := c.bus.ReadByte(mapOffsetToBank(c.r.PB, c.r.PC))
+	ret := c.readByte(mapOffsetToBank(c.r.PB, c.r.PC))
 	c.r.PC++
 
 	return ret
 }
 
+func (c *CPU) readByte(addr uint32) byte {
+	c.CyclesTaken = uint64(c.bus.GetAccessClass(addr))
+	ret := c.bus.ReadByte(addr)
+
+	return ret
+}
+
+func (c *CPU) writeByte(addr uint32, val byte) {
+	c.CyclesTaken = uint64(c.bus.GetAccessClass(addr))
+	c.bus.WriteByte(addr, val)
+}
+
 // PushByte pushes one byte onto the stack and updates SP.
 func (cpu *CPU) PushByte(val byte) {
-	cpu.bus.WriteByte(uint32(cpu.r.GetStack()), val)
+	cpu.writeByte(uint32(cpu.r.GetStack()), val)
 	//cpu.r.S--
 	cpu.r.SetStack(cpu.r.S - 1)
 }
@@ -176,14 +203,14 @@ func (cpu *CPU) PushByte(val byte) {
 func (cpu *CPU) PopByte() byte {
 	//cpu.r.S++
 	cpu.r.SetStack(cpu.r.S + 1)
-	return cpu.bus.ReadByte(uint32(cpu.r.GetStack()))
+	return cpu.readByte(uint32(cpu.r.GetStack()))
 }
 
 // TODO this method might mess up the stack pouinter in emulation mode after an abort interrupt!
 // new instructions(the ones expanding the original 6502 instructionset
 // dont wrap the stack pointer till they are done
 func (cpu *CPU) PushByteNewOpCode(val byte) {
-	cpu.bus.WriteByte(uint32(cpu.r.S), val)
+	cpu.writeByte(uint32(cpu.r.S), val)
 	cpu.r.S--
 }
 
@@ -191,5 +218,5 @@ func (cpu *CPU) PushByteNewOpCode(val byte) {
 // dont wrap the stack pointer till they are done
 func (cpu *CPU) PopByteNewOpCode() byte {
 	cpu.r.S++
-	return cpu.bus.ReadByte(uint32(cpu.r.S))
+	return cpu.readByte(uint32(cpu.r.S))
 }

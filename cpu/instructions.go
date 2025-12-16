@@ -439,7 +439,7 @@ func (i *JMP_AbsIndirect) Step(cpu *CPU) bool {
 		i.pointerAddress = createWord(i.highByte, i.lowByte)
 		i.state++
 	case 2:
-		i.lowByte = cpu.bus.ReadByte(uint32(i.pointerAddress))
+		i.lowByte = cpu.readByte(uint32(i.pointerAddress))
 		i.state++
 	case 3:
 		//TODO keep an eye out for this
@@ -449,7 +449,7 @@ func (i *JMP_AbsIndirect) Step(cpu *CPU) bool {
 		} else {*/
 		highByteAddress = uint32(i.pointerAddress + 1)
 		//}
-		i.highByte = cpu.bus.ReadByte(highByteAddress)
+		i.highByte = cpu.readByte(highByteAddress)
 
 		cpu.r.PC = createWord(i.highByte, i.lowByte)
 		return true
@@ -484,10 +484,10 @@ func (i *JMP_AbsIndexedIndirect) Step(cpu *CPU) bool {
 		i.pointerAddress += cpu.r.GetX()
 		i.state++
 	case 3:
-		i.lowByte = cpu.bus.ReadByte(mapOffsetToBank(cpu.r.PB, i.pointerAddress))
+		i.lowByte = cpu.readByte(mapOffsetToBank(cpu.r.PB, i.pointerAddress))
 		i.state++
 	case 4:
-		i.highByte = cpu.bus.ReadByte(mapOffsetToBank(cpu.r.PB, i.pointerAddress+1))
+		i.highByte = cpu.readByte(mapOffsetToBank(cpu.r.PB, i.pointerAddress+1))
 		cpu.r.PC = createWord(i.highByte, i.lowByte)
 		return true
 	}
@@ -519,13 +519,13 @@ func (i *JMP_AbsLong) Step(cpu *CPU) bool {
 		i.pointerAddress = createWord(i.highByte, i.lowByte)
 		i.state++
 	case 2:
-		i.lowByte = cpu.bus.ReadByte(uint32(i.pointerAddress))
+		i.lowByte = cpu.readByte(uint32(i.pointerAddress))
 		i.state++
 	case 3:
-		i.highByte = cpu.bus.ReadByte(uint32(i.pointerAddress + 1))
+		i.highByte = cpu.readByte(uint32(i.pointerAddress + 1))
 		i.state++
 	case 4:
-		i.pbByte = cpu.bus.ReadByte(uint32(i.pointerAddress + 2))
+		i.pbByte = cpu.readByte(uint32(i.pointerAddress + 2))
 		cpu.r.PC = createWord(i.highByte, i.lowByte)
 		cpu.r.PB = i.pbByte
 		return true
@@ -655,10 +655,10 @@ func (i *JSR_AbsIndexedIndirect) Step(cpu *CPU) bool {
 		i.pointerAddress += cpu.r.GetX()
 		i.state++
 	case 5:
-		i.lowByte = cpu.bus.ReadByte(mapOffsetToBank(cpu.r.PB, i.pointerAddress))
+		i.lowByte = cpu.readByte(mapOffsetToBank(cpu.r.PB, i.pointerAddress))
 		i.state++
 	case 6:
-		i.highByte = cpu.bus.ReadByte(mapOffsetToBank(cpu.r.PB, i.pointerAddress+1))
+		i.highByte = cpu.readByte(mapOffsetToBank(cpu.r.PB, i.pointerAddress+1))
 		cpu.r.PC = createWord(i.highByte, i.lowByte)
 		return true
 	}
@@ -871,10 +871,10 @@ func (i *softwareInterrupt) Step(cpu *CPU) bool {
 			i.address = i.nAddress
 		}
 
-		i.lowByte = cpu.bus.ReadByte(i.address)
+		i.lowByte = cpu.readByte(i.address)
 		i.state++
 	case 6:
-		i.highByte = cpu.bus.ReadByte(i.address + 1)
+		i.highByte = cpu.readByte(i.address + 1)
 
 		cpu.r.PB = 0x00
 		cpu.r.PC = createWord(i.highByte, i.lowByte)
@@ -929,10 +929,10 @@ func (i *NmiIrqSequence) Step(cpu *CPU) bool {
 			i.address = i.nAddress
 		}
 
-		i.lowByte = cpu.bus.ReadByte(i.address)
+		i.lowByte = cpu.readByte(i.address)
 		i.state++
 	case 5:
-		i.highByte = cpu.bus.ReadByte(i.address + 1)
+		i.highByte = cpu.readByte(i.address + 1)
 
 		cpu.r.PB = 0x00
 		cpu.r.PC = createWord(i.highByte, i.lowByte)
@@ -988,10 +988,10 @@ func (i *AbortSequence) Step(cpu *CPU) bool {
 			i.address = i.nAddress
 		}
 
-		i.lowByte = cpu.bus.ReadByte(i.address)
+		i.lowByte = cpu.readByte(i.address)
 		i.state++
 	case 5:
-		i.highByte = cpu.bus.ReadByte(i.address + 1)
+		i.highByte = cpu.readByte(i.address + 1)
 
 		cpu.r.PB = 0x00
 		cpu.r.PC = createWord(i.highByte, i.lowByte)
@@ -1034,10 +1034,10 @@ func (i *ResetSequence) Step(cpu *CPU) bool {
 	case 0, 1, 2, 3, 4:
 		i.state++
 	case 5:
-		i.lowByte = cpu.bus.ReadByte(i.eAddress)
+		i.lowByte = cpu.readByte(i.eAddress)
 		i.state++
 	case 6:
-		i.highByte = cpu.bus.ReadByte(i.eAddress + 1)
+		i.highByte = cpu.readByte(i.eAddress + 1)
 
 		cpu.r.E = true
 
