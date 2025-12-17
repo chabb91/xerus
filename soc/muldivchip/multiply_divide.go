@@ -1,7 +1,7 @@
 package muldivchip
 
-const divCycleCount = 96 / 2
-const mulCycleCount = 48 / 2
+const divCycleCount = 96 / 4
+const mulCycleCount = 48 / 4
 
 type MulDiv struct {
 	Wrmpya, wrmpyb         byte // multiplicands a and b
