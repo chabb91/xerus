@@ -1,7 +1,8 @@
 package muldivchip
 
-const divCycleCount = 96 / 4
-const mulCycleCount = 48 / 4
+// these are CPU cycles. they are supposed to be 16/8 but i cant get that to work with chrono trigger at least.
+const divCycleCount = 16 / 2
+const mulCycleCount = 8 / 2
 
 type MulDiv struct {
 	Wrmpya, wrmpyb         byte // multiplicands a and b

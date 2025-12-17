@@ -4,6 +4,7 @@ const PPU_TICK_RATE = uint64(2)
 const DMA_OVERHEAD = uint64(4)
 const SPU_TICK_RATE = uint64(12)
 const CPU_REFRESH_DURATION = uint64(20)
+const CPU_NMI_DELAY_AFTER_DMA = uint64(2) //cpu cycle count
 
 func (soc SoC) Run() {
 	var cnt uint64 //the dma/cpu cycle counter is counting down due to the variable access speed
@@ -11,15 +12,19 @@ func (soc SoC) Run() {
 	var cnt2 uint64
 	var cyclesSinceReset uint64
 	var cyclesSincePause uint64
+	var nmiDelay uint64
 
 	var prevDmaActive bool
+	var nmiSignalBeforeDma bool
+	var irqSignalBeforeDma bool
+	var nmiTriggeredDuringDma bool
+	var irqTriggeredDuringDma bool
 
 	for {
 		cnt1++
 		cnt2++
 		cyclesSinceReset++
 
-		soc.MulDiv.StepCycle()
 		if cnt1 == SPU_TICK_RATE {
 			soc.Spu.StepCycle()
 			cnt1 = 0
@@ -45,17 +50,42 @@ func (soc SoC) Run() {
 		dmaActive := soc.Dma.IsInProgress()
 		dmaHandoff := dmaActive && !prevDmaActive
 		if !dmaActive || dmaHandoff {
+			soc.MulDiv.StepCycle()
 			soc.Cpu.StepCycle()
 			cnt = soc.Cpu.CyclesTaken
+
+			if nmiTriggeredDuringDma || irqTriggeredDuringDma {
+				if nmiDelay > 1 {
+					nmiDelay--
+				} else {
+					soc.Cpu.NmiSignal = nmiTriggeredDuringDma
+					soc.Cpu.IrqSignal = irqTriggeredDuringDma
+					nmiTriggeredDuringDma = false
+					irqTriggeredDuringDma = false
+				}
+			}
 
 			if dmaHandoff {
 				cyclesSincePause = cyclesSinceReset + cnt
 				alignment := (4 - ((cyclesSincePause) & 3)) // TODO this should be sinceReset+nextCycleCnt
 				cnt += DMA_OVERHEAD + alignment
+				nmiSignalBeforeDma = soc.Cpu.NmiSignal
+				irqSignalBeforeDma = soc.Cpu.IrqSignal
 			}
 			prevDmaActive = dmaActive
 		} else {
 			cnt = soc.Dma.Step()
+
+			if !nmiSignalBeforeDma && soc.Cpu.NmiSignal {
+				nmiDelay = CPU_NMI_DELAY_AFTER_DMA
+				soc.Cpu.NmiSignal = false
+				nmiTriggeredDuringDma = true
+			}
+			if !irqSignalBeforeDma && soc.Cpu.IrqSignal {
+				nmiDelay = CPU_NMI_DELAY_AFTER_DMA
+				soc.Cpu.IrqSignal = false
+				irqTriggeredDuringDma = true
+			}
 
 			dmaStillActive := soc.Dma.IsInProgress()
 			if !dmaStillActive {
