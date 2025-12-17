@@ -1,8 +1,8 @@
 package muldivchip
 
 // these are CPU cycles. they are supposed to be 16/8 but i cant get that to work with chrono trigger at least.
-const divCycleCount = 16 / 2
-const mulCycleCount = 8 / 2
+const divCpuCycleCount = 16 / 2
+const mulCpuCycleCount = 8 / 2
 
 type MulDiv struct {
 	Wrmpya, wrmpyb         byte // multiplicands a and b
@@ -23,12 +23,12 @@ func NewMulDiv() *MulDiv {
 
 func (md *MulDiv) SetMultiplicandB(mulB byte) {
 	md.wrmpyb = mulB
-	md.mulDelay = mulCycleCount
+	md.mulDelay = mulCpuCycleCount
 }
 
 func (md *MulDiv) SetDivisorB(divB byte) {
 	md.wrdivb = divB
-	md.divDelay = divCycleCount
+	md.divDelay = divCpuCycleCount
 }
 
 func (md *MulDiv) StepCycle() {

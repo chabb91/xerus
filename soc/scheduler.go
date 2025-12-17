@@ -4,7 +4,7 @@ const PPU_TICK_RATE = uint64(2)
 const DMA_OVERHEAD = uint64(4)
 const SPU_TICK_RATE = uint64(12)
 const CPU_REFRESH_DURATION = uint64(20)
-const CPU_NMI_DELAY_AFTER_DMA = uint64(2) //cpu cycle count
+const CPU_DELAY_INTERRUPT_AFTER_DMA = uint64(2) //cpu cycle count
 
 func (soc SoC) Run() {
 	var cnt uint64 //the dma/cpu cycle counter is counting down due to the variable access speed
@@ -74,18 +74,20 @@ func (soc SoC) Run() {
 			}
 			prevDmaActive = dmaActive
 		} else {
-			cnt = soc.Dma.Step()
+			if soc.Dma.Mdmaen != 0 {
+				if !nmiSignalBeforeDma && soc.Cpu.NmiSignal {
+					nmiDelay = CPU_DELAY_INTERRUPT_AFTER_DMA
+					soc.Cpu.NmiSignal = false
+					nmiTriggeredDuringDma = true
+				}
+				if !irqSignalBeforeDma && soc.Cpu.IrqSignal {
+					nmiDelay = CPU_DELAY_INTERRUPT_AFTER_DMA
+					soc.Cpu.IrqSignal = false
+					irqTriggeredDuringDma = true
+				}
+			}
 
-			if !nmiSignalBeforeDma && soc.Cpu.NmiSignal {
-				nmiDelay = CPU_NMI_DELAY_AFTER_DMA
-				soc.Cpu.NmiSignal = false
-				nmiTriggeredDuringDma = true
-			}
-			if !irqSignalBeforeDma && soc.Cpu.IrqSignal {
-				nmiDelay = CPU_NMI_DELAY_AFTER_DMA
-				soc.Cpu.IrqSignal = false
-				irqTriggeredDuringDma = true
-			}
+			cnt = soc.Dma.Step()
 
 			dmaStillActive := soc.Dma.IsInProgress()
 			if !dmaStillActive {
