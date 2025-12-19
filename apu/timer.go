@@ -41,14 +41,7 @@ func (t *Timer) ReadOutput() byte {
 	return val
 }
 
-func (t *Timer) WriteTarget(val byte) {
-	t.target = val
-}
-
-func (t *Timer) ReadTarget() byte {
-	return 0
-}
-
-func (t *Timer) Reset() {
+func (t *Timer) SetControl() {
+	t.stage2Counter = 0
 	t.output = 0
 }

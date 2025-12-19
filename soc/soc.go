@@ -26,19 +26,20 @@ type SoC struct {
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/Chrono Trigger (USA).sfc")
+	romData, err := cartridge.Load("/home/chabb/Downloads/blargg/spc_smp.sfc")
 	if err != nil {
 		panic(err)
 	}
-	bus := memory.NewBus(cartridge.NewCartridge(romData, cartridge.NewHiRom()))
+	bus := memory.NewBus(cartridge.NewCartridge(romData, cartridge.NewLoRom()))
 	soc := &SoC{
-		MulDiv: muldivchip.NewMulDiv(),
-		Dma:    dma.NewDma(bus),
-		Cpu:    cpu.NewCPU(bus),
-		Ppu:    ppu.NewPPU(bus),
-		bus:    bus,
+		JoypadController: NewJoypadController(bus),
+		MulDiv:           muldivchip.NewMulDiv(),
+		Dma:              dma.NewDma(bus),
+		Cpu:              cpu.NewCPU(bus),
+		Ppu:              ppu.NewPPU(bus),
+		Spu:              apu.NewApu(bus),
+		bus:              bus,
 	}
-	soc.JoypadController = NewJoypadController(bus)
 	soc.InterruptController = interruptchip.NewInterruptController(bus, soc.Cpu, soc.Ppu)
 	soc.Ppu.InterruptScheduler = soc.InterruptController
 	soc.Ppu.HdmaScheduler = soc.Dma
@@ -46,11 +47,6 @@ func NewSoC(framebuffer *ui.Framebuffer) *SoC {
 	soc.Ppu.Wrio = &soc.InterruptController.WRIO
 	soc.Ppu.Init()
 
-	psram := apu.NewSPCMemory()
-	soc.Spu = apu.NewCPU(psram)
-	psram.Timers = &soc.Spu.Timers
-
-	bus.RegisterRange(0x2140, 0x217F, psram, "APU")
 	bus.RegisterRange(0x4200, 0x421F, soc, "internal CPU")
 	bus.RegisterRange(0x2100, 0x213F, soc.Ppu, "PPU")
 	bus.RegisterRange(0x4016, 0x4017, soc.JoypadController, "Joypad")

@@ -1,5 +1,7 @@
 package apu
 
+import "SNES_emulator/memory"
+
 type CPU struct {
 	psram Memory
 
@@ -10,8 +12,7 @@ type CPU struct {
 
 	Timers [3]*Timer
 
-	resetSignal bool
-	stopped     bool //apparently there is no way to wake up this cpu on the snes so stop and sleep are the same thing.
+	stopped bool //apparently there is no way to wake up this cpu on the snes so stop and sleep are the same thing.
 }
 
 func NewCPU(psram Memory) *CPU {
@@ -24,10 +25,21 @@ func NewCPU(psram Memory) *CPU {
 			NewTimer(128),
 			NewTimer(16),
 		},
-
-		//resetSignal: true,
 	}
-	ret.r.PC = 0xFFC0
+	ret.Reset()
+
+	return ret
+}
+
+// TODO create a separate APU struct that ticks timers/cpu/dsp individually
+// that way timers dont have to be shared either
+func NewApu(bus memory.Bus) *CPU {
+	psram := NewSPCMemory()
+	ret := NewCPU(psram)
+	psram.Timers = &ret.Timers
+
+	//probably the cleanest way
+	bus.RegisterRange(0x2140, 0x217F, psram, "APU")
 	return ret
 }
 
@@ -55,7 +67,9 @@ func (cpu *CPU) StepCycle() bool {
 // TODO
 func (cpu *CPU) Reset() {
 	cpu.stopped = false
-	//cpu.r.PC = readResetVector()
+	cpu.r.PC = 0xFFC0
+	cpu.r.PSW = 0
+	//prolly reset the timers too??
 }
 
 func (cpu *CPU) fetchByte() byte {

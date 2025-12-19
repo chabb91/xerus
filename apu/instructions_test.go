@@ -42,7 +42,6 @@ func runInstructionTests(t *testing.T, testFile string) {
 	testMem := newTestMemory()
 	cpu := NewCPU(testMem)
 
-	cpu.resetSignal = false
 	cpu.Reset()
 
 	for _, tc := range tests {

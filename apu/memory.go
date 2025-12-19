@@ -36,16 +36,6 @@ type IOPort struct {
 	towardCPU byte
 }
 
-/*
-type Timer struct {
-	counter byte //s1
-	divider byte //s2
-	output  byte //s3
-	target  byte
-	enabled bool
-}
-*/
-
 func (s *SPCMemory) Read8(addr uint16) byte {
 	switch {
 	case addr >= 0xF0 && addr <= 0xF1:
@@ -62,9 +52,7 @@ func (s *SPCMemory) Read8(addr uint16) byte {
 		return 0
 	case addr >= 0xFD && addr <= 0xFF:
 		idx := addr - 0xFD
-		ret := s.Timers[idx].output & 0xF
-		s.Timers[idx].output = 0
-		return ret
+		return s.Timers[idx].ReadOutput()
 	case addr >= 0xFFC0:
 		if s.control >= 0x80 {
 			return iplRom[addr-0xFFC0]
@@ -95,16 +83,13 @@ func (s *SPCMemory) Write8(addr uint16, val byte) {
 		s.Timers[2].enabled = val&4 != 0
 
 		if s.control&1 == 0 && val&1 != 0 {
-			s.Timers[0].stage2Counter = 0
-			s.Timers[0].output = 0
+			s.Timers[0].SetControl()
 		}
 		if s.control&2 == 0 && val&2 != 0 {
-			s.Timers[1].stage2Counter = 0
-			s.Timers[1].output = 0
+			s.Timers[1].SetControl()
 		}
 		if s.control&4 == 0 && val&4 != 0 {
-			s.Timers[2].stage2Counter = 0
-			s.Timers[2].output = 0
+			s.Timers[2].SetControl()
 		}
 
 		s.control = val
