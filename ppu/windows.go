@@ -397,16 +397,18 @@ func (wc *WindowController) performColorMath(mainColor, subColor, H uint16, main
 		return mainColor
 	}
 
+	//TODO halfcolor might work for fixed color even if ss == backdrop.
+	//if thats the case this if has to call colorfunc differently based on subscreen or fixed blend
 	var blendColor uint16
-	if colorMath.isSubscren {
-		if subLayer == backdrop {
-			//looks like the snes never blends main screen with backdrop this is just my guess tho
-			return mainColor
-		}
+	if colorMath.isSubscren && subLayer != backdrop {
 		blendColor = subColor
 	} else {
 		blendColor = colorMath.fixedColor
 	}
 
-	return colorMath.colorFunction(mainColor, blendColor, colorMath.halfColor)
+	return colorMath.colorFunction(
+		mainColor,
+		blendColor,
+		colorMath.halfColor && mainLayer != backdrop && subLayer != backdrop,
+	)
 }
