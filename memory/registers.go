@@ -52,17 +52,6 @@ func (rs *RegisterSystem) IsRegisterAddress(bank byte, addr uint16) bool {
 	return false
 }
 
-func SetupRegisterSystem(bus *RealBus) {
-	bus.registers = NewRegisterSystem()
-
-	bus.RegisterRange(0x2180, 0x2183, newWramDataRW(bus.WRAM[:]), "WRAM")
-
-	//bus.registers.RegisterRange(0x2100, 0x213F, ppuHandler, "PPU")
-	//bus.registers.RegisterRange(0x2140, 0x2143, apuHandler, "APU")
-	//bus.registers.RegisterRange(0x4000, 0x41FF, joypadHandler, "Controllers")
-	//bus.registers.RegisterRange(0x4200, 0x44FF, cpuHandler, "CPU Registers")
-}
-
 type WramDataRW struct {
 	WRAM    []byte
 	address uint32

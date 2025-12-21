@@ -35,10 +35,12 @@ type RealBus struct {
 
 func NewBus(cartridge *cartridge.Cartridge) *RealBus {
 	rb := &RealBus{
+		registers: NewRegisterSystem(),
 		cartridge: cartridge,
 		memsel:    SLOW_REGION,
 	}
-	SetupRegisterSystem(rb)
+
+	rb.RegisterRange(0x2180, 0x2183, newWramDataRW(rb.WRAM[:]), "WRAM")
 	return rb
 }
 
