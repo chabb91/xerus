@@ -111,7 +111,6 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 		if interlace == 1 {
 			if interlaceStep == 1 {
 				ppu.Framebuffer.Swap()
-			} else {
 			}
 		} else {
 			ppu.Framebuffer.Swap()
@@ -165,6 +164,9 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 		ppu.Refresh = true
 	case ActionPrepareScanline:
 		ppu.Obj.prepareScanLine(draw.V<<ppu.SETINI.objInterlace + interlace&interlaceStep)
+		if ppu.BGMODE == 7 {
+			ppu.Mode7.prepareScanLine(draw.V<<interlace + (interlaceStep & interlace))
+		}
 
 		shouldReset := true
 		if hasMosaic && mosaicSize > 1 {
