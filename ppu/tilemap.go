@@ -156,7 +156,6 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 // save the char address in the chartile
 // basically free pixels
 // the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
-// TODO isSubscreen isnt used by anything
 func (bg *Background) GetDotAt(H, V uint16) (int, byte, bool) {
 	if H < bg.renderCacheEnd {
 		ret := bg.renderCache[H]

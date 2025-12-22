@@ -18,9 +18,6 @@ type Mode7 struct {
 
 	bg1Mosaic, bg2Mosaic, isDirectColor *bool
 
-	X0, Y0 int32
-	prevH  uint16
-
 	characterDataOnScanLine [SCREEN_WIDTH]byte
 }
 
@@ -30,7 +27,6 @@ func newMode7(ds tileDataSource, bg1, bg2 *Background) *Mode7 {
 		isDirectColor: &bg1.isDirectColor,
 		bg1Mosaic:     &bg1.mosaic,
 		bg2Mosaic:     &bg2.mosaic,
-		prevH:         999,
 	}
 }
 
@@ -75,9 +71,8 @@ func (bg *Mode7) prepareScanLine(V uint16) {
 			//else fill with char0 i. e. tile is 0
 		}
 
-		bg.characterDataOnScanLine[idx] = byte(vram[((tile<<6)|((uint16(Y)&7)<<3)|(uint16(X)&7))] >> 8)
+		bg.characterDataOnScanLine[idx] = byte(vram[((tile<<6)|((Y&7)<<3)|(X&7))] >> 8)
 	}
-
 }
 
 func (bg *Mode7) GetDotAt(H, _ uint16) (int, byte, bool) {
@@ -118,47 +113,6 @@ func (bg *Mode7) GetDotAtEXTBG(H, _ uint16) (int, byte, bool) {
 	}
 }
 
-func (bg *Mode7) getCharTile(H, V uint16) byte {
-	//which is horizontal which is vertical who knows
-	if bg.isFlippedHorizontally {
-		H = 255 - H
-	}
-	if bg.isFlippedVertically {
-		//is this how it should be who knows
-		V = (256 << interlace) - 1 - V
-	}
-
-	if bg.prevH != H {
-		if H == 0 {
-			dx := clip(int32(bg.hScroll) - int32(bg.m7X))
-			dy := clip(int32(bg.vScroll) - int32(bg.m7Y))
-
-			bg.X0 = ((int32(bg.m7A) * dx) &^ 63) + ((int32(bg.m7B) * int32(V)) &^ 63) +
-				((int32(bg.m7B) * dy) &^ 63) + (int32(bg.m7X) << 8)
-			bg.Y0 = ((int32(bg.m7C) * dx) &^ 63) + ((int32(bg.m7D) * int32(V)) &^ 63) +
-				((int32(bg.m7D) * dy) &^ 63) + (int32(bg.m7Y) << 8)
-		} else {
-			bg.X0 += int32(bg.m7A)
-			bg.Y0 += int32(bg.m7C)
-		}
-		bg.prevH = H
-	}
-	X, Y := uint16(bg.X0>>8), uint16(bg.Y0>>8)
-
-	vram := bg.ds.getVRAM()
-	tile := uint16(0)
-	if bg.fillMode == M7_REPEAT || (X <= 1023 && Y <= 1023) {
-		X &= 1023
-		Y &= 1023
-		tile = vram[((Y&0xFFF8)<<4|(X>>3))] & 0xFF
-	} else if bg.fillMode == M7_FILL_WITH_TRANSPARENT {
-		return 0
-		//else fill with char0 i. e. tile is 0
-	}
-
-	return byte(vram[((tile<<6)|((uint16(Y)&7)<<3)|(uint16(X)&7))] >> 8)
-}
-
 func (bg *Mode7) setM7Sel(value byte) {
 	bg.isFlippedHorizontally = value&1 == 1
 	bg.isFlippedVertically = value&2 == 2
@@ -186,14 +140,4 @@ func clip(a int32) int32 {
 		return a | ^0x3FF
 	}
 	return a & 0x3FF
-}
-
-func mode7StartXY(A, B, C, D, hofs, vofs, cx, cy, y int32) (int32, int32) {
-	dx := clip(hofs - cx)
-	dy := clip(vofs - cy)
-
-	X0 := ((A * dx) &^ 63) + ((B * y) &^ 63) + ((B * dy) &^ 63) + (cx << 8)
-	Y0 := ((C * dx) &^ 63) + ((D * y) &^ 63) + ((D * dy) &^ 63) + (cy << 8)
-
-	return X0, Y0
 }

@@ -127,12 +127,15 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 	//no idea if this is correct or not tbh
 	case 0x2134:
 		result := int32(ppu.Mode7.m7A) * int32(int8(ppu.Mode7.m7B>>8))
+		//fmt.Println("READING MUL LO ", byte(result))
 		return ppu.returnAndSetPpu1OB(byte(result)), nil
 	case 0x2135:
 		result := int32(ppu.Mode7.m7A) * int32(int8(ppu.Mode7.m7B>>8))
+		//fmt.Println("READING MUL MID ", byte(result>>8))
 		return ppu.returnAndSetPpu1OB(byte(result >> 8)), nil
 	case 0x2136:
 		result := int32(ppu.Mode7.m7A) * int32(int8(ppu.Mode7.m7B>>8))
+		//fmt.Println("READING MUL HI ", byte(result>>16))
 		return ppu.returnAndSetPpu1OB(byte(result >> 16)), nil
 	case 0x2137:
 		ppu.LatchHV()
@@ -207,11 +210,11 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2104:
 		ppu.OAM.WriteOAMData(value)
 	case 0x2105:
-		fmt.Println("BGMODE: ", value)
+		//fmt.Println("BGMODE: ", value)
 		ppu.setBGMODE(value)
 		ppu.setHiresFlag()
 	case 0x2106:
-		fmt.Println("MOSAIC: ", value)
+		//fmt.Println("MOSAIC: ", value)
 		ppu.Bg1.mosaic = value&1 == 1
 		ppu.Bg2.mosaic = value&2 == 2
 		ppu.Bg3.mosaic = value&4 == 4
@@ -228,33 +231,33 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		mosaicSize = ms
 		hasMosaic = value&0xF > 0
 	case 0x2107:
-		fmt.Println("BG1SC: ", value)
+		//fmt.Println("BG1SC: ", value)
 		ppu.Bg1.tileMapSize = uint16(value & 0x3)
 		ppu.Bg1.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.invalidateLayer(bg1)
 	case 0x2108:
-		fmt.Println("BG2SC: ", value)
+		//fmt.Println("BG2SC: ", value)
 		ppu.Bg2.tileMapSize = uint16(value & 0x3)
 		ppu.Bg2.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.invalidateLayer(bg2)
 	case 0x2109:
-		fmt.Println("BG3SC: ", value)
+		//fmt.Println("BG3SC: ", value)
 		ppu.Bg3.tileMapSize = uint16(value & 0x3)
 		ppu.Bg3.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.invalidateLayer(bg3)
 	case 0x210A:
-		fmt.Println("BG4SC: ", value)
+		//fmt.Println("BG4SC: ", value)
 		ppu.Bg4.tileMapSize = uint16(value & 0x3)
 		ppu.Bg4.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.invalidateLayer(bg4)
 	case 0x210B:
-		fmt.Println("BG12NBA: ", value)
+		//fmt.Println("BG12NBA: ", value)
 		ppu.Bg1.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
 		ppu.Bg2.charTileAddressBase = (uint16((value>>4)&0xF) << 12) & 0x7FFF
 		ppu.invalidateLayer(bg1)
 		ppu.invalidateLayer(bg2)
 	case 0x210C:
-		fmt.Println("BG34NBA: ", value)
+		//fmt.Println("BG34NBA: ", value)
 		ppu.Bg3.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
 		ppu.Bg4.charTileAddressBase = (uint16((value>>4)&0xF) << 12) & 0x7FFF
 		ppu.invalidateLayer(bg3)
@@ -294,16 +297,22 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		fmt.Println("M7SEL: ", value)
 		ppu.Mode7.setM7Sel(value)
 	case 0x211B:
+		//fmt.Println("WRITING A ", value)
 		ppu.Mode7.m7A = int16(ppu.M7x.setRegister(value))
 	case 0x211C:
+		//fmt.Println("WRITING B ", value)
 		ppu.Mode7.m7B = int16(ppu.M7x.setRegister(value))
 	case 0x211D:
+		//fmt.Println("WRITING C ", value)
 		ppu.Mode7.m7C = int16(ppu.M7x.setRegister(value))
 	case 0x211E:
+		//fmt.Println("WRITING D ", value)
 		ppu.Mode7.m7D = int16(ppu.M7x.setRegister(value))
 	case 0x211F:
+		//fmt.Println("WRITING X ", value)
 		ppu.Mode7.m7X = signExtend13(ppu.M7x.setRegister(value))
 	case 0x2120:
+		//fmt.Println("WRITING Y ", value)
 		ppu.Mode7.m7Y = signExtend13(ppu.M7x.setRegister(value))
 	case 0x2121:
 		ppu.CGRAM.SetAddWord(value)
@@ -332,13 +341,13 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x212B:
 		ppu.WINDOWS.WOBJLOG(value)
 	case 0x212C:
-		fmt.Println("TM: ", value)
+		//fmt.Println("TM: ", value)
 		ppu.setTM(value)
 		ppu.regenerateMainPipeline()
 		ppu.invalidateAllLayers()
 		ppu.markActiveWindowsDirty()
 	case 0x212D:
-		fmt.Println("TS: ", value)
+		//fmt.Println("TS: ", value)
 		ppu.setTS(value)
 		ppu.regenerateSubPipeline()
 		ppu.invalidateAllLayers()
@@ -348,16 +357,16 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x212F:
 		ppu.WINDOWS.TSW(value)
 	case 0x2130:
-		fmt.Println("CGWSEL", value)
+		//fmt.Println("CGWSEL", value)
 		ppu.WINDOWS.ColorMath.setCGWSEL(value, &ppu.Bg1.isDirectColor)
 	case 0x2131:
-		fmt.Println("CGADSUB", value)
+		//fmt.Println("CGADSUB", value)
 		ppu.WINDOWS.setCGADSUB(value)
 	case 0x2132:
-		fmt.Println("COLDATA", value)
+		//fmt.Println("COLDATA", value)
 		ppu.WINDOWS.ColorMath.setCOLDATA(value)
 	case 0x2133:
-		fmt.Println("SETINI", value)
+		//fmt.Println("SETINI", value)
 		prevEXTBG := ppu.SETINI.m7EXTBG
 		ppu.SETINI.setup(value)
 		ppu.Framebuffer.CurrentHeight = ppu.SETINI.getScreenHeight() // - (1 << interlace)
