@@ -117,6 +117,7 @@ func NewPPU(bus memory.Bus) *PPU {
 func (ppu *PPU) Init() {
 	for i := range uint16(64) {
 		ppu.Write(0x2100|i, 0)
+		ppu.registerPreviousValues[i] = 0xFF //TODO first call should run regardless of this value
 	}
 }
 
