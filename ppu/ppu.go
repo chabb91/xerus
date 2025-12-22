@@ -46,7 +46,8 @@ type PPU struct {
 	Mode7 *Mode7
 	M7x   *M7Registers
 
-	BGMODE byte
+	BGMODE                 byte
+	registerPreviousValues [64]byte
 
 	Obj *Objects
 
@@ -211,6 +212,10 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.OAM.WriteOAMData(value)
 	case 0x2105:
 		//fmt.Println("BGMODE: ", value)
+		if ppu.registerPreviousValues[5] == value {
+			break
+		}
+		ppu.registerPreviousValues[5] = value
 		ppu.setBGMODE(value)
 		ppu.setHiresFlag()
 	case 0x2106:
@@ -342,12 +347,20 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.WINDOWS.WOBJLOG(value)
 	case 0x212C:
 		//fmt.Println("TM: ", value)
+		if ppu.registerPreviousValues[0x2C] == value {
+			break
+		}
+		ppu.registerPreviousValues[0x2C] = value
 		ppu.setTM(value)
 		ppu.regenerateMainPipeline()
 		ppu.invalidateAllLayers()
 		ppu.markActiveWindowsDirty()
 	case 0x212D:
 		//fmt.Println("TS: ", value)
+		if ppu.registerPreviousValues[0x2D] == value {
+			break
+		}
+		ppu.registerPreviousValues[0x2D] = value
 		ppu.setTS(value)
 		ppu.regenerateSubPipeline()
 		ppu.invalidateAllLayers()
