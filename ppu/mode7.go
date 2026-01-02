@@ -52,7 +52,7 @@ func (bg *Mode7) prepareScanLine(V uint16) {
 	Y0 := ((int32(bg.m7C) * dx) &^ 63) + ((int32(bg.m7D) * int32(V)) &^ 63) +
 		((int32(bg.m7D) * dy) &^ 63) + (int32(bg.m7Y) << 8)
 
-	for i := 0; i < SCREEN_WIDTH; i++ {
+	for i := range SCREEN_WIDTH {
 		X, Y := uint16(X0>>8), uint16(Y0>>8)
 
 		//increment after so X[0], Y[0] are preserved
