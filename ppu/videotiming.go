@@ -52,7 +52,7 @@ type VisibilityEntry struct {
 	Action    PPUAction
 }
 
-func (vt VideoTiming) getScreenHeight(overscan bool) int {
+func (vt *VideoTiming) getScreenHeight(overscan bool) int {
 	if overscan {
 		return vt.OverscanHeight
 	} else {

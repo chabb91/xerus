@@ -164,30 +164,26 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 		ppu.Refresh = true
 	case ActionPrepareScanline:
 		ppu.Obj.prepareScanLine(draw.V<<ppu.SETINI.objInterlace + interlace&interlaceStep)
-		if ppu.BGMODE == 7 {
-			ppu.Mode7.prepareScanLine(draw.V<<interlace + (interlaceStep & interlace))
-		}
 
 		shouldReset := true
 		if hasMosaic && mosaicSize > 1 {
 			if draw.V == 0 {
 				mosaicLineCnt = 0
 			}
-			if draw.V <= mosaicStartLine {
-				shouldReset = true
-			} else {
+			if draw.V > mosaicStartLine {
 				mosaicLineCnt++
 				shouldReset = mosaicLineCnt == uint16(mosaicSize)
 				if mosaicLineCnt >= uint16(mosaicSize) {
 					mosaicLineCnt = 0
 				}
 			}
-		} else {
-			shouldReset = true
 		}
 
 		if !ppu.Bg1.mosaic || shouldReset {
 			ppu.Bg1.renderCacheEnd = 0
+			if ppu.BGMODE == 7 {
+				ppu.Mode7.prepareScanLine(draw.V<<interlace + (interlaceStep & interlace))
+			}
 		}
 		if !ppu.Bg2.mosaic || shouldReset {
 			ppu.Bg2.renderCacheEnd = 0
