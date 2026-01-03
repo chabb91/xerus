@@ -11,8 +11,8 @@ import (
 var cause string
 var cycleCause string
 
-func Test4C(t *testing.T) {
-	tests, err := debugger.LoadTests[debugger.CPUState]("../testdata/6b.e.json")
+func TestSingleInstruction(t *testing.T) {
+	tests, err := debugger.LoadTests[debugger.CPUState]("/home/chabb/Documents/snes_tests/65c816/6b.e.json")
 	if err != nil {
 		t.Fatal(err)
 	}
