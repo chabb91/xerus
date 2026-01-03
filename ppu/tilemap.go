@@ -109,7 +109,6 @@ func (bg *Background) Invalidate(addr uint16) {
 		index := addr - bg.tileMapAddress
 		if index < uint16(len(bg.tileMap)) {
 			bg.tileMap[index].isValid = false
-			//fmt.Println("invlidation")
 		}
 		return
 	}
@@ -119,7 +118,6 @@ func (bg *Background) Invalidate(addr uint16) {
 		tileIndex := (addr - bg.charTileAddressBase) >> (k + 2)
 		if tileIndex < uint16(len(bg.charTiles)) {
 			bg.charTiles[tileIndex].isValid = false
-			//fmt.Println("invlidation")
 		}
 	}
 }
@@ -415,27 +413,28 @@ RENDER_AND_CACHE:
 	return &ct.resolvedData[row]
 }
 
-// TODO swap this with the lookuptable approach
-func resolveWordBitPlanePixel(word uint16, px int) byte {
-	return byte(((word >> (7 - px)) & 1) | (((word >> (15 - px)) & 1) << 1))
-}
-
 func RenderTile2bpp(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 	for row := range 8 {
-		w1 := VRAM[wordBase+uint16(row)]
+		w01 := VRAM[wordBase+uint16(row)]
 		for px := range 8 {
-			out[row][px] = resolveWordBitPlanePixel(w1, px)
+			out[row][px] = byte(((w01 >> (7 - px)) & 1) | (((w01 >> (15 - px)) & 1) << 1))
 		}
 	}
 }
 
-// FIXME this one doesnt work
 func RenderTile4bpp(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 	for row := range 8 {
-		w1 := VRAM[wordBase+uint16(row*2)]
-		w2 := VRAM[wordBase+uint16(row*2)+1]
-		for px := range 8 {
-			out[row][px] = resolveWordBitPlanePixel(w1, px) | (resolveWordBitPlanePixel(w2, px) << 2)
+		currentRow := wordBase + uint16(row)
+		w01 := VRAM[currentRow]   // bitplanes 0-1
+		w23 := VRAM[currentRow+8] // bitplanes 2-3
+
+		for px := range uint16(8) {
+			offset8 := 7 - px
+			offset16 := 15 - px
+			out[row][px] = byte((w01>>offset8)&1<<0 |
+				(w01>>offset16)&1<<1 |
+				(w23>>offset8)&1<<2 |
+				(w23>>offset16)&1<<3)
 		}
 	}
 }
@@ -443,30 +442,23 @@ func RenderTile4bpp(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 // EVERYTHING IS BASED ON 2bpp. in memory 8bpp is just 2bpp 2bpp 2bpp 2bpp
 func RenderTile8bpp(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 	for row := 0; row < 8; row++ {
-		w01 := VRAM[wordBase+uint16(row)]    // bitplanes 0-1
-		w23 := VRAM[wordBase+uint16(row)+8]  // bitplanes 2-3
-		w45 := VRAM[wordBase+uint16(row)+16] // bitplanes 4-5
-		w67 := VRAM[wordBase+uint16(row)+24] // bitplanes 6-7
+		currentRow := wordBase + uint16(row)
+		w01 := VRAM[currentRow]    // bitplanes 0-1
+		w23 := VRAM[currentRow+8]  // bitplanes 2-3
+		w45 := VRAM[currentRow+16] // bitplanes 4-5
+		w67 := VRAM[currentRow+24] // bitplanes 6-7
 
-		p0 := byte(w01)
-		p1 := byte(w01 >> 8)
-		p2 := byte(w23)
-		p3 := byte(w23 >> 8)
-		p4 := byte(w45)
-		p5 := byte(w45 >> 8)
-		p6 := byte(w67)
-		p7 := byte(w67 >> 8)
-		for px := 0; px < 8; px++ {
-			mask := byte(1 << (7 - px))
-			idx := (p0&mask)>>(7-px)<<0 |
-				(p1&mask)>>(7-px)<<1 |
-				(p2&mask)>>(7-px)<<2 |
-				(p3&mask)>>(7-px)<<3 |
-				(p4&mask)>>(7-px)<<4 |
-				(p5&mask)>>(7-px)<<5 |
-				(p6&mask)>>(7-px)<<6 |
-				(p7&mask)>>(7-px)<<7
-			out[row][px] = idx
+		for px := range uint16(8) {
+			offset8 := 7 - px
+			offset16 := 15 - px
+			out[row][px] = byte((w01>>offset8)&1<<0 |
+				(w01>>offset16)&1<<1 |
+				(w23>>offset8)&1<<2 |
+				(w23>>offset16)&1<<3 |
+				(w45>>offset8)&1<<4 |
+				(w45>>offset16)&1<<5 |
+				(w67>>offset8)&1<<6 |
+				(w67>>offset16)&1<<7)
 		}
 	}
 }
@@ -488,8 +480,9 @@ func RenderTile2bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 
 func RenderTile4bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 	for row := range uint16(8) {
-		w01 := VRAM[wordBase+row]   // bitplanes 0-1
-		w23 := VRAM[wordBase+row+8] // bitplanes 2-3
+		currentRow := wordBase + row
+		w01 := VRAM[currentRow]   // bitplanes 0-1
+		w23 := VRAM[currentRow+8] // bitplanes 2-3
 
 		p0 := byte(w01)
 		p1 := byte(w01 >> 8)
@@ -507,10 +500,11 @@ func RenderTile4bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 
 func RenderTile8bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 	for row := range uint16(8) {
-		w01 := VRAM[wordBase+row]    // bitplanes 0-1
-		w23 := VRAM[wordBase+row+8]  // bitplanes 2-3
-		w45 := VRAM[wordBase+row+16] // bitplanes 4-5
-		w67 := VRAM[wordBase+row+24] // bitplanes 6-7
+		currentRow := wordBase + row
+		w01 := VRAM[currentRow]    // bitplanes 0-1
+		w23 := VRAM[currentRow+8]  // bitplanes 2-3
+		w45 := VRAM[currentRow+16] // bitplanes 4-5
+		w67 := VRAM[currentRow+24] // bitplanes 6-7
 
 		p0 := byte(w01)
 		p1 := byte(w01 >> 8)
