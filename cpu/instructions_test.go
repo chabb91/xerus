@@ -12,7 +12,7 @@ var cause string
 var cycleCause string
 
 func TestSingleInstruction(t *testing.T) {
-	tests, err := debugger.LoadTests[debugger.CPUState]("/home/chabb/Documents/snes_tests/65c816/6b.e.json")
+	tests, err := debugger.LoadTests[debugger.CPUState]("/home/chabb/Documents/SNES-cpu-tests/65c816/72.n.json")
 	if err != nil {
 		t.Fatal(err)
 	}

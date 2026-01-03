@@ -11,7 +11,7 @@ import (
 var cause string
 
 func TestAllInstructions(t *testing.T) {
-	testDir := "/home/chabb/Documents/snes_tests/spc700"
+	testDir := "/home/chabb/Documents/SNES-cpu-tests/spc700"
 
 	entries, err := os.ReadDir(testDir)
 	if err != nil {
@@ -31,7 +31,7 @@ func TestAllInstructions(t *testing.T) {
 }
 
 func TestSingleInstruction(t *testing.T) {
-	runInstructionTests(t, "/home/chabb/Documents/snes_tests/spc700/4f.json")
+	runInstructionTests(t, "/home/chabb/Documents/SNES-cpu-tests/spc700/4f.json")
 }
 
 func runInstructionTests(t *testing.T, testFile string) {
