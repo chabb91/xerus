@@ -15,8 +15,8 @@ const (
 
 type direction func(busA uint32, busB byte, validB bool, bus memory.Bus)
 
+// this function is from BSNES
 func isValidA(address uint32) bool {
-	//TODO unsure logic is from BSNES
 	//A-bus cannot access the B-bus or CPU I/O registers
 	if (address & 0x40ff00) == 0x2100 {
 		return false //00-3f,80-bf:2100-21ff
@@ -53,7 +53,6 @@ func IoToCpu(busA uint32, busB byte, validB bool, bus memory.Bus) {
 	}
 }
 
-// thx byuu
 func transfer(mode byte, index byte, busA uint32, busB byte, direction direction, bus memory.Bus) {
 	switch mode {
 	case 1, 5:
@@ -66,9 +65,7 @@ func transfer(mode byte, index byte, busA uint32, busB byte, direction direction
 		//busB unchanged
 	}
 
-	//transfers from WRAM to WRAM are invalid
-	//TODO unsure logic is from BSNES
-	valid := busB != 0x80 || ((busA&0xfe0000) != 0x7e0000 && (busA&0x40e000) != 0x0000)
+	valid := busB != 0x80 || ((busA&0xfe0000) != 0x7e0000 && (busA&0x40e000) != 0x0000) //transfers from WRAM to WRAM are invalid -- from BSNES
 	direction(busA, busB, valid, bus)
 }
 
