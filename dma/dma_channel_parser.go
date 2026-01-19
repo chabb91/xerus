@@ -34,9 +34,11 @@ func isValidA(address uint32) bool {
 }
 
 func CpuToIo(busA uint32, busB byte, validB bool, bus memory.Bus) {
+	//transfer is called with bank|address atm so busA cant overflow
+	//busA &= 0xFFFFFF
 	if validB {
-		if isValidA(busA & 0xFFFFFF) {
-			bus.WriteByte(0x2100+uint32(busB), bus.ReadByte(busA&0xFFFFFF))
+		if isValidA(busA) {
+			bus.WriteByte(0x2100+uint32(busB), bus.ReadByte(busA))
 		} else {
 			bus.WriteByte(0x2100+uint32(busB), 0)
 		}
@@ -44,11 +46,13 @@ func CpuToIo(busA uint32, busB byte, validB bool, bus memory.Bus) {
 }
 
 func IoToCpu(busA uint32, busB byte, validB bool, bus memory.Bus) {
-	if isValidA(busA & 0xFFFFFF) {
+	//transfer is called with bank|address atm so busA cant overflow
+	//busA &= 0xFFFFFF
+	if isValidA(busA) {
 		if validB {
-			bus.WriteByte(busA&0xFFFFFF, bus.ReadByte(0x2100+uint32(busB)))
+			bus.WriteByte(busA, bus.ReadByte(0x2100+uint32(busB)))
 		} else {
-			bus.WriteByte(busA&0xFFFFFF, 0)
+			bus.WriteByte(busA, 0)
 		}
 	}
 }
