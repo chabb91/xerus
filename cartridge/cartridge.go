@@ -38,12 +38,93 @@ type Cartridge struct {
 
 func NewCartridge(romData []byte, mapper romMapper) *Cartridge {
 	cart := &Cartridge{
-		Mapper: mapper}
+		Mapper: mapper,
+	}
 
 	cart.romData, cart.romMask = padROM(romData)
+	cart.Mapper = findRomHeader(cart.romData)
 	cart.DetectSram()
 
 	return cart
+}
+
+func computeChecksum(romData []byte) (checksum uint16) {
+	for _, v := range romData {
+		checksum += uint16(v)
+	}
+
+	log.Printf("Cartridge: The computed checksum is: %x", checksum)
+
+	return
+}
+
+func testCandidateHeader(romType int, headerLocation int, romData []byte, checksum uint16) int {
+	if len(romData) < headerLocation+64 {
+		return -1
+	}
+
+	headerData := make([]byte, 64)
+	copy(headerData, romData[headerLocation:])
+
+	points := int(0)
+
+	candidateChecksum := uint16(headerData[0x1F])<<8 | uint16(headerData[0x1E])
+	candidateChecksumComplement := uint16(headerData[0x1D])<<8 | uint16(headerData[0x1C])
+	resetVector := uint16(headerData[0x3D])<<8 | uint16(headerData[0x3C])
+
+	if checksum == candidateChecksum {
+		points += 10
+	}
+	if candidateChecksum == ^candidateChecksumComplement {
+		points++
+	}
+	if containsOnlyASCIIBytes(headerData[:0x15]) {
+		points++
+	}
+	if headerData[0x15]&0xF == byte(romType) {
+		points++
+	}
+	if isPowerOfTwo(len(romData)) &&
+		//assuming we are dealing with padded rom data and size is power of 2 this should be true
+		headerData[0x17] == byte(bits.TrailingZeros(uint(len(romData))))-10 {
+		points++
+	}
+	if resetVector >= 0x8000 {
+		points++
+	} else {
+		return -1
+	}
+
+	return points
+}
+
+func findRomHeader(romData []byte) romMapper {
+	checksum := computeChecksum(romData)
+
+	loRomPt := testCandidateHeader(LoROM, 0x7FC0, romData, checksum)
+	hiRomPt := testCandidateHeader(HiROM, 0xFFC0, romData, checksum)
+	exHiRomPt := testCandidateHeader(ExHiROM, 0x40FFC0, romData, checksum)
+
+	bestResult := max(loRomPt, hiRomPt, exHiRomPt)
+	if bestResult > 0 {
+		if bestResult < 10 {
+			log.Printf("Cartridge: [WARNING] Checksum mismatch!")
+		}
+		if bestResult == loRomPt {
+			log.Printf("Cartridge: LoROM detected with a fitness of: %v", bestResult)
+			return NewLoRom()
+		}
+		if bestResult == hiRomPt {
+			log.Printf("Cartridge: HiROM detected with a fitness of: %v", bestResult)
+			return NewHiRom()
+		}
+		if bestResult == exHiRomPt {
+			log.Printf("Cartridge: ExHiROM detected with a fitness of: %v", bestResult)
+			return nil //TODO implement
+		}
+	}
+	log.Printf("Cartridge: [WARNING] Failed to detect the rom header.")
+	return nil
 }
 
 func (cart *Cartridge) ReadByte(bank byte, offset uint16) (byte, error) {
@@ -119,6 +200,11 @@ func Load(path string) ([]byte, error) {
 
 // TODO use this to calculate checksum
 func padROM(data []byte) ([]byte, uint32) {
+	if len(data)%1024 == 512 {
+		data = data[512:] //remove the 0x200 header padding if its present
+		log.Printf("Cartridge: Removing the 0x200 header padding...")
+	}
+
 	log.Printf("Cartridge: Padding the rom data...")
 	size := len(data)
 	if size == 0 {
@@ -177,4 +263,13 @@ func prevPow2(x int) int {
 		return 1
 	}
 	return 1 << (bits.Len(uint(x)) - 1)
+}
+
+func containsOnlyASCIIBytes(b []byte) bool {
+	for i := range b {
+		if b[i] >= 128 {
+			return false
+		}
+	}
+	return true
 }
