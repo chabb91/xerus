@@ -26,11 +26,7 @@ type SoC struct {
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	romData, err := cartridge.Load("/home/chabb/Downloads/blargg/spc_smp.sfc")
-	if err != nil {
-		panic(err)
-	}
-	bus := memory.NewBus(cartridge.NewCartridge(romData, cartridge.NewLoRom()))
+	bus := memory.NewBus(cartridge.NewCartridge("/home/chabb/Downloads/blargg/spc_smp.sfc"))
 	soc := &SoC{
 		JoypadController: NewJoypadController(bus),
 		MulDiv:           muldivchip.NewMulDiv(),
