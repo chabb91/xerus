@@ -5,6 +5,11 @@ import (
 	"os"
 )
 
+var ErrUnmappedSramRead = errors.New("Trying to read SRAM but the cartridge doesnt have one")
+var ErrUnmappedRomRead = errors.New("Trying to read unmapped address space.")
+var ErrUnmappedSramWrite = errors.New("No SRAM present so writes arent allowed")
+var ErrUnmappedRomWrite = errors.New("Trying to write to read only or unmapped region")
+
 const (
 	LoROM   = 0
 	HiROM   = 1
@@ -63,17 +68,17 @@ func (cart *Cartridge) ReadByte(bank byte, offset uint16) (byte, error) {
 		if hasSram {
 			return cart.sramData[uint32(index)&cart.sramMask], nil
 		} else {
-			return 0, errors.New("Trying to read SRAM but the cartridge doesnt have one")
+			return 0, ErrUnmappedSramRead
 		}
 	default:
 		//unmappedAddress
-		return 0, errors.New("Trying to read unmapped address space.")
+		return 0, ErrUnmappedRomRead
 	}
 }
 
 func (cart *Cartridge) WriteByte(bank byte, offset uint16, value byte) error {
 	if !cart.HasSram() {
-		return errors.New("No SRAM present so writes arent allowed")
+		return ErrUnmappedSramWrite
 	}
 
 	index, addressType := cart.Mapper.mapToCartridge(bank, offset, true)
@@ -83,7 +88,7 @@ func (cart *Cartridge) WriteByte(bank byte, offset uint16, value byte) error {
 		return nil
 	}
 
-	return errors.New("Trying to write to read only or unmapped region")
+	return ErrUnmappedRomWrite
 }
 
 func (cart *Cartridge) HasSram() bool {
