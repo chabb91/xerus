@@ -25,7 +25,7 @@ func (vram *VRAMController) ReadDataLow() byte {
 	ret := byte(vram.vmLatchedValue)
 
 	if !vram.vmain.incrementOnHighByte {
-		vram.vmLatchedValue = vram.VRAM[vram.vmain.remapAndMask(vram.vmadd)]
+		vram.vmLatchedValue = vram.VRAM[vram.vmain.remap(vram.vmadd)]
 		vram.vmadd += vram.vmain.incrementAmount
 	}
 	return ret
@@ -35,7 +35,7 @@ func (vram *VRAMController) ReadDataHigh() byte {
 	ret := byte(vram.vmLatchedValue >> 8)
 
 	if vram.vmain.incrementOnHighByte {
-		vram.vmLatchedValue = vram.VRAM[vram.vmain.remapAndMask(vram.vmadd)]
+		vram.vmLatchedValue = vram.VRAM[vram.vmain.remap(vram.vmadd)]
 		vram.vmadd += vram.vmain.incrementAmount
 	}
 	return ret
@@ -50,7 +50,7 @@ func (vram *VRAMController) UpdateAddressHigh(value byte) {
 }
 
 func (vram *VRAMController) WriteDataLow(value byte) {
-	remapped_addr := vram.vmain.remapAndMask(vram.vmadd)
+	remapped_addr := vram.vmain.remap(vram.vmadd)
 	vram.VRAM[remapped_addr] = (vram.VRAM[remapped_addr] & 0xFF00) | uint16(value)
 
 	vram.tv.tryInvalidate(remapped_addr)
@@ -61,7 +61,7 @@ func (vram *VRAMController) WriteDataLow(value byte) {
 }
 
 func (vram *VRAMController) WriteDataHigh(value byte) {
-	remapped_addr := vram.vmain.remapAndMask(vram.vmadd)
+	remapped_addr := vram.vmain.remap(vram.vmadd)
 	vram.VRAM[remapped_addr] = (vram.VRAM[remapped_addr] & 0x00FF) | (uint16(value) << 8)
 
 	vram.tv.tryInvalidate(remapped_addr)
@@ -81,7 +81,6 @@ type VMAIN struct {
 
 func newVMAIN() *VMAIN {
 	vmain := &VMAIN{}
-	vmain.Setup(0)
 	return vmain
 }
 
@@ -114,26 +113,22 @@ func (vm *VMAIN) Setup(vmain byte) {
 
 }
 
-func (vm *VMAIN) remapAndMask(value uint16) uint16 {
-	return vm.remap(value) & 0x7FFF
-}
-
 // TODO write a test for these mappers im not made of binary and its hard to tell what all this shifting amounts to
 func vmainRemap00(value uint16) uint16 {
-	return value
+	return value & 0x7FFF
 }
 
 func vmainRemap01(value uint16) uint16 {
 	bbb := (value >> 5) & 0x7
-	return (((value << 3) | bbb) & 0x00FF) | (value & 0xFF00)
+	return (((value << 3) | bbb) & 0x00FF) | (value & 0x7F00)
 }
 
 func vmainRemap10(value uint16) uint16 {
 	bbb := (value >> 6) & 0x7
-	return (((value << 3) | bbb) & 0x01FF) | (value & 0xFE00)
+	return (((value << 3) | bbb) & 0x01FF) | (value & 0x7E00)
 }
 
 func vmainRemap11(value uint16) uint16 {
 	bbb := (value >> 7) & 0x7
-	return (((value << 3) | bbb) & 0x03FF) | (value & 0xFC00)
+	return (((value << 3) | bbb) & 0x03FF) | (value & 0x7C00)
 }
