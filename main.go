@@ -29,6 +29,8 @@ func main() {
 
 	soc := soc.NewSoC(fb)
 	soc.JoypadController.Attach(0, display.Controller1)
+	defer soc.Cartridge.SaveSramToFile() //save Sram(if exists) on exit
+
 	go soc.Run()
 	ebiten.RunGame(display)
 }

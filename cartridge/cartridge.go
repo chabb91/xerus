@@ -2,7 +2,11 @@ package cartridge
 
 import (
 	"errors"
+	"io/fs"
+	"log"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 var ErrUnmappedSramRead = errors.New("Trying to read SRAM but the cartridge doesnt have one")
@@ -37,12 +41,15 @@ type Cartridge struct {
 
 	romMask  uint32
 	sramMask uint32
+
+	romPath  string
+	sramPath string
 }
 
 func NewCartridge(romPath string) *Cartridge {
 	cart := &Cartridge{}
 
-	romData, err := Load(romPath)
+	romData, err := load(romPath)
 	if err != nil {
 		panic(err)
 	}
@@ -52,6 +59,7 @@ func NewCartridge(romPath string) *Cartridge {
 	if err != nil {
 		panic(err)
 	}
+	cart.romPath = romPath
 	cart.DetectSram()
 
 	return cart
@@ -96,6 +104,7 @@ func (cart *Cartridge) HasSram() bool {
 }
 
 // TODO this always creates a new sram but if theres a battery and there is a SRAM file already it should be loaded instead
+// loads (and creates if necessary) the .smc file from storage, based on the rom name and its path
 func (cart *Cartridge) DetectSram() {
 	romType, err := cart.ReadByte(0, 0xFFD6)
 	if err != nil {
@@ -109,17 +118,55 @@ func (cart *Cartridge) DetectSram() {
 		if sizeVal == 0 || err != nil {
 			cart.sramData = nil
 		} else {
-			size := 1 << (10 + sizeVal)
-			//cart.sramData =  make([]byte, (1<<sizeVal)*1024)
-			cart.sramData = make([]byte, size)
+			size := 1 << (10 + sizeVal) //(1<<sizeVal)*1024)
 			cart.sramMask = uint32(size - 1)
+
+			romExt := filepath.Ext(cart.romPath)
+			basePath := strings.TrimSuffix(cart.romPath, romExt)
+			cart.sramPath = basePath + ".srm"
+			cart.sramData = make([]byte, size)
+
+			info, err := os.Stat(cart.sramPath)
+
+			if errors.Is(err, fs.ErrNotExist) {
+				log.Printf("Cartridge: Sram file(.srm) missing. Creating: %s", cart.sramPath)
+				cart.SaveSramToFile()
+			} else if info.Size() != int64(size) {
+				log.Printf("Cartridge: Sram file size incorrect. Expected %d.", size)
+				sramBackupPath := cart.sramPath + ".bak"
+				log.Printf("Cartridge: Backing up old sram file to: %s", sramBackupPath)
+				err := os.Rename(cart.sramPath, sramBackupPath)
+				if err != nil {
+					log.Printf("Cartridge: [WARNING] Failed to back up the old sram file to: %s", sramBackupPath)
+				}
+				cart.SaveSramToFile()
+			} else {
+				log.Printf("Cartridge: Sram file(.srm) found. Loading: %s", cart.sramPath)
+				sramData, err := load(cart.sramPath)
+				if err != nil {
+					panic(err)
+				}
+				copy(cart.sramData, sramData)
+			}
 		}
 	default:
 		cart.sramData = nil
 	}
 }
 
-func Load(path string) ([]byte, error) {
+func (cart *Cartridge) SaveSramToFile() {
+	if cart.sramData == nil || cart.sramPath == "" {
+		return
+	}
+	err := os.WriteFile(cart.sramPath, cart.sramData, 0o644)
+	if err != nil {
+		log.Printf("Cartridge: [WARNING] Failed to save SRAM to %s.", cart.sramPath)
+		return
+	}
+	log.Printf("Cartridge: SRAM has been successfully saved to %s.", cart.sramPath)
+}
+
+func load(path string) ([]byte, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err

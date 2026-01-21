@@ -22,11 +22,13 @@ type SoC struct {
 	Ppu                 *ppu.PPU
 	Spu                 *apu.CPU
 
-	bus memory.Bus
+	Cartridge *cartridge.Cartridge
+	bus       memory.Bus
 }
 
 func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	bus := memory.NewBus(cartridge.NewCartridge("/home/chabb/Downloads/blargg/spc_smp.sfc"))
+	cartridge := cartridge.NewCartridge("/home/chabb/Downloads/blargg/spc_smp.sfc")
+	bus := memory.NewBus(cartridge)
 	soc := &SoC{
 		JoypadController: NewJoypadController(bus),
 		MulDiv:           muldivchip.NewMulDiv(),
@@ -34,7 +36,9 @@ func NewSoC(framebuffer *ui.Framebuffer) *SoC {
 		Cpu:              cpu.NewCPU(bus),
 		Ppu:              ppu.NewPPU(bus),
 		Spu:              apu.NewApu(bus),
-		bus:              bus,
+
+		Cartridge: cartridge,
+		bus:       bus,
 	}
 	soc.InterruptController = interruptchip.NewInterruptController(bus, soc.Cpu, soc.Ppu)
 	soc.Ppu.InterruptScheduler = soc.InterruptController
