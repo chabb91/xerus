@@ -43,10 +43,12 @@ func (vram *VRAMController) ReadDataHigh() byte {
 
 func (vram *VRAMController) UpdateAddressLow(value byte) {
 	vram.vmadd = (vram.vmadd & 0xFF00) | uint16(value)
+	vram.vmLatchedValue = vram.VRAM[vram.vmain.remap(vram.vmadd)]
 }
 
 func (vram *VRAMController) UpdateAddressHigh(value byte) {
 	vram.vmadd = (vram.vmadd & 0xFF) | (uint16(value) << 8)
+	vram.vmLatchedValue = vram.VRAM[vram.vmain.remap(vram.vmadd)]
 }
 
 func (vram *VRAMController) WriteDataLow(value byte) {
