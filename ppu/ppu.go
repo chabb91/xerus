@@ -287,7 +287,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2114:
 		ppu.Bg4.vScroll = ppu.BGxnOFS.vFormula(value)
 	case 0x2115:
-		ppu.VRAM.vmain.Setup(value)
+		ppu.VRAM.setupVMAIN(value)
 		fmt.Println("VMAIN: ", value)
 	case 0x2116:
 		ppu.VRAM.UpdateAddressLow(value)

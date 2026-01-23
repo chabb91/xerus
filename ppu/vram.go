@@ -1,32 +1,34 @@
 package ppu
 
+type vmainRemap func(uint16) uint16
+
 // video RAM
 type VRAMController struct {
 	VRAM []uint16
 
-	vmain *VMAIN
-	vmadd uint16
+	remap               vmainRemap
+	incrementOnHighByte bool
+	incrementAmount     uint16
+	vmadd               uint16
+
+	vmLatchedValue uint16 // for VRAM register reads
 
 	tv tileValidator
-
-	//absolute cringe VERY speshul case for VRAM register reads
-	vmLatchedValue uint16
 }
 
 func NewVRAM(tv tileValidator) *VRAMController {
 	return &VRAMController{
-		VRAM:  make([]uint16, 0x8000),
-		vmain: newVMAIN(),
-		tv:    tv,
+		VRAM: make([]uint16, 0x8000),
+		tv:   tv,
 	}
 }
 
 func (vram *VRAMController) ReadDataLow() byte {
 	ret := byte(vram.vmLatchedValue)
 
-	if !vram.vmain.incrementOnHighByte {
-		vram.vmLatchedValue = vram.VRAM[vram.vmain.remap(vram.vmadd)]
-		vram.vmadd += vram.vmain.incrementAmount
+	if !vram.incrementOnHighByte {
+		vram.vmLatchedValue = vram.VRAM[vram.remap(vram.vmadd)]
+		vram.vmadd += vram.incrementAmount
 	}
 	return ret
 }
@@ -34,83 +36,70 @@ func (vram *VRAMController) ReadDataLow() byte {
 func (vram *VRAMController) ReadDataHigh() byte {
 	ret := byte(vram.vmLatchedValue >> 8)
 
-	if vram.vmain.incrementOnHighByte {
-		vram.vmLatchedValue = vram.VRAM[vram.vmain.remap(vram.vmadd)]
-		vram.vmadd += vram.vmain.incrementAmount
+	if vram.incrementOnHighByte {
+		vram.vmLatchedValue = vram.VRAM[vram.remap(vram.vmadd)]
+		vram.vmadd += vram.incrementAmount
 	}
 	return ret
 }
 
 func (vram *VRAMController) UpdateAddressLow(value byte) {
 	vram.vmadd = (vram.vmadd & 0xFF00) | uint16(value)
-	vram.vmLatchedValue = vram.VRAM[vram.vmain.remap(vram.vmadd)]
+	vram.vmLatchedValue = vram.VRAM[vram.remap(vram.vmadd)]
 }
 
 func (vram *VRAMController) UpdateAddressHigh(value byte) {
 	vram.vmadd = (vram.vmadd & 0xFF) | (uint16(value) << 8)
-	vram.vmLatchedValue = vram.VRAM[vram.vmain.remap(vram.vmadd)]
+	vram.vmLatchedValue = vram.VRAM[vram.remap(vram.vmadd)]
 }
 
 func (vram *VRAMController) WriteDataLow(value byte) {
-	remapped_addr := vram.vmain.remap(vram.vmadd)
-	vram.VRAM[remapped_addr] = (vram.VRAM[remapped_addr] & 0xFF00) | uint16(value)
+	remappedAddr := vram.remap(vram.vmadd)
+	vram.VRAM[remappedAddr] = (vram.VRAM[remappedAddr] & 0xFF00) | uint16(value)
 
-	vram.tv.tryInvalidate(remapped_addr)
+	vram.tv.tryInvalidate(remappedAddr)
 
-	if !vram.vmain.incrementOnHighByte {
-		vram.vmadd += vram.vmain.incrementAmount
+	if !vram.incrementOnHighByte {
+		vram.vmadd += vram.incrementAmount
 	}
 }
 
 func (vram *VRAMController) WriteDataHigh(value byte) {
-	remapped_addr := vram.vmain.remap(vram.vmadd)
-	vram.VRAM[remapped_addr] = (vram.VRAM[remapped_addr] & 0x00FF) | (uint16(value) << 8)
+	remappedAddr := vram.remap(vram.vmadd)
+	vram.VRAM[remappedAddr] = (vram.VRAM[remappedAddr] & 0x00FF) | (uint16(value) << 8)
 
-	vram.tv.tryInvalidate(remapped_addr)
+	vram.tv.tryInvalidate(remappedAddr)
 
-	if vram.vmain.incrementOnHighByte {
-		vram.vmadd += vram.vmain.incrementAmount
+	if vram.incrementOnHighByte {
+		vram.vmadd += vram.incrementAmount
 	}
 }
 
-type vmainRemap func(uint16) uint16
-
-type VMAIN struct {
-	incrementOnHighByte bool
-	incrementAmount     uint16
-	remap               vmainRemap
-}
-
-func newVMAIN() *VMAIN {
-	vmain := &VMAIN{}
-	return vmain
-}
-
-func (vm *VMAIN) Setup(vmain byte) {
+func (vram *VRAMController) setupVMAIN(vmain byte) {
 	if vmain >= 0x80 {
-		vm.incrementOnHighByte = true
+		vram.incrementOnHighByte = true
 	} else {
-		vm.incrementOnHighByte = false
+		vram.incrementOnHighByte = false
 	}
 
 	switch vmain & 0x3 {
 	case 0:
-		vm.incrementAmount = 0x01
+		vram.incrementAmount = 0x01
 	case 1:
-		vm.incrementAmount = 0x20
+		vram.incrementAmount = 0x20
 	default:
-		vm.incrementAmount = 0x80
+		vram.incrementAmount = 0x80
 	}
 
 	switch (vmain & 0xC) >> 2 {
 	case 0:
-		vm.remap = vmainRemap00
+		vram.remap = vmainRemap00
 	case 1:
-		vm.remap = vmainRemap01
+		vram.remap = vmainRemap01
 	case 2:
-		vm.remap = vmainRemap10
+		vram.remap = vmainRemap10
 	case 3:
-		vm.remap = vmainRemap11
+		vram.remap = vmainRemap11
 	}
 
 }
