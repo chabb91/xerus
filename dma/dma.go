@@ -19,6 +19,7 @@ const (
 const (
 	CYCLE_8  = uint64(4)
 	CYCLE_18 = uint64(9)
+	CYCLE_24 = uint64(12)
 )
 
 type DmaChannel struct {
@@ -83,7 +84,6 @@ func NewDma(bus memory.Bus) *Dma {
 		}
 	}
 
-	//TODO this probably isnt the best place to register it
 	bus.RegisterRange(0x4300, 0x437F, dma, "DMA")
 	return dma
 }
@@ -95,9 +95,8 @@ func (dma *Dma) Step() uint64 {
 		dma.DmaState = HDMA_RELOAD
 		return CYCLE_18
 	case HDMA_RELOAD:
-		cycles := CYCLE_8
-		cycles += dma.currentHdmaOp.reload()
 		log.Printf("RELOADING HDMA with params %+v\n", dma.currentHdmaOp.channel)
+		cycles := dma.currentHdmaOp.reload()
 		if nextChannel := getNextActiveChannel(dma.HdmaenLatch, dma.currentHdmaOp.channel.id+1); nextChannel == -1 {
 			dma.DmaState = HDMA_INACTIVE
 		} else {
@@ -109,10 +108,7 @@ func (dma *Dma) Step() uint64 {
 		dma.decideNextHdmaTransferState()
 		return CYCLE_18
 	case HDMA_TRANSFER_CH_OVERHEAD:
-		cycles := CYCLE_8
-		if !dma.currentHdmaOp.isTerminated {
-			cycles += dma.currentHdmaOp.stepLineCounter()
-		}
+		cycles := dma.currentHdmaOp.stepLineCounter()
 		if nextChannel := getNextActiveChannel(dma.HdmaenLatch, dma.currentHdmaOp.channel.id+1); nextChannel == -1 {
 			dma.DmaState = HDMA_INACTIVE
 		} else {
@@ -126,23 +122,23 @@ func (dma *Dma) Step() uint64 {
 		}
 		return CYCLE_8
 	case HDMA_INACTIVE:
-		if dma.Mdmaen != 0 && dma.currentDmaOp == nil {
-			nextChannel := getNextActiveChannel(dma.Mdmaen, 0)
-			dma.currentDmaOp = dma.dmaOp.setup(&dma.Channels[nextChannel])
-			log.Printf("Starting dma with params %+v\n", dma.currentDmaOp.channel)
-			return CYCLE_8
-		}
-		if dma.Mdmaen != 0 && dma.currentDmaOp != nil {
-			if dma.currentDmaOp.stepCycle() {
-				dma.Mdmaen &= ^(1 << dma.currentDmaOp.channel.id)
-				dma.currentDmaOp = nil
+		if dma.Mdmaen != 0 {
+			if dma.currentDmaOp == nil {
+				nextChannel := getNextActiveChannel(dma.Mdmaen, 0)
+				dma.currentDmaOp = dma.dmaOp.setup(&dma.Channels[nextChannel])
+				log.Printf("Starting dma with params %+v\n", dma.currentDmaOp.channel)
+			}
+			if dma.currentDmaOp != nil {
+				if dma.currentDmaOp.stepCycle() {
+					dma.Mdmaen &= ^(1 << dma.currentDmaOp.channel.id)
+					dma.currentDmaOp = nil
+				}
 			}
 			return CYCLE_8
 		}
 		fallthrough
 	default:
-		log.Println("WARNING: The dma chip is in an unexpected state")
-		return CYCLE_8
+		panic(fmt.Errorf("Fatal: The dma chip is in an unexpected state!"))
 	}
 }
 

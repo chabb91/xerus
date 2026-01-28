@@ -89,12 +89,11 @@ func (soc SoC) Run() {
 
 			cnt = soc.Dma.Step()
 
-			dmaStillActive := soc.Dma.IsInProgress()
-			if !dmaStillActive {
+			prevDmaActive = soc.Dma.IsInProgress()
+			if !prevDmaActive {
 				alignment := (4 - (((cyclesSinceReset + cnt) - cyclesSincePause) & 3))
 				cnt += alignment
 			}
-			prevDmaActive = dmaStillActive
 		}
 	}
 }

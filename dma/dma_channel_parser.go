@@ -154,7 +154,6 @@ type HdmaOperation struct {
 }
 
 func (op *HdmaOperation) reload() uint64 {
-	cycles := uint64(0)
 	channel := op.channel
 
 	channel.a2w = channel.a1w
@@ -165,9 +164,10 @@ func (op *HdmaOperation) reload() uint64 {
 	op.isTerminated = channel.ntlrx == 0
 
 	if op.addressingMode == indirect {
-		cycles += op.loadIndirectAddress(channel.ntlrx)
+		op.loadIndirectAddress(channel.ntlrx)
+		return CYCLE_24
 	}
-	return cycles
+	return CYCLE_8
 }
 
 func (op *HdmaOperation) setup() {
@@ -218,7 +218,10 @@ func (op *HdmaOperation) stepCycle() bool {
 }
 
 func (op *HdmaOperation) stepLineCounter() uint64 {
-	cycles := uint64(0)
+	cycles := CYCLE_8
+	if op.isTerminated {
+		return cycles
+	}
 	ntlrx := &op.channel.ntlrx
 	*ntlrx--
 	if *ntlrx&0x7F == 0 {

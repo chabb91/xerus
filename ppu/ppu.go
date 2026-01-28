@@ -173,12 +173,14 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 		return ppu.returnAndSetPpu1OB(ppu.Obj.timeOver | ppu.Obj.rangeOver | ppu.ppu1OB&0x10 | CHIP_5C77_VERSION), nil
 	case 0x213F:
 		ppu.VHigh, ppu.HHigh = false, false
-		tmpLatch := ppu.LatchFlag
+		ret := byte(interlaceStep&1)<<7 | ppu.ppu2OB&0x20 | ppu.SETINI.Timing.RegionId<<4 | CHIP_5C78_VERSION
 		if *ppu.Wrio >= 0x80 {
+			ret |= ppu.LatchFlag << 6
 			ppu.LatchFlag = 0
+		} else {
+			ret |= 1 << 6
 		}
-		return ppu.returnAndSetPpu2OB(
-			byte(interlaceStep&1)<<7 | tmpLatch<<6 | ppu.ppu2OB&0x20 | ppu.SETINI.Timing.RegionId<<4 | CHIP_5C78_VERSION), nil
+		return ppu.returnAndSetPpu2OB(ret), nil
 	default:
 		if ppu.isPpu1WriteRegisterRead(addr) {
 			return ppu.ppu1OB, nil
