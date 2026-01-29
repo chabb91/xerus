@@ -26,12 +26,7 @@ const (
 	unmappedAddress
 )
 
-type romMapper interface {
-	getHeaderLocation() uint32
-	getCartridgeType() int
-
-	mapToCartridge(bank byte, offset uint16, hasSram bool) (index, addressType int)
-}
+type romMapper func(bank byte, offset uint16, hasSram bool) (mappedAddr int, regionId int)
 
 type Cartridge struct {
 	Mapper romMapper
@@ -67,7 +62,7 @@ func NewCartridge(romPath string) *Cartridge {
 
 func (cart *Cartridge) ReadByte(bank byte, offset uint16) (byte, error) {
 	hasSram := cart.HasSram()
-	index, addressType := cart.Mapper.mapToCartridge(bank, offset, hasSram)
+	index, addressType := cart.Mapper(bank, offset, hasSram)
 
 	switch addressType {
 	case romAddress:
@@ -89,7 +84,7 @@ func (cart *Cartridge) WriteByte(bank byte, offset uint16, value byte) error {
 		return ErrUnmappedSramWrite
 	}
 
-	index, addressType := cart.Mapper.mapToCartridge(bank, offset, true)
+	index, addressType := cart.Mapper(bank, offset, true)
 
 	if addressType == sramAddress {
 		cart.sramData[uint32(index)&cart.sramMask] = value

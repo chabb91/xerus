@@ -73,15 +73,15 @@ func findRomHeader(romData []byte) (romMapper, error) {
 		}
 		if bestResult == loRomPt {
 			log.Printf("Cartridge: LoROM detected with a fitness of: %v", bestResult)
-			return NewLoRom(), nil
+			return mapLoRom, nil
 		}
 		if bestResult == hiRomPt {
 			log.Printf("Cartridge: HiROM detected with a fitness of: %v", bestResult)
-			return NewHiRom(), nil
+			return mapHiRom, nil
 		}
 		if bestResult == exHiRomPt {
 			log.Printf("Cartridge: ExHiROM detected with a fitness of: %v", bestResult)
-			return NewExHiRom(), nil
+			return mapExHiRom, nil
 		}
 	}
 	log.Printf("Cartridge: [WARNING] Failed to detect the rom header.")

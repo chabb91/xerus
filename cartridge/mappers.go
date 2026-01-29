@@ -1,25 +1,21 @@
 package cartridge
 
-type hiRom struct {
-	cartridgeType  int
-	headerLocation uint32
+func mapLoRom(bank byte, offset uint16, hasSram bool) (int, int) {
+	maskedBank := bank & 0x7F
+	if bank == 0x7E || bank == 0x7F || (maskedBank < 0x40 && offset < 0x8000) {
+		return -1, unmappedAddress
+	}
+	if hasSram {
+		if maskedBank <= 0x7D && maskedBank >= 0x70 {
+			return int(maskedBank-0x70)<<15 | int(offset), sramAddress //<<15 == *0x8000
+		}
+	}
+	offset = (offset & 0x7FFF) | (uint16(bank&1) << 15)
+	bank = (bank & 0x7F) >> 1
+	return int(bank)<<16 | int(offset), romAddress
 }
 
-func NewHiRom() *hiRom {
-	return &hiRom{
-		cartridgeType:  HiROM,
-		headerLocation: 0xFFC0}
-}
-
-func (hr hiRom) getHeaderLocation() uint32 {
-	return hr.headerLocation
-}
-
-func (hr hiRom) getCartridgeType() int {
-	return hr.cartridgeType
-}
-
-func (_ hiRom) mapToCartridge(bank byte, offset uint16, hasSram bool) (int, int) {
+func mapHiRom(bank byte, offset uint16, hasSram bool) (int, int) {
 	if bank == 0x7E || bank == 0x7F {
 		return -1, unmappedAddress
 	}
@@ -37,26 +33,7 @@ func (_ hiRom) mapToCartridge(bank byte, offset uint16, hasSram bool) (int, int)
 	return int(bank&0x3F)<<16 | int(offset), romAddress
 }
 
-type exHiRom struct {
-	cartridgeType  int
-	headerLocation uint32
-}
-
-func NewExHiRom() *exHiRom {
-	return &exHiRom{
-		cartridgeType:  ExHiROM,
-		headerLocation: 0x40FFC0}
-}
-
-func (hr exHiRom) getHeaderLocation() uint32 {
-	return hr.headerLocation
-}
-
-func (hr exHiRom) getCartridgeType() int {
-	return hr.cartridgeType
-}
-
-func (_ exHiRom) mapToCartridge(bank byte, offset uint16, hasSram bool) (int, int) {
+func mapExHiRom(bank byte, offset uint16, hasSram bool) (int, int) {
 	if bank == 0x7E || bank == 0x7F {
 		return -1, unmappedAddress
 	}
