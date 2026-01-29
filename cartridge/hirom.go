@@ -49,3 +49,38 @@ func (lr hiRom) mapToCartridge(bank byte, offset uint16, hasSram bool) (int, int
 	}
 	return -1, unmappedAddress
 }
+
+type exHiRom struct {
+	cartridgeType  int
+	headerLocation uint32
+}
+
+func NewExHiRom() *exHiRom {
+	return &exHiRom{
+		cartridgeType:  ExHiROM,
+		headerLocation: 0x40FFC0}
+}
+
+func (hr exHiRom) getHeaderLocation() uint32 {
+	return hr.headerLocation
+}
+
+func (hr exHiRom) getCartridgeType() int {
+	return hr.cartridgeType
+}
+
+func (_ exHiRom) mapToCartridge(bank byte, offset uint16, hasSram bool) (int, int) {
+	if bank == 0x7E || bank == 0x7F {
+		return -1, unmappedAddress
+	}
+	if bank&0x7F < 0x40 {
+		if offset < 0x8000 {
+			if hasSram && offset >= 0x6000 {
+				return int(bank)<<13 | int(offset-0x6000), sramAddress
+			}
+			return -1, unmappedAddress
+		}
+	}
+	mask := ((bank ^ 0x80) | 0x7F) >> 1
+	return int(bank&mask)<<16 | int(offset), romAddress
+}
