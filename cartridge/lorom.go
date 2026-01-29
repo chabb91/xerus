@@ -19,30 +19,17 @@ func (lr loRom) getCartridgeType() int {
 	return lr.cartridgeType
 }
 
-func (lr loRom) mapToCartridge(bank byte, offset uint16, hasSram bool) (int, int) {
-	if bank == 0x7E || bank == 0x7F {
+func (_ loRom) mapToCartridge(bank byte, offset uint16, hasSram bool) (int, int) {
+	maskedBank := bank & 0x7F
+	if bank == 0x7E || bank == 0x7F || (maskedBank < 0x40 && offset < 0x8000) {
 		return -1, unmappedAddress
 	}
-	if offset >= 0x8000 {
-		if bank <= 0x7D {
-			return int(bank)<<15 | int(offset-0x8000), romAddress //<<15 == *0x8000
-		}
-		if bank >= 0x80 {
-			return int(bank-0x80)<<15 | int(offset-0x8000), romAddress
-		}
-	} else {
-		if hasSram {
-			if bank <= 0x7D && bank >= 0x70 {
-				return int(bank-0x70)<<15 | int(offset), sramAddress
-			}
-		} else {
-			if bank <= 0x7D && bank >= 0x40 {
-				return int(bank)<<15 | int(offset), romAddress
-			}
-			if bank >= 0xC0 {
-				return int(bank-0x80)<<15 | int(offset), romAddress
-			}
+	if hasSram {
+		if maskedBank <= 0x7D && maskedBank >= 0x70 {
+			return int(maskedBank-0x70)<<15 | int(offset), sramAddress //<<15 == *0x8000
 		}
 	}
-	return -1, unmappedAddress
+	offset = (offset & 0x7FFF) | (uint16(bank&1) << 15)
+	bank = (bank & 0x7F) >> 1
+	return int(bank)<<16 | int(offset), romAddress
 }

@@ -11,43 +11,30 @@ func NewHiRom() *hiRom {
 		headerLocation: 0xFFC0}
 }
 
-func (lr hiRom) getHeaderLocation() uint32 {
-	return lr.headerLocation
+func (hr hiRom) getHeaderLocation() uint32 {
+	return hr.headerLocation
 }
 
-func (lr hiRom) getCartridgeType() int {
-	return lr.cartridgeType
+func (hr hiRom) getCartridgeType() int {
+	return hr.cartridgeType
 }
 
-func (lr hiRom) mapToCartridge(bank byte, offset uint16, hasSram bool) (int, int) {
+func (_ hiRom) mapToCartridge(bank byte, offset uint16, hasSram bool) (int, int) {
 	if bank == 0x7E || bank == 0x7F {
 		return -1, unmappedAddress
 	}
-	if bank >= 0xC0 {
-		return int(bank-0xC0)<<16 | int(offset), romAddress
-	}
-	if bank >= 0x80 {
-		//trusting fullsnes for the Hirom sram mappings. there is another sram mapping not implemented here
-		//10-1f,30-3f,90-9f,b0-bf
-		if hasSram && bank >= 0xA0 && offset >= 0x6000 && offset < 0x8000 {
-			return int(bank-0xA0)<<13 | int(offset-0x6000), sramAddress
+	if sramBank := bank & 0x7F; sramBank < 0x40 {
+		if offset < 0x8000 {
+			//trusting fullsnes for the Hirom sram mappings.
+			//there is another sram mapping not implemented here
+			//10-1f,30-3f,90-9f,b0-bf
+			if hasSram && offset >= 0x6000 {
+				return int(sramBank-0x20)<<13 | int(offset-0x6000), sramAddress
+			}
+			return -1, unmappedAddress
 		}
-		if offset >= 0x8000 {
-			return int(bank-0x80)<<16 | int(offset), romAddress
-		}
-		return -1, unmappedAddress
 	}
-	if bank >= 0x40 {
-		return int(bank-0x40)<<16 | int(offset), romAddress
-	}
-	//bank >=0
-	if hasSram && bank >= 0x20 && offset >= 0x6000 && offset < 0x8000 {
-		return int(bank-0x20)<<13 | int(offset-0x6000), sramAddress
-	}
-	if offset >= 0x8000 {
-		return int(bank)<<16 | int(offset), romAddress
-	}
-	return -1, unmappedAddress
+	return int(bank&0x3F)<<16 | int(offset), romAddress
 }
 
 type exHiRom struct {
