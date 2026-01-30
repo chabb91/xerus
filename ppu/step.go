@@ -6,8 +6,6 @@ import (
 )
 
 func (ppu *PPU) Step() {
-	timing := &ppu.SETINI.Timing
-
 	draw := currentTimingLUT[ppu.V*H_TOTAL+ppu.H]
 	if draw.IsVisible {
 		h := draw.H
@@ -71,6 +69,7 @@ func (ppu *PPU) Step() {
 	if ppu.H >= H_TOTAL {
 		ppu.H = 0
 		ppu.V++
+		timing := &ppu.SETINI.Timing
 		if ppu.V >= timing.TotalScanlines+int(interlace&(1-interlaceStep)) {
 			ppu.V = 0
 
@@ -156,6 +155,7 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 			}
 		}
 	case ActionSetNmi:
+		//TODO
 	case ActionJoypadReadStart:
 		ppu.InterruptScheduler.SetHvbjoyA(true)
 	case ActionJoypadReadEnd:

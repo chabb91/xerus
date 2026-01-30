@@ -47,7 +47,7 @@ type PPU struct {
 	M7x   *M7Registers
 
 	BGMODE                 byte
-	registerPreviousValues [64]byte
+	registerPreviousValues [64]uint16
 
 	Obj *Objects
 
@@ -124,7 +124,7 @@ func NewPPU(bus memory.Bus, isPal bool) *PPU {
 func (ppu *PPU) Init() {
 	for i := range uint16(64) {
 		ppu.Write(0x2100|i, 0)
-		ppu.registerPreviousValues[i] = 0xFF //TODO first call should run regardless of this value
+		ppu.registerPreviousValues[i] = 0xFFFF //TODO first call should run regardless of this value
 	}
 }
 
@@ -222,10 +222,10 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.OAM.WriteOAMData(value)
 	case 0x2105:
 		//fmt.Println("BGMODE: ", value)
-		if ppu.registerPreviousValues[5] == value {
+		if ppu.registerPreviousValues[5] == uint16(value) {
 			break
 		}
-		ppu.registerPreviousValues[5] = value
+		ppu.registerPreviousValues[5] = uint16(value)
 		ppu.setBGMODE(value)
 		ppu.setHiresFlag()
 	case 0x2106:
@@ -357,20 +357,20 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.WINDOWS.WOBJLOG(value)
 	case 0x212C:
 		//fmt.Println("TM: ", value)
-		if ppu.registerPreviousValues[0x2C] == value {
+		if ppu.registerPreviousValues[0x2C] == uint16(value) {
 			break
 		}
-		ppu.registerPreviousValues[0x2C] = value
+		ppu.registerPreviousValues[0x2C] = uint16(value)
 		ppu.setTM(value)
 		ppu.regenerateMainPipeline()
 		ppu.invalidateAllLayers()
 		ppu.markActiveWindowsDirty()
 	case 0x212D:
 		//fmt.Println("TS: ", value)
-		if ppu.registerPreviousValues[0x2D] == value {
+		if ppu.registerPreviousValues[0x2D] == uint16(value) {
 			break
 		}
-		ppu.registerPreviousValues[0x2D] = value
+		ppu.registerPreviousValues[0x2D] = uint16(value)
 		ppu.setTS(value)
 		ppu.regenerateSubPipeline()
 		ppu.invalidateAllLayers()
@@ -390,6 +390,11 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.WINDOWS.ColorMath.setCOLDATA(value)
 	case 0x2133:
 		//fmt.Println("SETINI", value)
+		if ppu.registerPreviousValues[0x33] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x33] = uint16(value)
+
 		prevEXTBG := ppu.SETINI.m7EXTBG
 		ppu.SETINI.setup(value)
 		ppu.Framebuffer.CurrentHeight = ppu.SETINI.getScreenHeight() // - (1 << interlace)
