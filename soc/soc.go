@@ -34,7 +34,7 @@ func NewSoC(framebuffer *ui.Framebuffer) *SoC {
 		MulDiv:           muldivchip.NewMulDiv(),
 		Dma:              dma.NewDma(bus),
 		Cpu:              cpu.NewCPU(bus),
-		Ppu:              ppu.NewPPU(bus),
+		Ppu:              ppu.NewPPU(bus, cartridge.IsPal()),
 		Spu:              apu.NewApu(bus),
 
 		Cartridge: cartridge,

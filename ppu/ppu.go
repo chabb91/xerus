@@ -82,11 +82,18 @@ type PPU struct {
 	Framebuffer *ui.Framebuffer
 }
 
-func NewPPU(bus memory.Bus) *PPU {
+func NewPPU(bus memory.Bus, isPal bool) *PPU {
+	var timing VideoTiming
+	if isPal {
+		timing = PAL_TIMING
+	} else {
+		timing = NTSC_TIMING
+	}
+
 	ppu := &PPU{
 		BGxnOFS: &BGxnOFS{},
 		M7x:     &M7Registers{},
-		SETINI:  NewSETINI(NTSC_TIMING),
+		SETINI:  NewSETINI(timing),
 		bus:     bus,
 	}
 	ppu.mainRenderPipeline = make([]pipelineTemplate, 0, 12)

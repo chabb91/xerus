@@ -22,14 +22,14 @@ func main() {
 	}
 	defer pprof.StopCPUProfile()
 
-	ebiten.SetWindowTitle("SNES Emulator")
-
 	fb := ui.NewFramebuffer()
 	display := ui.NewEmulatorDisplay(fb)
 
 	soc := soc.NewSoC(fb)
 	soc.JoypadController.Attach(0, display.Controller1)
 	defer soc.Cartridge.SaveSramToFile() //save Sram(if exists) on exit
+
+	ebiten.SetWindowTitle(soc.Cartridge.GetRomName())
 
 	go soc.Run()
 	ebiten.RunGame(display)
