@@ -1,8 +1,12 @@
 // chasing the dream.
 package cpu
 
+type InstructionState int
+type AddressingMode int
+type IOType int
+
 const (
-	FETCH = iota
+	FETCH InstructionState = iota
 	FETCH_OP_1
 	FETCH_OP_2
 	FETCH_OP_3
@@ -24,7 +28,7 @@ const (
 )
 
 const (
-	BASE_MODE = iota
+	BASE_MODE AddressingMode = iota
 	BASE_MODE_Y
 	BASE_MODE_X
 	INDIRECT              //()
@@ -40,7 +44,7 @@ const (
 )
 
 const (
-	NO_IO = iota
+	NO_IO IOType = iota
 	READ_RAM
 	WRITE_RAM
 )
@@ -54,8 +58,8 @@ type AccessMicroInstruction interface {
 }
 
 type Umbrella struct {
-	state  int
-	mode   int
+	state  InstructionState
+	mode   IOType
 	result uint16
 
 	checkM        bool
@@ -174,8 +178,8 @@ func (i *Umbrella) Execute(cpu *CPU) bool {
 
 // the micro instruction for direct/direct, X/ diecct, Y
 type Direct struct {
-	state  int
-	mode   int
+	state  InstructionState
+	mode   AddressingMode
 	isPEI  bool
 	checkP bool
 
@@ -322,8 +326,8 @@ func (i *Direct) isIndirectLong() bool {
 // no kap on a stack
 // the jumps are UNTESTED
 type Absolute struct {
-	state  int
-	mode   int
+	state  InstructionState
+	mode   AddressingMode
 	checkP bool
 
 	//this is intended to differentiate between the normal abs and normal abs JMP
@@ -456,8 +460,8 @@ func (i *Absolute) isIndirectLong() bool {
 // the micro instruction for Long, just the normal one not the one for jump
 // no point in including jump instructions under the umbrella
 type Long struct {
-	state int
-	mode  int
+	state InstructionState
+	mode  AddressingMode
 
 	register uint16
 }
@@ -506,8 +510,8 @@ func (i *Long) Reset(cpu *CPU) {
 }
 
 type Immediate struct {
-	state int
-	mode  int
+	state InstructionState
+	mode  AddressingMode
 
 	register uint16
 }
@@ -534,8 +538,8 @@ func (i *Immediate) Reset(cpu *CPU) {
 }
 
 type StackS struct {
-	state int
-	mode  int
+	state InstructionState
+	mode  AddressingMode
 
 	register uint16
 }

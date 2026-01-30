@@ -11,8 +11,10 @@ const (
 	resetId
 )
 
+type ExecutionState int
+
 const (
-	normalState = iota
+	normalState ExecutionState = iota
 	waitState
 	stopState
 )
@@ -34,7 +36,7 @@ type CPU struct {
 	NmiSignal   bool
 	IrqSignal   bool
 
-	executionState int
+	executionState ExecutionState
 
 	//PLP, CLI, SEI, SEP #$04, and REP #$04 update the flags during their final CPU cycle, so the IRQ check will use the old value
 	previousIFlag int

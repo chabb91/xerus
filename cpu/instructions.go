@@ -1098,7 +1098,7 @@ func (i *RepSep) Reset(cpu *CPU) {
 type StpWai struct {
 	state int
 
-	executionState int
+	executionState ExecutionState
 }
 
 func (i *StpWai) Step(cpu *CPU) bool {

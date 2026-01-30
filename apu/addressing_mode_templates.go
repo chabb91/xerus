@@ -1,7 +1,10 @@
 package apu
 
+type InstructionState int
+type AddressingMode int
+
 const (
-	DEFAULT = iota
+	DEFAULT AddressingMode = iota
 	X_INDEXED
 	Y_INDEXED
 	INDEXED_INDIRECT      //[+X]
@@ -16,17 +19,12 @@ const (
 )
 
 const (
-	FETCH_BYTE1 = iota
+	FETCH_BYTE1 InstructionState = iota
 	FETCH_BYTE2
 	INDEX_DATA
 	RESOLVE_ADDRESS1
 	RESOLVE_ADDRESS2
 	RESOLVE_INDIRECTION
-)
-
-const (
-	READ_RAM = iota
-	WRITE_RAM
 )
 
 type AddressMode interface {
@@ -35,8 +33,8 @@ type AddressMode interface {
 }
 
 type DirectPage struct {
-	mode  int
-	state int
+	mode  AddressingMode
+	state InstructionState
 
 	lo byte
 
@@ -139,8 +137,8 @@ func (dp *DirectPage) reset() {
 }
 
 type Absolute struct {
-	mode  int
-	state int
+	mode  AddressingMode
+	state InstructionState
 
 	hi, lo, reg byte
 	addr        uint16
@@ -194,7 +192,7 @@ func (r *Immediate) reset() {
 }
 
 type AccessRegister struct {
-	mode int
+	mode AddressingMode
 }
 
 func (r *AccessRegister) step(cpu *CPU) (bool, byte, uint16, *byte) {
