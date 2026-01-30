@@ -62,13 +62,15 @@ const (
 	CpuCX4     CoprocessorCustom = 0x3
 )
 
+type romRegionType int
+
 const (
-	romAddress = iota
+	romAddress romRegionType = iota
 	sramAddress
 	unmappedAddress
 )
 
-type romMapper func(bank byte, offset uint16, hasSram bool) (mappedAddr int, regionId int)
+type romMapper func(bank byte, offset uint16, hasSram bool) (int, romRegionType)
 
 type Cartridge struct {
 	Mapper romMapper

@@ -1,6 +1,6 @@
 package cartridge
 
-func mapLoRom(bank byte, offset uint16, hasSram bool) (int, int) {
+func mapLoRom(bank byte, offset uint16, hasSram bool) (int, romRegionType) {
 	maskedBank := bank & 0x7F
 	if bank == 0x7E || bank == 0x7F || (maskedBank < 0x40 && offset < 0x8000) {
 		return -1, unmappedAddress
@@ -15,7 +15,7 @@ func mapLoRom(bank byte, offset uint16, hasSram bool) (int, int) {
 	return int(bank)<<16 | int(offset), romAddress
 }
 
-func mapHiRom(bank byte, offset uint16, hasSram bool) (int, int) {
+func mapHiRom(bank byte, offset uint16, hasSram bool) (int, romRegionType) {
 	if bank == 0x7E || bank == 0x7F {
 		return -1, unmappedAddress
 	}
@@ -33,7 +33,7 @@ func mapHiRom(bank byte, offset uint16, hasSram bool) (int, int) {
 	return int(bank&0x3F)<<16 | int(offset), romAddress
 }
 
-func mapExHiRom(bank byte, offset uint16, hasSram bool) (int, int) {
+func mapExHiRom(bank byte, offset uint16, hasSram bool) (int, romRegionType) {
 	if bank == 0x7E || bank == 0x7F {
 		return -1, unmappedAddress
 	}
