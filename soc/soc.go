@@ -26,15 +26,15 @@ type SoC struct {
 	bus       memory.Bus
 }
 
-func NewSoC(romPath string, framebuffer *ui.Framebuffer, controllers ...Joypad) *SoC {
-	cartridge := cartridge.NewCartridge(romPath)
+func NewSoC(config ConfigResolver, framebuffer *ui.Framebuffer, controllers ...Joypad) *SoC {
+	cartridge := cartridge.NewCartridge(config.GetRomPath())
 	bus := memory.NewBus(cartridge)
 	soc := &SoC{
 		JoypadController: NewJoypadController(bus, controllers),
 		MulDiv:           muldivchip.NewMulDiv(),
 		Dma:              dma.NewDma(bus),
 		Cpu:              cpu.NewCPU(bus),
-		Ppu:              ppu.NewPPU(bus, cartridge.IsPal()),
+		Ppu:              ppu.NewPPU(bus, config.IsPal(cartridge.IsPal)),
 		Spu:              apu.NewApu(bus),
 
 		Cartridge: cartridge,
@@ -136,4 +136,10 @@ func (soc *SoC) Write(addr uint16, value byte) error {
 		return fmt.Errorf("invalid internal CPU register write at $%04X", addr)
 	}
 	return nil
+}
+
+type ConfigResolver interface {
+	//forces a region if specified in the flags or reads the header otherwise
+	IsPal(isPalHeader func() bool) bool
+	GetRomPath() string
 }

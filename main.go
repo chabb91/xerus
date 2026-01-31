@@ -29,7 +29,7 @@ func main() {
 	fb := ui.NewFramebuffer()
 	display := ui.NewEmulatorDisplay(fb)
 
-	soc := soc.NewSoC(config.GetRomPath(), fb, display.Controller0, display.Controller1)
+	soc := soc.NewSoC(config, fb, display.Controller0, display.Controller1)
 	defer soc.Cartridge.SaveSramToFile() //save Sram(if exists) on exit
 
 	ebiten.SetWindowTitle(soc.Cartridge.GetRomName())
