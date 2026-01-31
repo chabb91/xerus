@@ -6,7 +6,7 @@ This is a SNES emulator written in GO.
 
 I tried to write an emulator that despite of potentially never living up to the established ones out there, I could use for playing games I would actually want to play instead of just writing one as a proof of concept and never using it after. The SNES has many titles that are beloved and highly playable even today and I wanted to experience them, so despite the considerable challenges, it seemed like the obvious choice.
 
-Why not use the C/C++? GO is the language I'm trying to learn and to my knowledge there is no other GO based SNES emulator.
+Why not use the C/C++? GO is the language I'm trying to learn and most source code is C++ already, making this a bit more unique.
 
 ## Building
 
@@ -16,7 +16,7 @@ In order to build the project **Ebitengine** and all of its dependencies need to
 Then the project can be ran like:
 
 ```bash
-go run .
+go run . [options] <rom-path>
 ```
 
 Or built like:
@@ -25,16 +25,19 @@ Or built like:
 go build -o SNES-emulator
 ```
 
-## Specifying a Super Nintendo image (.sfc)
+## Running
 
-Right now there are absolutely no conveniences in place. `.sfc` files can be executed by editing the path directly in `soc/soc.go` and manually specifying the rom type _(lo or hi)_ right below it.  
-PAL/NTSC modes can be manually selected in `ppu/ppu.go`.
+Running the project from the terminal without arguments will display a detailed usage information.
+Currently flags are just there to force PAL/NTSC mode or to enable performance profiling.
 
-A CLI is planned however to make this seamless.
+A config file is planned for the future for controller configuration because for now the base setup is set in stone.
+
+The rom header is automatically detected and PAL/NTSC execution modes are set accordingly.
+Sram is automatically detected, created/loaded and saved on exiting. The resulting `.srm` file is compatible with **BSNES** and probably all other emulators as well.
 
 ## Compatibility
 
-Despite my best efforts trying to get the timings right by following Anomie's docs, and getting the overall execution pace very close to **BSNES**, it is not even close to being cycle accurate on the micro scale. This results in some games locking up or exhibiting various visual glitches. Many games do boot and run mostly fine however. My sample size is quite limited but I assume there are a good amount of games able to be completed from start to finish.
+Despite my best efforts trying to get the timings right by following Anomie's docs, and getting the overall execution pace very close to **BSNES**, it is not even close to being cycle accurate on the micro scale. This results in some games locking up or exhibiting various visual glitches. Many games do boot and run mostly fine however. For some reason the HDMA execution speed seems way too fast and this breaks timing sensitive games like MK3. My sample size is quite limited but I assume there are a good amount of games able to be completed from start to finish.
 
 ## Progress
 
@@ -67,19 +70,19 @@ Haven't started working on them yet.
 ## Future Goals
 
 - Learn enough about waveform audio to be able to finish the DSP.
-- Create a CLI and implement automatic rom header detection
 - Implement coprocessors
 - Improve timings
+- Create config files
 
 ## References
 
 - [The best 65c816 reference](http://www.6502.org/tutorials/65c816opcodes.html)
 - [snes.nesdev.org](https://snes.nesdev.org)
 - [Super Nintendo Development Wiki](https://wiki.superfamicom.org/)
-- Anomie's .txt docs
+- [Anomie's .txt docs](https://www.romhacking.net/?page=documents&category=&platform=9&game=&author=548&perpage=20&level=&title=&desc=&docsearch=Go)
 - [Peter Lemon's test roms](https://github.com/PeterLemon/SNES)
 - [bbbradsmith's test roms](https://github.com/bbbradsmith/SNES_stuff)
 - [nesdoug's SNES demo roms](https://github.com/nesdoug)
 - [The higan snes test rom repo](https://gitlab.com/higan/snes-test-roms)
-- The mame c++ implementation of the spc700
+- [The mame c++ implementation of the spc700](https://github.com/mamedev/mame/blob/master/src/devices/cpu/spc700/spc700.cpp)
 - [Single step tests for both the cpu and apu](https://github.com/SingleStepTests/ProcessorTests)
