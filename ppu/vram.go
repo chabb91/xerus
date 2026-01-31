@@ -4,7 +4,7 @@ type vmainRemap func(uint16) uint16
 
 // video RAM
 type VRAMController struct {
-	VRAM []uint16
+	VRAM [0x8000]uint16
 
 	remap               vmainRemap
 	incrementOnHighByte bool
@@ -18,8 +18,7 @@ type VRAMController struct {
 
 func NewVRAM(tv tileValidator) *VRAMController {
 	return &VRAMController{
-		VRAM: make([]uint16, 0x8000),
-		tv:   tv,
+		tv: tv,
 	}
 }
 

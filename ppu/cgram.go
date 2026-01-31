@@ -7,14 +7,13 @@ type CGRAMController struct {
 
 	LowByteLatch byte
 
-	CGRAM []uint16
+	CGRAM [0x100]uint16
 
 	ppu2OB *byte
 }
 
 func NewCGRAM(ppu2OB *byte) *CGRAMController {
 	return &CGRAMController{
-		CGRAM:  make([]uint16, 0x100),
 		ppu2OB: ppu2OB,
 	}
 }

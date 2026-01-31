@@ -7,8 +7,8 @@ type OAMController struct {
 
 	LowByteLatch byte
 
-	LowTable  []byte
-	HighTable []byte
+	LowTable  [0x200]byte
+	HighTable [0x20]byte
 
 	priorityRotation bool
 
@@ -17,9 +17,7 @@ type OAMController struct {
 
 func NewOAM(sv spriteValidator) *OAMController {
 	return &OAMController{
-		LowTable:  make([]byte, 0x200),
-		HighTable: make([]byte, 0x20),
-		sv:        sv,
+		sv: sv,
 	}
 }
 

@@ -414,19 +414,19 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 }
 
 func (ppu *PPU) getOAMLow() []byte {
-	return ppu.OAM.LowTable
+	return ppu.OAM.LowTable[:]
 }
 
 func (ppu *PPU) getOAMHigh() []byte {
-	return ppu.OAM.HighTable
+	return ppu.OAM.HighTable[:]
 }
 
 func (ppu *PPU) getVRAM() []uint16 {
-	return ppu.VRAM.VRAM
+	return ppu.VRAM.VRAM[:]
 }
 
 func (ppu *PPU) getCGRAM() []uint16 {
-	return ppu.CGRAM.CGRAM
+	return ppu.CGRAM.CGRAM[:]
 }
 
 func (ppu *PPU) getPriorityRotation() byte {
