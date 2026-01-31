@@ -57,7 +57,10 @@ type EmulatorDisplay struct {
 	ScreenHeight int
 	ActiveImage  *ebiten.Image
 
+	Controller0 SnesInput
 	Controller1 SnesInput
+	Controller2 SnesInput
+	Controller3 SnesInput
 }
 
 func NewEmulatorDisplay(fb *Framebuffer) *EmulatorDisplay {
@@ -68,7 +71,10 @@ func NewEmulatorDisplay(fb *Framebuffer) *EmulatorDisplay {
 		ScreenWidth:       MaxScreenWidth,
 		ScreenHeight:      MaxScreenHeight,
 
+		Controller0: &SNESKeyboardInput{},
 		Controller1: NewSnesControllerInput(0),
+		Controller2: &NullInput{},
+		Controller3: &NullInput{},
 	}
 }
 
@@ -96,7 +102,10 @@ func (ed *EmulatorDisplay) Update() error {
 		// no new frame yet
 	}
 
+	ed.Controller0.UpdateControllerState()
 	ed.Controller1.UpdateControllerState()
+	ed.Controller2.UpdateControllerState()
+	ed.Controller3.UpdateControllerState()
 	return nil
 }
 

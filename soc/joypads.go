@@ -55,17 +55,30 @@ type JoypadController struct {
 	bus memory.Bus //for open bus values
 }
 
-func NewJoypadController(bus memory.Bus) *JoypadController {
-	return &JoypadController{
+func NewJoypadController(bus memory.Bus, joypads []Joypad) *JoypadController {
+	jc := &JoypadController{
 		bus: bus,
 	}
+	jc.AttachMultiple(joypads)
+
+	bus.RegisterRange(0x4016, 0x4017, jc, "Joypad")
+	return jc
 }
 
-// joypad id [0-3]
+// joypad id [0-3],
+// null safe,
+// port 0, 1, 0, 1
 func (jc *JoypadController) Attach(number int, joypad Joypad) {
 	port := number & 1
-	data := number & 2
+	data := (number & 2) >> 1
 	jc.joypads[port][data].joypad = joypad
+}
+
+func (jc *JoypadController) AttachMultiple(joypads []Joypad) {
+	amount := min(len(joypads), 4)
+	for i := range amount {
+		jc.Attach(i, joypads[i])
+	}
 }
 
 func (jc *JoypadController) Read(addr uint16) (byte, error) {

@@ -26,11 +26,11 @@ type SoC struct {
 	bus       memory.Bus
 }
 
-func NewSoC(framebuffer *ui.Framebuffer) *SoC {
-	cartridge := cartridge.NewCartridge("/home/chabb/Downloads/blargg/spc_smp.sfc")
+func NewSoC(romPath string, framebuffer *ui.Framebuffer, controllers ...Joypad) *SoC {
+	cartridge := cartridge.NewCartridge(romPath)
 	bus := memory.NewBus(cartridge)
 	soc := &SoC{
-		JoypadController: NewJoypadController(bus),
+		JoypadController: NewJoypadController(bus, controllers),
 		MulDiv:           muldivchip.NewMulDiv(),
 		Dma:              dma.NewDma(bus),
 		Cpu:              cpu.NewCPU(bus),
@@ -48,9 +48,6 @@ func NewSoC(framebuffer *ui.Framebuffer) *SoC {
 	soc.Ppu.Init()
 
 	bus.RegisterRange(0x4200, 0x421F, soc, "internal CPU")
-	bus.RegisterRange(0x2100, 0x213F, soc.Ppu, "PPU")
-	bus.RegisterRange(0x4016, 0x4017, soc.JoypadController, "Joypad")
-
 	return soc
 }
 

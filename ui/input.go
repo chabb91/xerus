@@ -12,6 +12,17 @@ type SnesInput interface {
 	Latch() uint16
 }
 
+// Empty interface for unattached controllers
+type NullInput struct {
+}
+
+func (c *NullInput) UpdateControllerState() {
+
+}
+func (c *NullInput) Latch() uint16 {
+	return 0
+}
+
 type SNESKeyboardInput struct {
 	buttons atomic.Uint32
 }

@@ -117,6 +117,7 @@ func NewPPU(bus memory.Bus, isPal bool) *PPU {
 	ppu.OAM = NewOAM(ppu)
 	ppu.CGRAM = NewCGRAM(&ppu.ppu2OB)
 
+	bus.RegisterRange(0x2100, 0x213F, ppu, "PPU")
 	return ppu
 }
 
