@@ -27,6 +27,7 @@ func main() {
 	}
 
 	fb := ui.NewFramebuffer()
+	ui.ScalingFactor = config.GetDisplayScale()
 	display := ui.NewEmulatorDisplay(fb)
 
 	soc := soc.NewSoC(config, fb, display.Controller0, display.Controller1)

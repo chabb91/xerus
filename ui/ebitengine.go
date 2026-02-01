@@ -10,7 +10,8 @@ const BufferWidthShift = 8
 
 const MaxScreenHeight = BufferHeight
 const MaxScreenWidth = BufferWidth * 2
-const ScalingFactor = 1.5
+
+var ScalingFactor float64 = 1.5 //should be treated as const
 
 type SnesColorData struct {
 	Color1, Color2 uint16
