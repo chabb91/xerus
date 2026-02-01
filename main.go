@@ -27,8 +27,7 @@ func main() {
 	}
 
 	fb := ui.NewFramebuffer()
-	ui.ScalingFactor = config.GetDisplayScale()
-	display := ui.NewEmulatorDisplay(fb)
+	display := ui.NewEmulatorDisplay(fb, config)
 
 	soc := soc.NewSoC(config, fb, display.Controller0, display.Controller1)
 	defer soc.Cartridge.SaveSramToFile() //save Sram(if exists) on exit

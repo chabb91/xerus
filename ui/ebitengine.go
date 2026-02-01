@@ -11,7 +11,10 @@ const BufferWidthShift = 8
 const MaxScreenHeight = BufferHeight
 const MaxScreenWidth = BufferWidth * 2
 
-var ScalingFactor float64 = 1.5 //should be treated as const
+type UiConfig interface {
+	GetDisplayScale() float64
+	GetInputMapping() []SnesInput
+}
 
 type SnesColorData struct {
 	Color1, Color2 uint16
@@ -54,9 +57,10 @@ type EmulatorDisplay struct {
 	fb                *Framebuffer
 	transformedBuffer []byte
 
-	ScreenWidth  int
-	ScreenHeight int
-	ActiveImage  *ebiten.Image
+	ScreenWidth   int
+	ScreenHeight  int
+	ScalingFactor float64
+	ActiveImage   *ebiten.Image
 
 	Controller0 SnesInput
 	Controller1 SnesInput
@@ -64,24 +68,27 @@ type EmulatorDisplay struct {
 	Controller3 SnesInput
 }
 
-func NewEmulatorDisplay(fb *Framebuffer) *EmulatorDisplay {
+func NewEmulatorDisplay(fb *Framebuffer, config UiConfig) *EmulatorDisplay {
+	displayScale := config.GetDisplayScale()
+	controllers := config.GetInputMapping()
 	return &EmulatorDisplay{
 		fb:                fb,
-		ActiveImage:       updateActiveImage(MaxScreenHeight),
+		ActiveImage:       updateActiveImage(MaxScreenHeight, displayScale),
 		transformedBuffer: make([]byte, 4*MaxScreenWidth*MaxScreenHeight),
 		ScreenWidth:       MaxScreenWidth,
 		ScreenHeight:      MaxScreenHeight,
+		ScalingFactor:     displayScale,
 
-		Controller0: &SNESKeyboardInput{},
-		Controller1: NewSnesControllerInput(0),
-		Controller2: &NullInput{},
-		Controller3: &NullInput{},
+		Controller0: controllers[0],
+		Controller1: controllers[1],
+		Controller2: controllers[2],
+		Controller3: controllers[3],
 	}
 }
 
-func updateActiveImage(height int) *ebiten.Image {
+func updateActiveImage(height int, scalingFactor float64) *ebiten.Image {
 	activeImage := ebiten.NewImage(MaxScreenWidth, height)
-	ebiten.SetWindowSize(int(float64(MaxScreenWidth)*ScalingFactor), int(float64(height)*ScalingFactor))
+	ebiten.SetWindowSize(int(float64(MaxScreenWidth)*scalingFactor), int(float64(height)*scalingFactor))
 
 	return activeImage
 }
@@ -93,7 +100,7 @@ func (ed *EmulatorDisplay) Update() error {
 		newHeight := ed.fb.CurrentHeight << 1
 		if ed.ScreenHeight != newHeight {
 			ed.ScreenHeight = newHeight
-			ed.ActiveImage = updateActiveImage(newHeight)
+			ed.ActiveImage = updateActiveImage(newHeight, ed.ScalingFactor)
 		}
 		ed.convertBGR15ToRGBA(frame)
 
