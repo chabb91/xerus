@@ -24,6 +24,10 @@ const (
 	bpp8 colorDepth = 8
 )
 
+func (cd *colorDepth) trailingZeros() int {
+	return bits.TrailingZeros(uint(*cd)) // V=2 (0010) k=1, V=4 (0100) k=2, V=8 (1000), k=3
+}
+
 type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
 type optResolver func(*Background, uint16, uint16) (uint16, uint16)
 type VRAMAddressCalculator func(tileIndex byte) uint16
@@ -114,8 +118,7 @@ func (bg *Background) Invalidate(addr uint16) {
 	}
 
 	if addr >= bg.charTileAddressBase {
-		k := bits.TrailingZeros(uint(bg.colorDepth)) // V=2 (0010) k=1, V=4 (0100) k=2, V=8 (1000), k=3
-		tileIndex := (addr - bg.charTileAddressBase) >> (k + 2)
+		tileIndex := (addr - bg.charTileAddressBase) >> (bg.colorDepth.trailingZeros() + 2)
 		if tileIndex < uint16(len(bg.charTiles)) {
 			bg.charTiles[tileIndex].isValid = false
 		}
@@ -150,10 +153,6 @@ func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V
 	return px, row, charMapID, tileIndex
 }
 
-// TODO this can be optimized like crazy
-// save the char address in the chartile
-// basically free pixels
-// the previously read tile can also be cached so its only 1 tile lookup instead of 64 per tile
 func (bg *Background) GetDotAt(H, V uint16) (int, byte, bool) {
 	if H < bg.renderCacheEnd {
 		ret := bg.renderCache[H]
@@ -338,7 +337,7 @@ func (bt *BgTile) setup(tileIndex uint16, currentEpoch uint64) {
 }
 
 func (tile *BgTile) GetVramTileWordIndex(tileIndex byte) uint16 {
-	k := bits.TrailingZeros(uint(tile.bg.colorDepth << 2))
+	k := tile.bg.colorDepth.trailingZeros() + 2
 	return ((tile.charIndex+charMapIdToOffsetLUT[tileIndex])<<k + tile.bg.charTileAddressBase) & 0x7FFF
 }
 
