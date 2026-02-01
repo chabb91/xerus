@@ -81,11 +81,22 @@ type SNESControllerInput struct {
 	isDisconnected bool
 
 	gamepadIDsBuf []ebiten.GamepadID
+
+	scanInput func(ebiten.GamepadID) uint16
 }
 
 func NewSnesControllerInput(id ebiten.GamepadID) *SNESControllerInput {
-	return &SNESControllerInput{
+	c := &SNESControllerInput{
 		controllerId: id}
+
+	//TODO replace hardcoded buttons with customizable layout
+	//and use the custom layout over standard if its overridden
+	if ebiten.IsStandardGamepadLayoutAvailable(id) {
+		c.scanInput = pollStandardGamepad
+	} else {
+		c.scanInput = pollCustomGamepad
+	}
+	return c
 }
 
 func (c *SNESControllerInput) Latch() uint16 {
@@ -93,7 +104,6 @@ func (c *SNESControllerInput) Latch() uint16 {
 }
 
 func (c *SNESControllerInput) UpdateControllerState() {
-
 	c.gamepadIDsBuf = inpututil.AppendJustConnectedGamepadIDs(c.gamepadIDsBuf[:0])
 	for _, id := range c.gamepadIDsBuf {
 		if id == c.controllerId {
@@ -108,45 +118,100 @@ func (c *SNESControllerInput) UpdateControllerState() {
 		return
 	}
 
-	var state uint16 = 0
-
 	//B, Y, Select, Start, Up, Down, Left, Right, A, X, L, R, 0, 0, 0, 0
-	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton0) {
+	c.buttons.Store(uint32(c.scanInput(c.controllerId)))
+}
+
+func pollStandardGamepad(id ebiten.GamepadID) uint16 {
+	state := uint16(0)
+	if ebiten.IsStandardGamepadButtonPressed(
+		id, ebiten.StandardGamepadButtonRightBottom) {
 		state |= 1
 	}
-	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton2) {
+	if ebiten.IsStandardGamepadButtonPressed(
+		id, ebiten.StandardGamepadButtonRightLeft) {
 		state |= 1 << 1
 	}
-	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton6) {
+	if ebiten.IsStandardGamepadButtonPressed(
+		id, ebiten.StandardGamepadButtonCenterLeft) {
 		state |= 1 << 2
 	}
-	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton7) {
+	if ebiten.IsStandardGamepadButtonPressed(
+		id, ebiten.StandardGamepadButtonCenterRight) {
 		state |= 1 << 3
 	}
-	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton11) {
+	if ebiten.IsStandardGamepadButtonPressed(
+		id, ebiten.StandardGamepadButtonLeftTop) {
 		state |= 1 << 4
 	}
-	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton13) {
+	if ebiten.IsStandardGamepadButtonPressed(
+		id, ebiten.StandardGamepadButtonLeftBottom) {
 		state |= 1 << 5
 	}
-	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton14) {
+	if ebiten.IsStandardGamepadButtonPressed(
+		id, ebiten.StandardGamepadButtonLeftLeft) {
 		state |= 1 << 6
 	}
-	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton12) {
+	if ebiten.IsStandardGamepadButtonPressed(
+		id, ebiten.StandardGamepadButtonLeftRight) {
 		state |= 1 << 7
 	}
-	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton1) {
+	if ebiten.IsStandardGamepadButtonPressed(
+		id, ebiten.StandardGamepadButtonRightRight) {
 		state |= 1 << 8
 	}
-	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton3) {
+	if ebiten.IsStandardGamepadButtonPressed(
+		id, ebiten.StandardGamepadButtonRightTop) {
 		state |= 1 << 9
 	}
-	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton4) {
+	if ebiten.IsStandardGamepadButtonPressed(
+		id, ebiten.StandardGamepadButtonFrontTopLeft) {
 		state |= 1 << 10
 	}
-	if ebiten.IsGamepadButtonPressed(c.controllerId, ebiten.GamepadButton5) {
+	if ebiten.IsStandardGamepadButtonPressed(
+		id, ebiten.StandardGamepadButtonFrontTopRight) {
 		state |= 1 << 11
 	}
+	return state
+}
 
-	c.buttons.Store(uint32(state))
+func pollCustomGamepad(id ebiten.GamepadID) uint16 {
+	state := uint16(0)
+	if ebiten.IsGamepadButtonPressed(id, ebiten.GamepadButton0) {
+		state |= 1
+	}
+	if ebiten.IsGamepadButtonPressed(id, ebiten.GamepadButton2) {
+		state |= 1 << 1
+	}
+	if ebiten.IsGamepadButtonPressed(id, ebiten.GamepadButton6) {
+		state |= 1 << 2
+	}
+	if ebiten.IsGamepadButtonPressed(id, ebiten.GamepadButton7) {
+		state |= 1 << 3
+	}
+	if ebiten.IsGamepadButtonPressed(id, ebiten.GamepadButton11) {
+		state |= 1 << 4
+	}
+	if ebiten.IsGamepadButtonPressed(id, ebiten.GamepadButton13) {
+		state |= 1 << 5
+	}
+	if ebiten.IsGamepadButtonPressed(id, ebiten.GamepadButton14) {
+		state |= 1 << 6
+	}
+	if ebiten.IsGamepadButtonPressed(id, ebiten.GamepadButton12) {
+		state |= 1 << 7
+	}
+	if ebiten.IsGamepadButtonPressed(id, ebiten.GamepadButton1) {
+		state |= 1 << 8
+	}
+	if ebiten.IsGamepadButtonPressed(id, ebiten.GamepadButton3) {
+		state |= 1 << 9
+	}
+	if ebiten.IsGamepadButtonPressed(id, ebiten.GamepadButton4) {
+		state |= 1 << 10
+	}
+	if ebiten.IsGamepadButtonPressed(id, ebiten.GamepadButton5) {
+		state |= 1 << 11
+	}
+	return state
 }
