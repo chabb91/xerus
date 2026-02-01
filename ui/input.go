@@ -81,22 +81,11 @@ type SNESControllerInput struct {
 	isDisconnected bool
 
 	gamepadIDsBuf []ebiten.GamepadID
-
-	scanInput func(ebiten.GamepadID) uint16
 }
 
 func NewSnesControllerInput(id ebiten.GamepadID) *SNESControllerInput {
-	c := &SNESControllerInput{
+	return &SNESControllerInput{
 		controllerId: id}
-
-	//TODO replace hardcoded buttons with customizable layout
-	//and use the custom layout over standard if its overridden
-	if ebiten.IsStandardGamepadLayoutAvailable(id) {
-		c.scanInput = pollStandardGamepad
-	} else {
-		c.scanInput = pollCustomGamepad
-	}
-	return c
 }
 
 func (c *SNESControllerInput) Latch() uint16 {
@@ -118,8 +107,17 @@ func (c *SNESControllerInput) UpdateControllerState() {
 		return
 	}
 
+	var state uint16
+	if ebiten.IsStandardGamepadLayoutAvailable(c.controllerId) {
+		state = pollStandardGamepad(c.controllerId)
+	} else {
+		//TODO replace hardcoded buttons with customizable layout
+		//and use the custom layout over standard if its overridden
+		state = pollCustomGamepad(c.controllerId)
+	}
+
 	//B, Y, Select, Start, Up, Down, Left, Right, A, X, L, R, 0, 0, 0, 0
-	c.buttons.Store(uint32(c.scanInput(c.controllerId)))
+	c.buttons.Store(uint32(state))
 }
 
 func pollStandardGamepad(id ebiten.GamepadID) uint16 {
