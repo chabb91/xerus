@@ -1,5 +1,7 @@
 package apu
 
+import "fmt"
+
 type envelopeState int
 
 const (
@@ -14,7 +16,7 @@ type Voice struct {
 	index int
 	mask  byte
 	state envelopeState
-	psram SPCMemory
+	psram *SPCMemory
 
 	envLevel int // 0-2047
 
@@ -25,7 +27,7 @@ type Voice struct {
 	brrStartAddr, brrRestartAddr uint16
 }
 
-func newVoice(index int, psram SPCMemory) *Voice {
+func newVoice(index int, psram *SPCMemory) *Voice {
 	return &Voice{
 		index: index,
 		mask:  1 << index,
@@ -44,7 +46,6 @@ func (v *Voice) Tick() int16 {
 	*/
 	if v.bufferIndex >= 16 {
 		v.decodeNextBRRBlock()
-		v.bufferIndex = 0
 	}
 
 	sample := v.buffer[v.bufferIndex]
@@ -68,10 +69,11 @@ func (v *Voice) keyOn() {
 	v.psram.dspRegs[0x7C] &= ^v.mask
 
 	brrAddr := uint16(v.psram.dspRegs[0x5D])<<8 | uint16(v.psram.dspRegs[v.index<<4|0x04])
-	v.brrStartAddr = uint16(v.psram.ram[brrAddr])<<8 | uint16(v.psram.ram[brrAddr]+1)
-	v.brrRestartAddr = uint16(v.psram.ram[brrAddr+2])<<8 | uint16(v.psram.ram[brrAddr+3])
+	v.brrStartAddr = uint16(v.psram.ram[brrAddr+1])<<8 | uint16(v.psram.ram[brrAddr])
+	v.brrRestartAddr = uint16(v.psram.ram[brrAddr+3])<<8 | uint16(v.psram.ram[brrAddr+2])
 
 	v.brrBlockPointer = v.brrStartAddr
+	fmt.Println("VOICE ", v.index, " POINTER: ", v.brrBlockPointer)
 	v.decodeNextBRRBlock()
 }
 
@@ -80,6 +82,7 @@ func (v *Voice) keyOff() {
 }
 
 func (v *Voice) decodeNextBRRBlock() {
+	v.bufferIndex = 0
 	brrBlock := v.psram.ram[v.brrBlockPointer : v.brrBlockPointer+9]
 	header := brrBlock[0]
 	shift := header >> 4
