@@ -17,16 +17,22 @@ type SPCMemory struct {
 
 	test    byte
 	control byte
-	dspAddr byte //fake it till you make it
-	dspRegs [128]byte
+	dspAddr byte
+	dspRegs DSPInterface
 	ports   [4]IOPort
-	Timers  *[3]*Timer
+	Timers  [3]*Timer
 }
 
 func NewSPCMemory() *SPCMemory {
-	ret := &SPCMemory{}
-	ret.test = 0xA
-	ret.control = 0xB0
+	ret := &SPCMemory{
+		Timers: [3]*Timer{
+			NewTimer(128),
+			NewTimer(128),
+			NewTimer(16),
+		},
+		test:    0xA,
+		control: 0xB0,
+	}
 
 	return ret
 }
@@ -36,6 +42,12 @@ type IOPort struct {
 	towardCPU byte
 }
 
+func (s *SPCMemory) TickTimers() {
+	s.Timers[0].Tick()
+	s.Timers[1].Tick()
+	s.Timers[2].Tick()
+}
+
 func (s *SPCMemory) Read8(addr uint16) byte {
 	switch {
 	case addr >= 0xF0 && addr <= 0xF1:
@@ -43,7 +55,7 @@ func (s *SPCMemory) Read8(addr uint16) byte {
 	case addr == 0xF2:
 		return s.dspAddr
 	case addr == 0xF3:
-		return s.dspRegs[s.dspAddr&0x7F]
+		return s.dspRegs.ReadRegister(s.dspAddr)
 	case addr >= 0xF4 && addr <= 0xF7:
 		return s.ports[addr-0xF4].fromCPU
 	case addr >= 0xF8 && addr <= 0xF9:
@@ -96,9 +108,7 @@ func (s *SPCMemory) Write8(addr uint16, val byte) {
 	case addr == 0xF2:
 		s.dspAddr = val
 	case addr == 0xF3:
-		if s.dspAddr <= 0x7F {
-			s.dspRegs[s.dspAddr] = val
-		}
+		s.dspRegs.WriteRegister(s.dspAddr, val)
 	case addr >= 0xF4 && addr <= 0xF7:
 		s.ports[addr-0xF4].towardCPU = val
 	case addr >= 0xFA && addr <= 0xFC:

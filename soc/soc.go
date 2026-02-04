@@ -20,7 +20,7 @@ type SoC struct {
 	Dma                 *dma.Dma
 	Cpu                 *cpu.CPU
 	Ppu                 *ppu.PPU
-	Spu                 *apu.CPU
+	Spu                 *apu.APU
 
 	Cartridge *cartridge.Cartridge
 	bus       memory.Bus

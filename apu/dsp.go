@@ -4,19 +4,27 @@ import "fmt"
 
 var Recording []int16
 
+const DSP_REG_SIZE = 0x80
+
+type DSPInterface interface {
+	ReadRegister(reg byte) byte
+	WriteRegister(reg byte, val byte)
+}
+
 type DSP struct {
-	state int
+	state     int
+	registers [DSP_REG_SIZE]byte
 
 	Voices [8]*Voice
 }
 
 func NewDsp(psram *SPCMemory) *DSP {
-	ret := &DSP{}
-	for i := range len(ret.Voices) {
-		ret.Voices[i] = newVoice(i, psram)
+	dsp := &DSP{}
+	for i := range len(dsp.Voices) {
+		dsp.Voices[i] = newVoice(i, &dsp.registers, &psram.ram)
 	}
 	Recording = make([]int16, 0, 1000000)
-	return ret
+	return dsp
 }
 
 func (dsp *DSP) Step() {
@@ -28,4 +36,25 @@ func (dsp *DSP) Step() {
 	Recording = append(Recording, out)
 	fmt.Println("SAMPLE: ", out)
 	dsp.state = 0
+}
+
+func (d *DSP) ReadRegister(reg byte) byte {
+	return d.registers[reg&0x7F]
+}
+
+func (d *DSP) WriteRegister(reg byte, val byte) {
+	if reg <= 0x7F {
+		d.registers[reg] = val
+
+		v := d.Voices[0]
+		if reg == 0x4C && val&1 == 1 {
+			fmt.Println("KEYON: ", val)
+			v.keyOn()
+		}
+		if reg == 0x5C && val&1 == 1 {
+			fmt.Println("KEYOFF: ", val)
+			v.keyOff()
+		}
+	}
+
 }

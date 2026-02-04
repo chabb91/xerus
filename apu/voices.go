@@ -1,7 +1,5 @@
 package apu
 
-import "fmt"
-
 type envelopeState int
 
 const (
@@ -13,10 +11,11 @@ const (
 )
 
 type Voice struct {
-	index int
-	mask  byte
-	state envelopeState
-	psram *SPCMemory
+	id     int
+	idMask byte
+	state  envelopeState
+	regs   *[DSP_REG_SIZE]byte
+	ram    *[PSRAM_SIZE]byte
 
 	envLevel int // 0-2047
 
@@ -27,11 +26,12 @@ type Voice struct {
 	brrStartAddr, brrRestartAddr uint16
 }
 
-func newVoice(index int, psram *SPCMemory) *Voice {
+func newVoice(id int, dspRegs *[DSP_REG_SIZE]byte, psram *[PSRAM_SIZE]byte) *Voice {
 	return &Voice{
-		index: index,
-		mask:  1 << index,
-		psram: psram,
+		id:     id,
+		idMask: 1 << id,
+		regs:   dspRegs,
+		ram:    psram,
 	}
 }
 
@@ -41,7 +41,6 @@ func (v *Voice) Tick() int16 {
 	}
 
 	/*
-		// 1. Update ADSR machine
 		v.updateEnvelope()
 	*/
 	if v.bufferIndex >= 16 {
@@ -66,14 +65,14 @@ func signExtend4(n byte) int32 {
 func (v *Voice) keyOn() {
 	v.state = ATTACK
 
-	v.psram.dspRegs[0x7C] &= ^v.mask
+	v.regs[0x7C] &= ^v.idMask
 
-	brrAddr := uint16(v.psram.dspRegs[0x5D])<<8 | uint16(v.psram.dspRegs[v.index<<4|0x04])
-	v.brrStartAddr = uint16(v.psram.ram[brrAddr+1])<<8 | uint16(v.psram.ram[brrAddr])
-	v.brrRestartAddr = uint16(v.psram.ram[brrAddr+3])<<8 | uint16(v.psram.ram[brrAddr+2])
+	brrAddr := uint16(v.regs[0x5D])<<8 | uint16(v.regs[v.id<<4|0x04])
+	v.brrStartAddr = uint16(v.ram[brrAddr+1])<<8 | uint16(v.ram[brrAddr])
+	v.brrRestartAddr = uint16(v.ram[brrAddr+3])<<8 | uint16(v.ram[brrAddr+2])
 
 	v.brrBlockPointer = v.brrStartAddr
-	fmt.Println("VOICE ", v.index, " POINTER: ", v.brrBlockPointer)
+	//fmt.Println("VOICE ", v.index, " POINTER: ", v.brrBlockPointer)
 	v.decodeNextBRRBlock()
 }
 
@@ -83,7 +82,7 @@ func (v *Voice) keyOff() {
 
 func (v *Voice) decodeNextBRRBlock() {
 	v.bufferIndex = 0
-	brrBlock := v.psram.ram[v.brrBlockPointer : v.brrBlockPointer+9]
+	brrBlock := v.ram[v.brrBlockPointer : v.brrBlockPointer+9]
 	header := brrBlock[0]
 	shift := header >> 4
 	filter := (header >> 2) & 0x03
@@ -91,8 +90,7 @@ func (v *Voice) decodeNextBRRBlock() {
 	loop := (header & 0x02) != 0
 
 	for i := range 16 {
-		byteIdx := (i >> 1) + 1
-		nibble := brrBlock[byteIdx]
+		nibble := brrBlock[(i>>1)+1]
 		if i&1 == 0 {
 			nibble >>= 4
 		} else {
@@ -127,7 +125,7 @@ func (v *Voice) decodeNextBRRBlock() {
 			v.brrBlockPointer = v.brrRestartAddr
 		} else {
 			v.state = IDLE
-			v.psram.dspRegs[0x7C] |= v.mask
+			v.regs[0x7C] |= v.idMask
 		}
 	} else {
 		v.brrBlockPointer += 9

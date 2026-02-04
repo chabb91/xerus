@@ -26,7 +26,7 @@ func (soc SoC) Run() {
 		cyclesSinceReset++
 
 		if cnt1 == SPU_TICK_RATE {
-			soc.Spu.StepCycle()
+			soc.Spu.Step()
 			cnt1 = 0
 		}
 		if cnt2 == PPU_TICK_RATE {
