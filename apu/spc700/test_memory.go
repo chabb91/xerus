@@ -1,7 +1,7 @@
-package apu
+package spc700
 
 type TestMemory struct {
-	ram    [PSRAM_SIZE]byte
+	ram    [0x10000]byte
 	cycles []CycleAccess
 }
 

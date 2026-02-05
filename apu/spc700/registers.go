@@ -1,4 +1,4 @@
-package apu
+package spc700
 
 const (
 	FlagC byte = 1 << 0 // Carry

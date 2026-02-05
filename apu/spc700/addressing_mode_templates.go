@@ -1,4 +1,4 @@
-package apu
+package spc700
 
 type InstructionState int
 type AddressingMode int

@@ -1,4 +1,4 @@
-package apu
+package spc700
 
 // Instruction represents a single CPU instruction, executed one cycle at a time.
 type Instruction interface {

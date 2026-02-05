@@ -1,4 +1,9 @@
-package apu
+package spc700
+
+type Memory interface {
+	Read8(addr uint16) byte
+	Write8(addr uint16, val byte)
+}
 
 type CPU struct {
 	psram Memory

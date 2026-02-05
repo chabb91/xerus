@@ -1,4 +1,4 @@
-package apu
+package spc700
 
 import (
 	"SNES_emulator/debugger"
@@ -10,7 +10,7 @@ import (
 
 var cause string
 
-func TestAllInstructions(t *testing.T) {
+func TestAllInetructions(t *testing.T) {
 	testDir := "/home/chabb/Documents/SNES-cpu-tests/spc700"
 
 	entries, err := os.ReadDir(testDir)

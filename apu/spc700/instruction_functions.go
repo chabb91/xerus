@@ -1,4 +1,4 @@
-package apu
+package spc700
 
 type InstructionFunc8 func(*CPU, byte, uint16) byte
 type InstructionFunc8x2 func(*CPU, byte, byte) byte

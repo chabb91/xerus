@@ -1,19 +1,23 @@
 package apu
 
-import "SNES_emulator/memory"
+import (
+	"SNES_emulator/apu/spc700"
+	"SNES_emulator/memory"
+)
 
 type APU struct {
 	psram *SPCMemory
 	dsp   *DSP
-	cpu   *CPU
+	cpu   *spc700.CPU
 }
 
 func NewApu(bus memory.Bus) *APU {
 	psram := NewSPCMemory()
-	ret := &APU{}
-	ret.psram = psram
-	ret.dsp = NewDsp(psram)
-	ret.cpu = NewCPU(psram)
+	ret := &APU{
+		psram: psram,
+		dsp:   NewDsp(psram),
+		cpu:   spc700.NewCPU(psram),
+	}
 
 	psram.dspRegs = ret.dsp
 
