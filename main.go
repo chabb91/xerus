@@ -33,12 +33,15 @@ func main() {
 
 	soc := soc.NewSoC(config, fb, display.Controller0, display.Controller1)
 	defer soc.Cartridge.SaveSramToFile() //save Sram(if exists) on exit
-	defer func() {
-		DumpToWav("debug_beep.wav", apu.Recording, 32000)
-	}()
+	/*
+		defer func() {
+			DumpToWav("debug_beep.wav", apu.Recording, 32000)
+		}()
+	*/
 
 	ebiten.SetWindowTitle(soc.Cartridge.GetRomName())
-
+	//apu.InitAudio()
+	apu.StartAudioThread()
 	go soc.Run()
 	ebiten.RunGame(display)
 }
