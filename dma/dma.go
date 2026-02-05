@@ -127,12 +127,9 @@ func (dma *Dma) Step() uint64 {
 				nextChannel := getNextActiveChannel(dma.Mdmaen, 0)
 				dma.currentDmaOp = dma.dmaOp.setup(&dma.Channels[nextChannel])
 				log.Printf("Starting dma with params %+v\n", dma.currentDmaOp.channel)
-			}
-			if dma.currentDmaOp != nil {
-				if dma.currentDmaOp.stepCycle() {
-					dma.Mdmaen &= ^(1 << dma.currentDmaOp.channel.id)
-					dma.currentDmaOp = nil
-				}
+			} else if dma.currentDmaOp.stepCycle() {
+				dma.Mdmaen &= ^(1 << dma.currentDmaOp.channel.id)
+				dma.currentDmaOp = nil
 			}
 			return CYCLE_8
 		}

@@ -34,7 +34,7 @@ func (dsp *DSP) Step() {
 	}
 	out := dsp.Voices[0].Tick()
 	Recording = append(Recording, out)
-	fmt.Println("SAMPLE: ", out)
+	//fmt.Println("SAMPLE: ", out)
 	dsp.state = 0
 }
 
