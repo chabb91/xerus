@@ -60,11 +60,19 @@ func (dsp *DSP) Step() {
 	if dsp.state <= 31 {
 		return
 	}
-
-	out := dsp.Voices[0].Tick()
+	var out int32
+	for _, v := range dsp.Voices {
+		out += int32(v.Tick()) / 20
+		if out > 32767 {
+			out = 32767
+		}
+		if out < -32768 {
+			out = -32768
+		}
+	}
 
 	select {
-	case SampleChan <- out:
+	case SampleChan <- int16(out):
 	default:
 		// Audio thread is falling behind!
 	}
@@ -80,14 +88,21 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 	if reg <= 0x7F {
 		d.registers[reg] = val
 
-		v := d.Voices[0]
-		if reg == 0x4C && val&1 == 1 {
+		if reg == 0x4C {
 			fmt.Println("KEYON: ", val)
-			v.keyOn()
+			for i := range 8 {
+				if val&(1<<i) != 0 {
+					d.Voices[i].keyOn()
+				}
+			}
 		}
-		if reg == 0x5C && val&1 == 1 {
+		if reg == 0x5C {
 			fmt.Println("KEYOFF: ", val)
-			v.keyOff()
+			for i := range 8 {
+				if val&(1<<i) != 0 {
+					d.Voices[i].keyOff()
+				}
+			}
 		}
 	}
 

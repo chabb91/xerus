@@ -1,5 +1,9 @@
 package soc
 
+import (
+	"time"
+)
+
 const PPU_TICK_RATE = uint64(2)
 const DMA_OVERHEAD = uint64(4)
 const SPU_TICK_RATE = uint64(12)
@@ -20,10 +24,19 @@ func (soc SoC) Run() {
 	var nmiTriggeredDuringDma bool
 	var irqTriggeredDuringDma bool
 
+	var cyclesSinceLastInterval uint64
+	cyclesPerPeriod := soc.timing.cyclesPerPeriod
+	soc.timing.start()
+
 	for {
 		cnt1++
 		cnt2++
 		cyclesSinceReset++
+		cyclesSinceLastInterval++
+		if cyclesSinceLastInterval == cyclesPerPeriod {
+			cyclesSinceLastInterval = 0
+			soc.timing.sync()
+		}
 
 		if cnt1 == SPU_TICK_RATE {
 			soc.Spu.Step()
@@ -95,5 +108,42 @@ func (soc SoC) Run() {
 				cnt += alignment
 			}
 		}
+	}
+}
+
+const BUSY_WAIT_TIME = time.Millisecond / 4
+const CLOCK_SYNC_INTERVAL = time.Second / 66
+const PAL_CYCLES_PER_INTERVAL = uint64(322445) / 2
+const NTSC_CYCLES_PER_INTERVAL = uint64(325413) / 2
+
+type timing struct {
+	cyclesPerPeriod uint64
+
+	expectedTime time.Time
+}
+
+func newTiming(isPal bool) *timing {
+	var cycles uint64
+	if isPal {
+		cycles = PAL_CYCLES_PER_INTERVAL
+	} else {
+		cycles = NTSC_CYCLES_PER_INTERVAL
+	}
+	return &timing{cyclesPerPeriod: cycles}
+}
+
+func (t *timing) start() {
+	t.expectedTime = time.Now()
+}
+
+func (t *timing) sync() {
+	t.expectedTime = t.expectedTime.Add(CLOCK_SYNC_INTERVAL)
+
+	diff := time.Until(t.expectedTime)
+
+	//fmt.Println("Sleeping for : ", diff)
+	time.Sleep(diff - BUSY_WAIT_TIME)
+	for time.Now().Before(t.expectedTime) {
+		//busy waiting for precision
 	}
 }

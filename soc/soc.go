@@ -24,21 +24,26 @@ type SoC struct {
 
 	Cartridge *cartridge.Cartridge
 	bus       memory.Bus
+
+	timing *timing
 }
 
 func NewSoC(config ConfigResolver, framebuffer *ui.Framebuffer, controllers ...Joypad) *SoC {
 	cartridge := cartridge.NewCartridge(config.GetRomPath())
+	isPal := config.IsPal(cartridge.IsPal)
 	bus := memory.NewBus(cartridge)
 	soc := &SoC{
 		JoypadController: NewJoypadController(bus, controllers),
 		MulDiv:           muldivchip.NewMulDiv(),
 		Dma:              dma.NewDma(bus),
 		Cpu:              cpu.NewCPU(bus),
-		Ppu:              ppu.NewPPU(bus, config.IsPal(cartridge.IsPal)),
+		Ppu:              ppu.NewPPU(bus, isPal),
 		Spu:              apu.NewApu(bus),
 
 		Cartridge: cartridge,
 		bus:       bus,
+
+		timing: newTiming(isPal),
 	}
 	soc.InterruptController = interruptchip.NewInterruptController(bus, soc.Cpu, soc.Ppu)
 	soc.Ppu.InterruptScheduler = soc.InterruptController

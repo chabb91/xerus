@@ -1,10 +1,5 @@
 package ppu
 
-import (
-	"fmt"
-	"time"
-)
-
 func (ppu *PPU) Step() {
 	draw := currentTimingLUT[ppu.V*H_TOTAL+ppu.H]
 	if draw.IsVisible {
@@ -72,16 +67,6 @@ func (ppu *PPU) Step() {
 		timing := &ppu.SETINI.Timing
 		if ppu.V >= timing.TotalScanlines+int(interlace&(1-interlaceStep)) {
 			ppu.V = 0
-
-			elapsed := time.Since(frameStartTime)
-			fmt.Println(elapsed)
-
-			waitDuration := time.Duration(timing.TargetFrameMS) - elapsed
-
-			if waitDuration > 0 {
-				time.Sleep(waitDuration)
-			}
-			frameStartTime = time.Now()
 		}
 	}
 }

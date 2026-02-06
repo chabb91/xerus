@@ -50,7 +50,10 @@ func (v *Voice) Tick() int16 {
 	sample := v.buffer[v.bufferIndex]
 	v.bufferIndex++
 
+	//pitch := uint16(v.regs[v.id<<4|0x02]) | (uint16(v.regs[v.id<<4|0x03]&0x3F) << 8)
+
 	//return int16((int32(sample) * int32(v.envLevel)) >> 11)
+	//return int16(uint16(sample) * pitch / 0x1000)
 	return sample
 }
 
@@ -82,7 +85,7 @@ func (v *Voice) keyOff() {
 
 func (v *Voice) decodeNextBRRBlock() {
 	v.bufferIndex = 0
-	brrBlock := v.ram[v.brrBlockPointer : v.brrBlockPointer+9]
+	brrBlock := v.ram[v.brrBlockPointer : (v.brrBlockPointer+9)&0xFFFF]
 	header := brrBlock[0]
 	shift := header >> 4
 	filter := (header >> 2) & 0x03

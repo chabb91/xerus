@@ -4,15 +4,10 @@
 // there are never two ppu instances anyway.
 package ppu
 
-import "time"
-
 // used in renderMainScreen and renderSubScreen for extremely fast access
 var colorCache [5]int
 var spritePrio byte
 var spriteMath bool
-
-// used in step for tracking frame times
-var frameStartTime time.Time
 
 var currentTimingLUT VisibilityLUT
 

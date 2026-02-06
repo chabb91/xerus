@@ -43,7 +43,7 @@ func StartAudioThread() {
 	pr, pw := io.Pipe()
 
 	options := &oto.NewContextOptions{
-		SampleRate:   32000,
+		SampleRate:   27966,
 		ChannelCount: 1,
 		Format:       oto.FormatSignedInt16LE,
 	}
@@ -56,6 +56,11 @@ func StartAudioThread() {
 	go func() {
 		buf := make([]byte, 2)
 		for sample := range SampleChan {
+			err := player.Err()
+
+			if err != nil {
+				panic(err)
+			}
 			binary.LittleEndian.PutUint16(buf, uint16(sample))
 			pw.Write(buf)
 		}
