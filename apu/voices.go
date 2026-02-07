@@ -85,7 +85,16 @@ func (v *Voice) keyOff() {
 
 func (v *Voice) decodeNextBRRBlock() {
 	v.bufferIndex = 0
-	brrBlock := v.ram[v.brrBlockPointer : (v.brrBlockPointer+9)&0xFFFF]
+
+	var brrBlock []byte
+	if bp2 := v.brrBlockPointer + 9; bp2 < v.brrBlockPointer {
+		brrBlock = make([]byte, 0, 9)
+		for i := range uint16(9) {
+			brrBlock = append(brrBlock, v.ram[v.brrBlockPointer+i])
+		}
+	} else {
+		brrBlock = v.ram[v.brrBlockPointer:bp2]
+	}
 	header := brrBlock[0]
 	shift := header >> 4
 	filter := (header >> 2) & 0x03

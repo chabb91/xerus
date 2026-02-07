@@ -43,7 +43,7 @@ func StartAudioThread() {
 	pr, pw := io.Pipe()
 
 	options := &oto.NewContextOptions{
-		SampleRate:   27966,
+		SampleRate:   33558, //33252 for pal, 33558 for ntsc
 		ChannelCount: 1,
 		Format:       oto.FormatSignedInt16LE,
 	}
