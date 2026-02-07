@@ -6,14 +6,12 @@ import (
 
 const PPU_TICK_RATE = uint64(2)
 const DMA_OVERHEAD = uint64(4)
-const SPU_TICK_RATE = uint64(10)
 const CPU_REFRESH_DURATION = uint64(20)
 const CPU_DELAY_INTERRUPT_AFTER_DMA = uint64(2) //cpu cycle count
 
 func (soc SoC) Run() {
-	var cnt uint64 //the dma/cpu cycle counter is counting down due to the variable access speed
-	var cnt1 uint64
-	var cnt2 uint64
+	var cpuCnt uint64 //the dma/cpu cycle counter is counting down due to the variable access speed
+	var ppuCnt uint64
 	var cyclesSinceReset uint64
 	var cyclesSincePause uint64
 	var nmiDelay uint64
@@ -24,13 +22,18 @@ func (soc SoC) Run() {
 	var nmiTriggeredDuringDma bool
 	var irqTriggeredDuringDma bool
 
+	var apuDebt int64
+	PrecisionScale := int64(1_000_000_000)
+	apuRatio := int64((float64(SPU_BASE_FREQUENCY) /
+		float64(soc.timing.cyclesPerPeriod*INTERVAL_DIVIDER)) *
+		float64(PrecisionScale))
+
 	var cyclesSinceLastInterval uint64
 	cyclesPerPeriod := soc.timing.cyclesPerPeriod
 	soc.timing.start()
 
 	for {
-		cnt1++
-		cnt2++
+		ppuCnt++
 		cyclesSinceReset++
 		cyclesSinceLastInterval++
 		if cyclesSinceLastInterval == cyclesPerPeriod {
@@ -38,25 +41,13 @@ func (soc SoC) Run() {
 			soc.timing.sync()
 		}
 
-		if cnt1 == SPU_TICK_RATE {
-			soc.Spu.Step()
-			cnt1 = 0
-		}
-		if cnt2 == PPU_TICK_RATE {
+		if ppuCnt == PPU_TICK_RATE {
 			soc.Ppu.Step()
-			cnt2 = 0
+			ppuCnt = 0
 		}
 
-		if soc.Ppu.Refresh {
-			//TODO there is some variation to this:
-			//refresh pause begins at 538 cycles into the first scanline of the first frame,
-			//and thereafter some multiple of 8 cycles after the previous pause that comes closest to 536
-			soc.Ppu.Refresh = false
-			cnt += CPU_REFRESH_DURATION
-		}
-
-		if cnt > 1 {
-			cnt--
+		if cpuCnt > 1 {
+			cpuCnt--
 			continue
 		}
 
@@ -65,7 +56,7 @@ func (soc SoC) Run() {
 		if !dmaActive || dmaHandoff {
 			soc.MulDiv.StepCycle()
 			soc.Cpu.StepCycle()
-			cnt = soc.Cpu.CyclesTaken
+			cpuCnt = soc.Cpu.CyclesTaken
 
 			if nmiTriggeredDuringDma || irqTriggeredDuringDma {
 				if nmiDelay > 1 {
@@ -79,9 +70,9 @@ func (soc SoC) Run() {
 			}
 
 			if dmaHandoff {
-				cyclesSincePause = cyclesSinceReset + cnt
+				cyclesSincePause = cyclesSinceReset + cpuCnt
 				alignment := (4 - ((cyclesSincePause) & 3)) // TODO this should be sinceReset+nextCycleCnt
-				cnt += DMA_OVERHEAD + alignment
+				cpuCnt += DMA_OVERHEAD + alignment
 				nmiSignalBeforeDma = soc.Cpu.NmiSignal
 				irqSignalBeforeDma = soc.Cpu.IrqSignal
 			}
@@ -100,21 +91,41 @@ func (soc SoC) Run() {
 				}
 			}
 
-			cnt = soc.Dma.Step()
+			cpuCnt = soc.Dma.Step()
 
 			prevDmaActive = soc.Dma.IsInProgress()
 			if !prevDmaActive {
-				alignment := (4 - (((cyclesSinceReset + cnt) - cyclesSincePause) & 3))
-				cnt += alignment
+				alignment := (4 - (((cyclesSinceReset + cpuCnt) - cyclesSincePause) & 3))
+				cpuCnt += alignment
 			}
+		}
+
+		if soc.Ppu.Refresh {
+			//TODO there is some variation to this:
+			//refresh pause begins at 538 cycles into the first scanline of the first frame,
+			//and thereafter some multiple of 8 cycles after the previous pause that comes closest to 536
+			soc.Ppu.Refresh = false
+			cpuCnt += CPU_REFRESH_DURATION
+		}
+
+		apuDebt += int64(cpuCnt) * apuRatio
+		for apuDebt >= PrecisionScale {
+			apuDebt -= PrecisionScale
+			soc.Spu.Step()
 		}
 	}
 }
 
+const INTERVAL_DIVIDER = 66
+const PAL_BASE_FREQUENCY = 21_281_370
+const NTSC_BASE_FREQUENCY = 1_890_000_000 / 88
+const PAL_CYCLES_PER_INTERVAL = uint64(PAL_BASE_FREQUENCY/INTERVAL_DIVIDER) / 2
+const NTSC_CYCLES_PER_INTERVAL = uint64(NTSC_BASE_FREQUENCY/INTERVAL_DIVIDER) / 2
+
+const CLOCK_SYNC_INTERVAL = time.Second / INTERVAL_DIVIDER
 const BUSY_WAIT_TIME = time.Millisecond / 4
-const CLOCK_SYNC_INTERVAL = time.Second / 66
-const PAL_CYCLES_PER_INTERVAL = uint64(322445) / 2
-const NTSC_CYCLES_PER_INTERVAL = uint64(325413) / 2
+
+const SPU_BASE_FREQUENCY = 1_024_000
 
 type timing struct {
 	cyclesPerPeriod uint64
