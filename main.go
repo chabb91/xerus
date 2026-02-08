@@ -1,7 +1,6 @@
 package main
 
 import (
-	"SNES_emulator/apu"
 	"SNES_emulator/internal/config"
 	"SNES_emulator/soc"
 	"SNES_emulator/ui"
@@ -34,10 +33,8 @@ func main() {
 	defer soc.Cartridge.SaveSramToFile() //save Sram(if exists) on exit
 
 	ebiten.SetWindowTitle(soc.Cartridge.GetRomName())
-	//apu.InitAudio()
-	//apu.StartAudioThread()
+	ui.GetEmulatorAudio().Play(soc.Spu.Dsp.AudioBuffer)
 	go soc.Run()
-	apu.StartAudioThread()
 
 	ebiten.RunGame(display)
 }

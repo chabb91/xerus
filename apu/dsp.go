@@ -2,10 +2,8 @@ package apu
 
 import (
 	"fmt"
+	"sync"
 )
-
-var Recording = make([]int16, 0, 1000000)
-var localBuf []byte
 
 const DSP_REG_SIZE = 0x80
 
@@ -18,11 +16,13 @@ type DSP struct {
 	state     int
 	registers [DSP_REG_SIZE]byte
 
+	*AudioBuffer
+
 	Voices [8]*Voice
 }
 
 func NewDsp(psram *SPCMemory) *DSP {
-	dsp := &DSP{}
+	dsp := &DSP{AudioBuffer: newAudioBuffer(15)}
 	for i := range len(dsp.Voices) {
 		dsp.Voices[i] = newVoice(i, &dsp.registers, &psram.ram)
 	}
@@ -30,36 +30,12 @@ func NewDsp(psram *SPCMemory) *DSP {
 	return dsp
 }
 
-/*
 func (dsp *DSP) Step() {
 	dsp.state++
 	if dsp.state <= 31 {
 		return
 	}
-	out := dsp.Voices[0].Tick()
-	//Recording = append(Recording, out)
-	//fmt.Println("SAMPLE: ", out)
-	b := make([]byte, 2)
-	binary.LittleEndian.PutUint16(b, uint16(out))
-	localBuf = append(localBuf, b...)
 
-	// Flush to the system every ~500 samples
-	if len(localBuf) >= 1000 {
-		_, err := audioWriter.Write(localBuf)
-		if err != nil {
-			fmt.Println("Audio Write Error:", err)
-		}
-		localBuf = localBuf[:0]
-	}
-	dsp.state = 0
-}
-*/
-
-func (dsp *DSP) Step() {
-	dsp.state++
-	if dsp.state <= 31 {
-		return
-	}
 	var out int32
 	for _, v := range dsp.Voices {
 		out += int32(v.Tick()) / 20
@@ -71,12 +47,7 @@ func (dsp *DSP) Step() {
 		}
 	}
 
-	select {
-	case SampleChan <- int16(out):
-	default:
-		// Audio thread is falling behind!
-	}
-
+	dsp.Write(int16(out))
 	dsp.state = 0
 }
 
@@ -106,4 +77,57 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 		}
 	}
 
+}
+
+type AudioBuffer struct {
+	sync.Mutex
+	storage []int16
+	head    int
+	tail    int
+	count   int
+	size    int
+}
+
+// the buffer size will be (1<<sizeShift)-1 to avoid modulo.
+// note that % size == & size-1
+func newAudioBuffer(sizeShift int) *AudioBuffer {
+	mask := 1 << sizeShift
+	return &AudioBuffer{
+		size:    mask - 1,
+		storage: make([]int16, mask),
+	}
+}
+
+func (ab *AudioBuffer) Write(sample int16) {
+	ab.Lock()
+	defer ab.Unlock()
+
+	ab.storage[ab.head] = sample
+	ab.head = (ab.head + 1) & ab.size
+
+	if ab.count <= ab.size {
+		ab.count++
+	} else {
+		//if full the tail moves forward because the oldest sample just got overwritten
+		ab.tail = (ab.tail + 1) & ab.size
+	}
+}
+
+func (ab *AudioBuffer) Read(p []byte) (n int, err error) {
+	ab.Lock()
+	defer ab.Unlock()
+
+	for i := 0; i < len(p); i += 2 {
+		if ab.count > 0 {
+			sample := ab.storage[ab.tail]
+			p[i] = byte(sample)
+			p[i+1] = byte(sample >> 8)
+			ab.tail = (ab.tail + 1) & ab.size
+			ab.count--
+		} else { //empty buffer
+			p[i] = 0
+			p[i+1] = 0
+		}
+	}
+	return len(p), nil
 }
