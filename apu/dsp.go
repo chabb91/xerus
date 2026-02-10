@@ -17,12 +17,18 @@ type DSP struct {
 	registers [DSP_REG_SIZE]byte
 
 	*AudioBuffer
+	*AudioBuffer2
+	*ChannelReader
+	Samples chan int16
 
 	Voices [8]*Voice
 }
 
 func NewDsp(psram *SPCMemory) *DSP {
-	dsp := &DSP{AudioBuffer: newAudioBuffer(15)}
+	dsp := &DSP{AudioBuffer: newAudioBuffer(11)}
+	//dsp := &DSP{AudioBuffer2: &AudioBuffer2{storage: make([]int16, 0, 100), buffers: make(chan []int16, 30)}}
+	dsp.Samples = make(chan int16)
+	dsp.ChannelReader = &ChannelReader{dsp.Samples}
 	for i := range len(dsp.Voices) {
 		dsp.Voices[i] = newVoice(i, &dsp.registers, &psram.ram)
 	}
@@ -47,7 +53,13 @@ func (dsp *DSP) Step() {
 		}
 	}
 
-	dsp.Write(int16(out))
+	//dsp.AudioBuffer.Write(int16(out))
+	/*select {
+	//case SampleChan <- int16(out):
+	case dsp.Samples <- int16(out):
+
+	}*/
+	dsp.Samples <- int16(out)
 	dsp.state = 0
 }
 
@@ -128,6 +140,59 @@ func (ab *AudioBuffer) Read(p []byte) (n int, err error) {
 			p[i] = 0
 			p[i+1] = 0
 		}
+	}
+	return len(p), nil
+}
+
+type AudioBuffer2 struct {
+	buffers         chan []int16
+	storage         []int16
+	activeBuffer    []int16
+	activeBufferPos int
+}
+
+func newAudioBuffer2(bufferCap, storageSize int) *AudioBuffer2 {
+	return &AudioBuffer2{
+		buffers: make(chan []int16, bufferCap),
+		storage: make([]int16, 0, storageSize),
+	}
+}
+
+func (ab *AudioBuffer2) Write(sample int16) {
+	if len(ab.storage) == cap(ab.storage) {
+		send := make([]int16, len(ab.storage))
+		copy(send, ab.storage)
+		ab.storage = ab.storage[:0]
+		ab.buffers <- send
+	}
+	ab.storage = append(ab.storage, sample)
+}
+
+func (ab *AudioBuffer2) Read(p []byte) (n int, err error) {
+	for i := 0; i < len(p); i += 2 {
+		if ab.activeBufferPos >= len(ab.activeBuffer) {
+			ab.activeBuffer = <-ab.buffers
+			ab.activeBufferPos = 0
+		}
+
+		sample := ab.activeBuffer[ab.activeBufferPos]
+		p[i] = byte(sample)
+		p[i+1] = byte(sample >> 8)
+
+		ab.activeBufferPos++
+	}
+	return len(p), nil
+}
+
+type ChannelReader struct {
+	ch chan int16
+}
+
+func (b *ChannelReader) Read(p []byte) (int, error) {
+	for i := 0; i < len(p); i += 2 {
+		s := <-b.ch
+		p[i] = byte(s)
+		p[i+1] = byte(s >> 8)
 	}
 	return len(p), nil
 }

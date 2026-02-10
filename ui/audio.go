@@ -2,6 +2,7 @@ package ui
 
 import (
 	"io"
+	"time"
 
 	"github.com/ebitengine/oto/v3"
 )
@@ -21,6 +22,7 @@ func GetEmulatorAudio() *emulatorAudio {
 			SampleRate:   32000,
 			ChannelCount: 1, //mono for now
 			Format:       oto.FormatSignedInt16LE,
+			BufferSize:   time.Millisecond * 16,
 		}
 		context, ready, _ := oto.NewContext(options)
 		<-ready
@@ -33,5 +35,6 @@ func GetEmulatorAudio() *emulatorAudio {
 
 func (ea *emulatorAudio) Play(buffer io.Reader) {
 	ea.otoPlayer = ea.otoContext.NewPlayer(buffer)
+	ea.otoPlayer.SetBufferSize(2000)
 	ea.otoPlayer.Play()
 }

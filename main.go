@@ -33,8 +33,7 @@ func main() {
 	defer soc.Cartridge.SaveSramToFile() //save Sram(if exists) on exit
 
 	ebiten.SetWindowTitle(soc.Cartridge.GetRomName())
-	ui.GetEmulatorAudio().Play(soc.Spu.Dsp.AudioBuffer)
 	go soc.Run()
-
+	ui.GetEmulatorAudio().Play(soc.Spu.Dsp.ChannelReader)
 	ebiten.RunGame(display)
 }
