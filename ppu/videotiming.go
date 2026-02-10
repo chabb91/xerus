@@ -60,7 +60,7 @@ func (vt *VideoTiming) getScreenHeight(overscan bool) int {
 	}
 }
 
-type VisibilityLUT []VisibilityEntry
+type VisibilityLUT [][H_TOTAL]VisibilityEntry
 
 type VideoTiming struct {
 	ScreenWidth     int
@@ -104,7 +104,7 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 	}
 
 	//added +1 to cover the extra scanline edge case every other frame
-	lut := make(VisibilityLUT, (timing.TotalScanlines+1)*H_TOTAL)
+	lut := make(VisibilityLUT, timing.TotalScanlines+1)
 
 	for v := 0; v < timing.TotalScanlines+1; v++ {
 		for h := 0; h < H_TOTAL; h++ {
@@ -172,14 +172,13 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 
 			isVisible := (h >= H_BLANK_START && h <= H_BLANK_END) && (v >= 1 && v <= vActive)
 
-			key := v*H_TOTAL + h
 			entry := VisibilityEntry{
 				H:         uint16(h - H_BLANK_START),
 				V:         uint16(v - 1),
 				IsVisible: isVisible,
 				Action:    action,
 			}
-			lut[key] = entry
+			lut[v][h] = entry
 		}
 	}
 

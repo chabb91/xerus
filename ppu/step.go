@@ -1,12 +1,15 @@
 package ppu
 
 func (ppu *PPU) Step() {
-	draw := currentTimingLUT[ppu.V*H_TOTAL+ppu.H]
+	draw := currentTimingLUT[ppu.V][ppu.H] //TODO cache &currentTimingLUT[V] between scanlines
 	if draw.IsVisible {
 		h := draw.H
 		v := draw.V<<interlace + (interlaceStep & interlace)
+		if h == 0 {
+			currentPixelBufferRow = &ppu.Framebuffer.Back[v]
+		}
 		if ppu.FBlank {
-			ppu.Framebuffer.Back[h][v].SetColor(0, 0, ppu.brightness)
+			currentPixelBufferRow[h].SetColor(0, 0, ppu.brightness)
 		} else {
 			if hires == 1 || pseudoHires == 1 {
 				//flipping this causes artifacts because the subscreen is always first in the rendering order
@@ -17,18 +20,18 @@ func (ppu *PPU) Step() {
 					//try fixing it later
 					cm1 := ppu.WINDOWS.performColorMath(ms, ss, h, l1, l2)
 					cm2 := ppu.WINDOWS.performColorMath(ss, ms, h, l2, l1)
-					ppu.Framebuffer.Back[h][v].SetColor(cm2, cm1, ppu.brightness)
+					currentPixelBufferRow[h].SetColor(cm2, cm1, ppu.brightness)
 				} else {
-					ppu.Framebuffer.Back[h][v].SetColor(ss, ms, ppu.brightness)
+					currentPixelBufferRow[h].SetColor(ss, ms, ppu.brightness)
 				}
 			} else {
 				ms, l1, math := ppu.renderMainScreen(h, v)
 				if math {
 					ss, l2, _ := ppu.renderSubScreen(h, v)
 					cm1 := ppu.WINDOWS.performColorMath(ms, ss, h, l1, l2)
-					ppu.Framebuffer.Back[h][v].SetColor(cm1, cm1, ppu.brightness)
+					currentPixelBufferRow[h].SetColor(cm1, cm1, ppu.brightness)
 				} else {
-					ppu.Framebuffer.Back[h][v].SetColor(ms, ms, ppu.brightness)
+					currentPixelBufferRow[h].SetColor(ms, ms, ppu.brightness)
 				}
 			}
 		}

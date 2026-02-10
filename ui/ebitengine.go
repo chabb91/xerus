@@ -26,8 +26,8 @@ func (scd *SnesColorData) SetColor(color1, color2 uint16, brightness byte) {
 }
 
 type Framebuffer struct {
-	front, Back *[BufferWidth][BufferHeight]SnesColorData
-	swap        chan *[BufferWidth][BufferHeight]SnesColorData
+	front, Back *[BufferHeight][BufferWidth]SnesColorData
+	swap        chan *[BufferHeight][BufferWidth]SnesColorData
 
 	CurrentHeight int
 	Interlace     byte
@@ -35,9 +35,9 @@ type Framebuffer struct {
 
 func NewFramebuffer() *Framebuffer {
 	fb := &Framebuffer{
-		front:         new([BufferWidth][BufferHeight]SnesColorData),
-		Back:          new([BufferWidth][BufferHeight]SnesColorData),
-		swap:          make(chan *[BufferWidth][BufferHeight]SnesColorData, 1),
+		front:         new([BufferHeight][BufferWidth]SnesColorData),
+		Back:          new([BufferHeight][BufferWidth]SnesColorData),
+		swap:          make(chan *[BufferHeight][BufferWidth]SnesColorData, 1),
 		CurrentHeight: 224,
 	}
 	return fb
@@ -132,11 +132,11 @@ func (ed *EmulatorDisplay) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return ed.ScreenWidth, ed.ScreenHeight
 }
 
-func (ed *EmulatorDisplay) convertBGR15ToRGBA(buffer *[BufferWidth][BufferHeight]SnesColorData) {
+func (ed *EmulatorDisplay) convertBGR15ToRGBA(buffer *[BufferHeight][BufferWidth]SnesColorData) {
 	shift := ed.fb.Interlace ^ 1
 	for y := 0; y < ed.ScreenHeight>>shift; y++ {
 		for x := 0; x < BufferWidth; x++ {
-			v := buffer[x][y]
+			v := buffer[y][x]
 			i := (y<<BufferWidthShift + x) << 3
 
 			r := float32(v.Color1 & 0x1F << 3)

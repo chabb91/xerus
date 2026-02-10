@@ -4,12 +4,15 @@
 // there are never two ppu instances anyway.
 package ppu
 
+import "SNES_emulator/ui"
+
 // used in renderMainScreen and renderSubScreen for extremely fast access
 var colorCache [5]int
 var spritePrio byte
 var spriteMath bool
 
 var currentTimingLUT VisibilityLUT
+var currentPixelBufferRow *[SCREEN_WIDTH]ui.SnesColorData
 
 // global mosaic values
 var mosaicSize byte
