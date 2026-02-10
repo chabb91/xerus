@@ -133,7 +133,8 @@ func (ed *EmulatorDisplay) Layout(outsideWidth, outsideHeight int) (int, int) {
 }
 
 func (ed *EmulatorDisplay) convertBGR15ToRGBA(buffer *[BufferWidth][BufferHeight]SnesColorData) {
-	for y := 0; y < ed.ScreenHeight>>(int((ed.fb.Interlace+1)&1)); y++ {
+	shift := ed.fb.Interlace ^ 1
+	for y := 0; y < ed.ScreenHeight>>shift; y++ {
 		for x := 0; x < BufferWidth; x++ {
 			v := buffer[x][y]
 			i := (y<<BufferWidthShift + x) << 3
