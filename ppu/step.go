@@ -92,7 +92,7 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 		ppu.VBlank = true
 		ppu.InterruptScheduler.FireNmi()
 		ppu.InterruptScheduler.SetRdnmi(true)
-		if interlace == 0 || interlace&interlaceStep == 1 {
+		if interlace == 0 || interlaceStep == 1 {
 			ppu.Framebuffer.Swap()
 		}
 		interlaceStep ^= 1
