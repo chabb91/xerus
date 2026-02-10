@@ -25,15 +25,14 @@ func (soc SoC) Run() {
 	var apuDebt int64
 	PrecisionScale := int64(1_000_000_000)
 	apuRatio := int64((float64(SPU_BASE_FREQUENCY) /
-		float64(soc.timing.cyclesPerPeriod*INTERVAL_DIVIDER)) *
+		float64(soc.timing.baseFrequency)) *
 		float64(PrecisionScale))
 
 	var cyclesSinceLastInterval uint64
-	cyclesPerPeriod := soc.timing.cyclesPerPeriod
+	cyclesPerPeriod := soc.timing.cyclesPerInterval
 	soc.timing.start()
 
 	for {
-		ppuCnt++
 		cyclesSinceReset++
 		cyclesSinceLastInterval++
 		if cyclesSinceLastInterval == cyclesPerPeriod {
@@ -41,9 +40,24 @@ func (soc SoC) Run() {
 			soc.timing.sync()
 		}
 
+		ppuCnt++
 		if ppuCnt == PPU_TICK_RATE {
 			soc.Ppu.Step()
 			ppuCnt = 0
+		}
+
+		apuDebt += apuRatio
+		if apuDebt >= PrecisionScale {
+			apuDebt -= PrecisionScale
+			soc.Spu.Step()
+		}
+
+		if soc.Ppu.Refresh {
+			//TODO there is some variation to this:
+			//refresh pause begins at 538 cycles into the first scanline of the first frame,
+			//and thereafter some multiple of 8 cycles after the previous pause that comes closest to 536
+			soc.Ppu.Refresh = false
+			cpuCnt += CPU_REFRESH_DURATION
 		}
 
 		if cpuCnt > 1 {
@@ -99,48 +113,34 @@ func (soc SoC) Run() {
 				cpuCnt += alignment
 			}
 		}
-
-		if soc.Ppu.Refresh {
-			//TODO there is some variation to this:
-			//refresh pause begins at 538 cycles into the first scanline of the first frame,
-			//and thereafter some multiple of 8 cycles after the previous pause that comes closest to 536
-			soc.Ppu.Refresh = false
-			cpuCnt += CPU_REFRESH_DURATION
-		}
-
-		apuDebt += int64(cpuCnt) * apuRatio
-		for apuDebt >= PrecisionScale {
-			apuDebt -= PrecisionScale
-			soc.Spu.Step()
-		}
 	}
 }
 
-const INTERVAL_DIVIDER = 66
 const PAL_BASE_FREQUENCY = 21_281_370
 const NTSC_BASE_FREQUENCY = 1_890_000_000 / 88
-const PAL_CYCLES_PER_INTERVAL = uint64(PAL_BASE_FREQUENCY/INTERVAL_DIVIDER) / 2
-const NTSC_CYCLES_PER_INTERVAL = uint64(NTSC_BASE_FREQUENCY/INTERVAL_DIVIDER) / 2
-
-const CLOCK_SYNC_INTERVAL = time.Second / INTERVAL_DIVIDER
-const BUSY_WAIT_TIME = time.Millisecond / 4
 
 const SPU_BASE_FREQUENCY = 1_024_000
 
+const INTERVAL_DIVIDER = 66
+const CLOCK_SYNC_INTERVAL = time.Second / INTERVAL_DIVIDER
+const BUSY_WAIT_TIME = time.Millisecond / 4
+
 type timing struct {
-	cyclesPerPeriod uint64
+	baseFrequency     uint64
+	cyclesPerInterval uint64
 
 	expectedTime time.Time
 }
 
 func newTiming(isPal bool) *timing {
-	var cycles uint64
+	var cycles, freq uint64
 	if isPal {
-		cycles = PAL_CYCLES_PER_INTERVAL
+		freq = PAL_BASE_FREQUENCY / 2
 	} else {
-		cycles = NTSC_CYCLES_PER_INTERVAL
+		freq = NTSC_BASE_FREQUENCY / 2
 	}
-	return &timing{cyclesPerPeriod: cycles}
+	cycles = freq / INTERVAL_DIVIDER
+	return &timing{cyclesPerInterval: cycles, baseFrequency: freq}
 }
 
 func (t *timing) start() {
