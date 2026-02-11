@@ -47,7 +47,7 @@ func (soc SoC) Run() {
 		}
 
 		apuDebt += apuRatio
-		if apuDebt >= PrecisionScale {
+		if apuDebt >= PrecisionScale { //only works because ratio << scale so 1 step is the max
 			apuDebt -= PrecisionScale
 			soc.Spu.Step()
 		}

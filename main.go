@@ -34,6 +34,6 @@ func main() {
 
 	ebiten.SetWindowTitle(soc.Cartridge.GetRomName())
 	go soc.Run()
-	ui.GetEmulatorAudio().Play(soc.Spu.Dsp.ChannelReader)
+	ui.GetEmulatorAudio().Play(soc.Spu.Dsp.Buffer)
 	ebiten.RunGame(display)
 }

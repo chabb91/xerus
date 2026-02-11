@@ -16,19 +16,14 @@ type DSP struct {
 	state     int
 	registers [DSP_REG_SIZE]byte
 
-	*AudioBuffer
-	*AudioBuffer2
-	*ChannelReader
-	Samples chan int16
+	Buffer
 
 	Voices [8]*Voice
 }
 
 func NewDsp(psram *SPCMemory) *DSP {
-	dsp := &DSP{AudioBuffer: newAudioBuffer(11)}
-	//dsp := &DSP{AudioBuffer2: &AudioBuffer2{storage: make([]int16, 0, 100), buffers: make(chan []int16, 30)}}
-	dsp.Samples = make(chan int16)
-	dsp.ChannelReader = &ChannelReader{dsp.Samples}
+	dsp := &DSP{Buffer: newRingBuffer(11)}
+	//dsp := &DSP{Buffer: newChannelBuffer(10)}
 	for i := range len(dsp.Voices) {
 		dsp.Voices[i] = newVoice(i, &dsp.registers, &psram.ram)
 	}
@@ -53,13 +48,7 @@ func (dsp *DSP) Step() {
 		}
 	}
 
-	//dsp.AudioBuffer.Write(int16(out))
-	/*select {
-	//case SampleChan <- int16(out):
-	case dsp.Samples <- int16(out):
-
-	}*/
-	dsp.Samples <- int16(out)
+	dsp.Buffer.Write(int16(out))
 	dsp.state = 0
 }
 
@@ -91,7 +80,12 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 
 }
 
-type AudioBuffer struct {
+type Buffer interface {
+	Write(sample int16)
+	Read(p []byte) (n int, err error)
+}
+
+type RingBuffer struct {
 	sync.Mutex
 	storage []int16
 	head    int
@@ -102,15 +96,15 @@ type AudioBuffer struct {
 
 // the buffer size will be (1<<sizeShift)-1 to avoid modulo.
 // note that % size == & size-1
-func newAudioBuffer(sizeShift int) *AudioBuffer {
+func newRingBuffer(sizeShift int) *RingBuffer {
 	mask := 1 << sizeShift
-	return &AudioBuffer{
+	return &RingBuffer{
 		size:    mask - 1,
 		storage: make([]int16, mask),
 	}
 }
 
-func (ab *AudioBuffer) Write(sample int16) {
+func (ab *RingBuffer) Write(sample int16) {
 	ab.Lock()
 	defer ab.Unlock()
 
@@ -125,7 +119,7 @@ func (ab *AudioBuffer) Write(sample int16) {
 	}
 }
 
-func (ab *AudioBuffer) Read(p []byte) (n int, err error) {
+func (ab *RingBuffer) Read(p []byte) (n int, err error) {
 	ab.Lock()
 	defer ab.Unlock()
 
@@ -144,55 +138,23 @@ func (ab *AudioBuffer) Read(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-type AudioBuffer2 struct {
-	buffers         chan []int16
-	storage         []int16
-	activeBuffer    []int16
-	activeBufferPos int
-}
-
-func newAudioBuffer2(bufferCap, storageSize int) *AudioBuffer2 {
-	return &AudioBuffer2{
-		buffers: make(chan []int16, bufferCap),
-		storage: make([]int16, 0, storageSize),
-	}
-}
-
-func (ab *AudioBuffer2) Write(sample int16) {
-	if len(ab.storage) == cap(ab.storage) {
-		send := make([]int16, len(ab.storage))
-		copy(send, ab.storage)
-		ab.storage = ab.storage[:0]
-		ab.buffers <- send
-	}
-	ab.storage = append(ab.storage, sample)
-}
-
-func (ab *AudioBuffer2) Read(p []byte) (n int, err error) {
-	for i := 0; i < len(p); i += 2 {
-		if ab.activeBufferPos >= len(ab.activeBuffer) {
-			ab.activeBuffer = <-ab.buffers
-			ab.activeBufferPos = 0
-		}
-
-		sample := ab.activeBuffer[ab.activeBufferPos]
-		p[i] = byte(sample)
-		p[i+1] = byte(sample >> 8)
-
-		ab.activeBufferPos++
-	}
-	return len(p), nil
-}
-
-type ChannelReader struct {
+type ChannelBuffer struct {
 	ch chan int16
 }
 
-func (b *ChannelReader) Read(p []byte) (int, error) {
+func newChannelBuffer(chanSize int) *ChannelBuffer {
+	return &ChannelBuffer{ch: make(chan int16, chanSize)}
+}
+
+func (b *ChannelBuffer) Read(p []byte) (int, error) {
 	for i := 0; i < len(p); i += 2 {
 		s := <-b.ch
 		p[i] = byte(s)
 		p[i+1] = byte(s >> 8)
 	}
 	return len(p), nil
+}
+
+func (b *ChannelBuffer) Write(sample int16) {
+	b.ch <- sample
 }
