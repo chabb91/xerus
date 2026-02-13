@@ -36,19 +36,20 @@ func (dsp *DSP) Step() {
 	if dsp.state <= 31 {
 		return
 	}
-
-	var out int32
-	for _, v := range dsp.Voices {
-		out += int32(v.Tick()) / 20
-		if out > 32767 {
-			out = 32767
+	/*
+		var out int32
+		for _, v := range dsp.Voices {
+			out += int32(v.Tick()) / 20
+			if out > 32767 {
+				out = 32767
+			}
+			if out < -32768 {
+				out = -32768
+			}
 		}
-		if out < -32768 {
-			out = -32768
-		}
-	}
+	*/
 
-	dsp.Buffer.Write(int16(out))
+	dsp.Buffer.Write(int16(dsp.Voices[0].Tick()))
 	dsp.state = 0
 }
 
@@ -75,6 +76,14 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 					d.Voices[i].keyOff()
 				}
 			}
+		}
+		if reg&0x0F == 0x02 {
+			pitch := &d.Voices[reg>>4].pitchValue
+			*pitch = (*pitch & 0xFF00) | uint16(val)
+		}
+		if reg&0x0F == 0x03 {
+			pitch := &d.Voices[reg>>4].pitchValue
+			*pitch = (*pitch & 0xFF) | uint16(val)<<8
 		}
 	}
 
