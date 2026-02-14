@@ -185,7 +185,7 @@ func (bb *brrBlock) decode4(v *Voice) {
 			nibble = data & 0x0F
 		}
 
-		sample := signExtend4(nibble) << bb.shift
+		sample := (signExtend4(nibble) << bb.shift) >> 1
 
 		switch bb.filter {
 		case 1:
@@ -196,13 +196,9 @@ func (bb *brrBlock) decode4(v *Voice) {
 			sample += bb.hist1<<1 + (-(bb.hist1 + bb.hist1<<2 + bb.hist1<<3) >> 6) - bb.hist2 + ((bb.hist2<<1 + bb.hist2) >> 4)
 		}
 
-		if sample > 16383 {
-			sample = 16383
-		} else if sample < -16384 {
-			sample = -16384
-		}
+		sample = clamp16(sample)
 
-		v.writeSample(int16(sample))
+		v.writeSample(int16(sample) << 1)
 		bb.hist2 = bb.hist1
 		bb.hist1 = sample
 	}
@@ -244,13 +240,27 @@ func (v *Voice) interpolateGaussian(window [4]int16, fraction uint16) int16 {
 	outx = (gauss_coeffs[255-fraction] * int32(window[0])) >> 11
 	outx += (gauss_coeffs[511-fraction] * int32(window[1])) >> 11
 	outx += (gauss_coeffs[256+fraction] * int32(window[2])) >> 11
-	outx = ((outx & 0x7FFF) ^ 0x4000) - 0x4000
+	//outx = ((outx & 0x7FFF) ^ 0x4000) - 0x4000
+	outx = int32(int16(outx))
 	outx += (gauss_coeffs[fraction] * int32(window[3])) >> 11
 
-	if outx > 16383 {
-		outx = 16383
-	} else if outx < -16384 {
-		outx = -16384
-	}
+	outx = clamp16(outx)
+
+	outx &= ^1
 	return int16(outx)
+}
+
+func clamp16(v int32) int32 {
+	/*
+		if v > 32767 {
+			return 32767
+		} else if v < -32768 {
+			return -32768
+		}
+		return v
+	*/
+	if int32(int16(v)) != v {
+		v = (v >> 31) ^ 0x7FFF
+	}
+	return v
 }

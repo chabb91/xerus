@@ -43,12 +43,7 @@ func (dsp *DSP) Step() {
 		} else if out < -16384 {
 			out = -16384
 		}*/
-		if out > 32767 {
-			out = 32767
-		}
-		if out < -32768 {
-			out = -32768
-		}
+		out = clamp16(out)
 	}
 
 	dsp.Buffer.Write(int16(out))
