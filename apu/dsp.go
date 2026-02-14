@@ -1,7 +1,6 @@
 package apu
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -36,20 +35,23 @@ func (dsp *DSP) Step() {
 	if dsp.state <= 31 {
 		return
 	}
-	/*
-		var out int32
-		for _, v := range dsp.Voices {
-			out += int32(v.Tick()) / 20
-			if out > 32767 {
-				out = 32767
-			}
-			if out < -32768 {
-				out = -32768
-			}
+	var out int32
+	for _, v := range dsp.Voices {
+		out += int32(v.Tick()) / 10
+		/*if out > 16383 {
+			out = 16383
+		} else if out < -16384 {
+			out = -16384
+		}*/
+		if out > 32767 {
+			out = 32767
 		}
-	*/
+		if out < -32768 {
+			out = -32768
+		}
+	}
 
-	dsp.Buffer.Write(int16(dsp.Voices[0].Tick()))
+	dsp.Buffer.Write(int16(out))
 	dsp.state = 0
 }
 
@@ -62,7 +64,7 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 		d.registers[reg] = val
 
 		if reg == 0x4C {
-			fmt.Println("KEYON: ", val)
+			//fmt.Println("KEYON: ", val)
 			for i := range 8 {
 				if val&(1<<i) != 0 {
 					d.Voices[i].keyOn()
@@ -70,7 +72,7 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 			}
 		}
 		if reg == 0x5C {
-			fmt.Println("KEYOFF: ", val)
+			//fmt.Println("KEYOFF: ", val)
 			for i := range 8 {
 				if val&(1<<i) != 0 {
 					d.Voices[i].keyOff()
@@ -79,11 +81,11 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 		}
 		if reg&0x0F == 0x02 {
 			pitch := &d.Voices[reg>>4].pitchValue
-			*pitch = (*pitch & 0xFF00) | uint16(val)
+			*pitch = (*pitch & 0x3F00) | uint16(val)
 		}
 		if reg&0x0F == 0x03 {
 			pitch := &d.Voices[reg>>4].pitchValue
-			*pitch = (*pitch & 0xFF) | uint16(val)<<8
+			*pitch = (*pitch & 0xFF) | uint16(val&0x3F)<<8
 		}
 	}
 

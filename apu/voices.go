@@ -89,18 +89,11 @@ type Voice struct {
 
 	envLevel int // 0-2047
 
-	buffer                       [16]int16
-	bufferIndex                  int
-	hist1, hist2                 int32
-	brrBlockPointer              uint16
-	brrStartAddr, brrRestartAddr uint16
-
 	pitchAccumulator uint16
 	pitchValue       uint16
 
-	sampleBuffer                         [12]int16
-	sampleBufferTail, sampleBufferHead   int
-	sampleBufferIndex, sampleBufferCount int
+	sampleBuffer [12]int16
+	sampleCursor int
 
 	brrBlock brrBlock
 }
@@ -119,29 +112,14 @@ func (v *Voice) Tick() int16 {
 		return 0
 	}
 
-	/*
-			v.updateEnvelope()
-		if v.bufferIndex >= 16 {
-			v.decodeNextBRRBlock()
-		}
-
-		sample := v.buffer[v.bufferIndex]
-		v.bufferIndex++
-
-		//pitch := uint16(v.regs[v.id<<4|0x02]) | (uint16(v.regs[v.id<<4|0x03]&0x3F) << 8)
-
-		//return int16((int32(sample) * int32(v.envLevel)) >> 11)
-		//return int16(uint16(sample) * pitch / 0x1000)
-		return sample
-	*/
-	window := v.getWindow()
+	window := v.getWindow(int(v.pitchAccumulator >> 12))
 	fraction := (v.pitchAccumulator >> 4) & 0xFF
 	sample := v.interpolateGaussian(window, fraction)
-	prevPitch := v.pitchAccumulator
+
 	v.pitchAccumulator += v.pitchValue
-	if amount := (v.pitchAccumulator >> 12) - (prevPitch >> 12); amount >= 1 {
-		v.advanceTail(int(amount))
-		v.pitchAccumulator &= 0x0FFF
+	if v.pitchAccumulator >= 0x4000 {
+		v.brrBlock.decode4(v)
+		v.pitchAccumulator -= 0x4000
 	}
 	return sample
 }
@@ -159,15 +137,6 @@ func (v *Voice) keyOn() {
 
 	v.regs[0x7C] &= ^v.idMask
 
-	/*
-		brrAddr := uint16(v.regs[0x5D])<<8 | uint16(v.regs[v.id<<4|0x04])
-		v.brrStartAddr = uint16(v.ram[brrAddr+1])<<8 | uint16(v.ram[brrAddr])
-		v.brrRestartAddr = uint16(v.ram[brrAddr+3])<<8 | uint16(v.ram[brrAddr+2])
-
-		v.brrBlockPointer = v.brrStartAddr
-		//fmt.Println("VOICE ", v.index, " POINTER: ", v.brrBlockPointer)
-		v.decodeNextBRRBlock()
-	*/
 	brrAddr := uint16(v.regs[0x5D])<<8 | uint16(v.regs[v.id<<4|0x04])
 	brrStartAddr := uint16(v.ram[brrAddr+1])<<8 | uint16(v.ram[brrAddr])
 	brrRestartAddr := uint16(v.ram[brrAddr+3])<<8 | uint16(v.ram[brrAddr+2])
@@ -181,66 +150,6 @@ func (v *Voice) keyOn() {
 
 func (v *Voice) keyOff() {
 	v.state = RELEASE
-}
-
-func (v *Voice) decodeNextBRRBlock() {
-	v.bufferIndex = 0
-
-	var brrBlock []byte
-	if bp2 := v.brrBlockPointer + 9; bp2 < v.brrBlockPointer {
-		brrBlock = make([]byte, 0, 9)
-		for i := range uint16(9) {
-			brrBlock = append(brrBlock, v.ram[v.brrBlockPointer+i])
-		}
-	} else {
-		brrBlock = v.ram[v.brrBlockPointer:bp2]
-	}
-	header := brrBlock[0]
-	shift := header >> 4
-	filter := (header >> 2) & 0x03
-	end := (header & 0x01) != 0
-	loop := (header & 0x02) != 0
-
-	for i := range 16 {
-		nibble := brrBlock[(i>>1)+1]
-		if i&1 == 0 {
-			nibble >>= 4
-		} else {
-			nibble &= 0x0F
-		}
-
-		sample := signExtend4(nibble) << shift
-
-		switch filter {
-		case 1:
-			sample += v.hist1 + (-v.hist1 >> 4)
-		case 2:
-			sample += v.hist1<<1 + (-(v.hist1<<1 + v.hist1) >> 5) - v.hist2 + (v.hist2 >> 4)
-		case 3:
-			sample += v.hist1<<1 + (-(v.hist1 + v.hist1<<2 + v.hist1<<3) >> 6) - v.hist2 + ((v.hist2<<1 + v.hist2) >> 4)
-		}
-
-		if sample > 16383 {
-			sample = 16383
-		} else if sample < -16384 {
-			sample = -16384
-		}
-
-		v.buffer[i] = int16(sample)
-		v.hist2 = v.hist1
-		v.hist1 = sample
-	}
-
-	if end {
-		if loop {
-			v.brrBlockPointer = v.brrRestartAddr
-		} else {
-			v.state = IDLE
-			v.regs[0x7C] |= v.idMask
-		}
-	} else {
-		v.brrBlockPointer += 9
-	}
 }
 
 type brrBlock struct {
@@ -317,27 +226,17 @@ func (bb *brrBlock) reset(startAddr, restartAddr uint16) {
 }
 
 func (v *Voice) writeSample(sample int16) {
-	v.sampleBuffer[v.sampleBufferHead] = sample
-	v.sampleBufferHead = (v.sampleBufferHead + 1) % 12
-	v.sampleBufferCount++
+	v.sampleBuffer[v.sampleCursor] = sample
+	v.sampleCursor = (v.sampleCursor + 1) % 12
 }
 
-func (v *Voice) getWindow() [4]int16 {
+func (v *Voice) getWindow(from int) [4]int16 {
 	var window [4]int16
+	startIdx := v.sampleCursor + from
 	for i := range 4 {
-		idx := (v.sampleBufferTail + i) % 12
-		window[i] = v.sampleBuffer[idx]
+		window[i] = v.sampleBuffer[(startIdx+i)%12]
 	}
 	return window
-}
-
-func (v *Voice) advanceTail(amount int) {
-	v.sampleBufferTail = (v.sampleBufferTail + amount) % 12
-	v.sampleBufferCount -= amount
-
-	if v.sampleBufferCount < 8 {
-		v.brrBlock.decode4(v)
-	}
 }
 
 func (v *Voice) interpolateGaussian(window [4]int16, fraction uint16) int16 {
