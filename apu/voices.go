@@ -117,19 +117,12 @@ func (v *Voice) Tick() int16 {
 	sample := v.interpolateGaussian(window, fraction)
 
 	v.pitchAccumulator += v.pitchValue
+	v.pitchAccumulator &= 0x7FFF
 	if v.pitchAccumulator >= 0x4000 {
 		v.brrBlock.decode4(v)
 		v.pitchAccumulator -= 0x4000
 	}
 	return sample
-}
-
-func signExtend4(n byte) int32 {
-	v := int32(n & 0xF)
-	if v&0x8 != 0 {
-		v |= ^int32(0xF)
-	}
-	return v
 }
 
 func (v *Voice) keyOn() {
@@ -171,6 +164,10 @@ func (bb *brrBlock) decode4(v *Voice) {
 		bb.loop = (header & 0x02) != 0
 		bb.blockPointer++
 		bb.blockPos++
+
+		if bb.end {
+			v.regs[0x7C] |= v.idMask
+		}
 	}
 
 	var data byte
@@ -210,7 +207,6 @@ func (bb *brrBlock) decode4(v *Voice) {
 				bb.blockPointer = bb.restartAddr
 			} else {
 				v.state = IDLE
-				v.regs[0x7C] |= v.idMask
 			}
 		}
 	}
@@ -261,6 +257,14 @@ func clamp16(v int32) int32 {
 	*/
 	if int32(int16(v)) != v {
 		v = (v >> 31) ^ 0x7FFF
+	}
+	return v
+}
+
+func signExtend4(n byte) int32 {
+	v := int32(n & 0xF)
+	if v&0x8 != 0 {
+		v |= ^int32(0xF)
 	}
 	return v
 }

@@ -1,6 +1,7 @@
 package apu
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -81,6 +82,9 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 		if reg&0x0F == 0x03 {
 			pitch := &d.Voices[reg>>4].pitchValue
 			*pitch = (*pitch & 0xFF) | uint16(val&0x3F)<<8
+		}
+		if reg == 0x2D {
+			fmt.Println("PMON: ", val)
 		}
 	}
 
