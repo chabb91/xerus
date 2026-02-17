@@ -5,6 +5,38 @@ import (
 	"sync"
 )
 
+// Number of samples per counter event
+var counter_rates = [32]int{
+	0, 2048, 1536,
+	1280, 1024, 768,
+	640, 512, 384,
+	320, 256, 192,
+	160, 128, 96,
+	80, 64, 48,
+	40, 32, 24,
+	20, 16, 12,
+	10, 8, 6,
+	5, 4, 3,
+	2,
+	1,
+}
+
+// Counter offset from zero (i.e. not all counters are aligned at zero for all rates)
+var counter_offsets = [32]int{
+	0, 0, 1040,
+	536, 0, 1040,
+	536, 0, 1040,
+	536, 0, 1040,
+	536, 0, 1040,
+	536, 0, 1040,
+	536, 0, 1040,
+	536, 0, 1040,
+	536, 0, 1040,
+	536, 0, 1040,
+	0,
+	0,
+}
+
 const DSP_REG_SIZE = 0x80
 
 type DSPInterface interface {
@@ -16,6 +48,8 @@ type DSP struct {
 	state     int
 	registers [DSP_REG_SIZE]byte
 
+	counter int
+
 	Buffer
 
 	Voices [8]*Voice
@@ -26,6 +60,7 @@ func NewDsp(psram *SPCMemory) *DSP {
 	//dsp := &DSP{Buffer: newChannelBuffer(10)}
 	for i := range len(dsp.Voices) {
 		dsp.Voices[i] = newVoice(i, &dsp.registers, &psram.ram)
+		dsp.Voices[i].envelope.advanceEnvelope = dsp.rateEvent
 	}
 
 	return dsp
@@ -34,6 +69,9 @@ func NewDsp(psram *SPCMemory) *DSP {
 func (dsp *DSP) Step() {
 	dsp.state++
 	if dsp.state <= 31 {
+		if dsp.state == 29 {
+			dsp.counter = (dsp.counter - 1) & 0x77FF
+		}
 		return
 	}
 	var out int32
@@ -49,6 +87,15 @@ func (dsp *DSP) Step() {
 
 	dsp.Buffer.Write(int16(out))
 	dsp.state = 0
+}
+
+func (d *DSP) rateEvent(rate byte) bool {
+	rate &= 0x1F
+	if rate == 0 {
+		return false
+	} else {
+		return (d.counter+counter_offsets[rate])%counter_rates[rate] == 0
+	}
 }
 
 func (d *DSP) ReadRegister(reg byte) byte {

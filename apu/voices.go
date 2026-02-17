@@ -95,6 +95,7 @@ type Voice struct {
 	sampleCursor int
 
 	brrBlock brrBlock
+	envelope envelope
 }
 
 func newVoice(id int, dspRegs *[DSP_REG_SIZE]byte, psram *[PSRAM_SIZE]byte) *Voice {
@@ -251,6 +252,125 @@ func (v *Voice) interpolateGaussian(window [4]int16, fraction uint16) int16 {
 
 	outx &= ^1
 	return int16(outx)
+}
+
+type gainFunc func(int) int
+
+type envelope struct {
+	adsrEnable, isFixedGain bool
+	///gain
+	fixedGainVal     uint16
+	gainRate         byte
+	gainFunc         gainFunc
+	sustainLevelGain byte
+	///adsr
+	attackRate, decayRate, sustainRate byte
+	sustainLevelAdsr                   byte
+
+	advanceEnvelope func(byte) bool
+	state           envelopeState
+	envelope        int
+}
+
+func (e *envelope) setAdsr1(val byte) {
+	e.adsrEnable = val&0x80 != 0
+	e.decayRate = ((val>>4)&7)<<1 | 16
+	e.attackRate = (val&0xF)<<1 | 1
+}
+
+func (e *envelope) setAdsr2(val byte) {
+	e.sustainLevelAdsr = val >> 5
+	e.sustainRate = val & 0x1F
+}
+
+func (e *envelope) setGain(val byte) {
+	e.isFixedGain = val&0x80 == 0
+	e.fixedGainVal = uint16(val&0x7F) << 4
+	e.gainRate = val & 0x1F
+	e.sustainLevelGain = val >> 5
+
+	switch (val >> 5) & 3 { //gain mode
+	case 0:
+		e.gainFunc = gainLinearDercrease
+	case 1:
+		e.gainFunc = gainExpDercrease
+	case 2:
+		e.gainFunc = gainLinearIncrease
+	case 3:
+		e.gainFunc = gainBentIncrease
+	}
+}
+
+func (e *envelope) applyLevel(sample *int32) {
+	finalEnvelope := int32(0)
+	if !e.adsrEnable {
+		if e.isFixedGain {
+			finalEnvelope = int32(e.fixedGainVal)
+		} else {
+			if e.advanceEnvelope(e.gainRate) {
+				e.envelope = e.gainFunc(e.envelope)
+				e.envelope = max(0, min(e.envelope, 0x7FF))
+				finalEnvelope = int32(e.envelope)
+			}
+		}
+	} else {
+		switch e.state {
+		case ATTACK:
+			if e.advanceEnvelope(e.attackRate) {
+				if e.attackRate == 0x1F {
+					e.envelope += 0x400
+				} else {
+					e.envelope = gainLinearIncrease(e.envelope)
+				}
+				if e.envelope > 0x7FF || e.envelope < 0 {
+					e.state = DECAY
+				}
+				e.envelope = max(0, min(e.envelope, 0x7FF))
+			}
+		case DECAY:
+			if e.advanceEnvelope(e.decayRate) {
+				e.envelope = gainExpDercrease(e.envelope)
+				e.envelope = max(0, min(e.envelope, 0x7FF))
+
+				if e.envelope&7 == int(e.sustainLevelAdsr) { //TODO
+					e.state = SUSTAIN
+				}
+			}
+		case SUSTAIN:
+			if e.advanceEnvelope(e.sustainRate) {
+				e.envelope = gainExpDercrease(e.envelope)
+				e.envelope = max(0, min(e.envelope, 0x7FF))
+			}
+		case RELEASE:
+		}
+	}
+	*sample = (*sample * finalEnvelope) >> 11
+}
+
+func gainLinearDercrease(envelope int) int {
+	envelope -= 32
+	return envelope
+}
+
+func gainExpDercrease(envelope int) int {
+	envelope -= ((envelope - 1) >> 8) + 1
+	return envelope
+}
+
+func gainLinearIncrease(envelope int) int {
+	envelope += 32
+	return envelope
+}
+
+func gainBentIncrease(envelope int) int {
+	//this needs the pre clamp envelope for some reason
+	//even tho 0x600 has nothing to do with out of range
+	if envelope < 0x600 {
+		envelope += 32
+	} else {
+		envelope += 8
+	}
+	return envelope
 }
 
 func clamp16(v int32) int32 {
