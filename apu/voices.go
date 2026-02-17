@@ -73,8 +73,7 @@ var gauss_coeffs = [512]int32{
 type envelopeState int
 
 const (
-	IDLE envelopeState = iota
-	ATTACK
+	ATTACK envelopeState = iota
 	DECAY
 	SUSTAIN
 	RELEASE
@@ -108,10 +107,6 @@ func newVoice(id int, dspRegs *[DSP_REG_SIZE]byte, psram *[PSRAM_SIZE]byte) *Voi
 }
 
 func (v *Voice) Tick() int16 {
-	if v.state == IDLE || v.state == RELEASE {
-		return 0
-	}
-
 	window := v.getWindow(int(v.pitchAccumulator >> 12))
 	fraction := (v.pitchAccumulator >> 4) & 0xFF
 	sample := v.interpolateGaussian(window, fraction)
@@ -121,6 +116,9 @@ func (v *Voice) Tick() int16 {
 	if v.pitchAccumulator >= 0x4000 {
 		v.brrBlock.decode4(v)
 		v.pitchAccumulator -= 0x4000
+	}
+	if v.state == RELEASE {
+		return 0
 	}
 	return sample
 }
@@ -133,10 +131,11 @@ func (v *Voice) keyOn() {
 	brrAddr := uint16(v.regs[0x5D])<<8 | uint16(v.regs[v.id<<4|0x04])
 	brrStartAddr := uint16(v.ram[brrAddr+1])<<8 | uint16(v.ram[brrAddr])
 	brrRestartAddr := uint16(v.ram[brrAddr+3])<<8 | uint16(v.ram[brrAddr+2])
-	v.brrBlock.reset(brrStartAddr, brrRestartAddr)
+
 	v.pitchAccumulator = 0
 	v.sampleCursor = 0
 
+	v.brrBlock.reset(brrStartAddr, brrRestartAddr)
 	v.brrBlock.decode4(v)
 	v.brrBlock.decode4(v)
 	v.brrBlock.decode4(v)
@@ -164,8 +163,8 @@ func (bb *brrBlock) decode4(v *Voice) {
 		bb.blockPointer++
 		bb.blockPos++
 
-		if bb.end {
-			v.regs[0x7C] |= v.idMask
+		if bb.end && !bb.loop {
+			v.state = RELEASE
 		}
 	}
 
@@ -209,11 +208,8 @@ func (bb *brrBlock) decode4(v *Voice) {
 	if bb.blockPos == 9 {
 		bb.blockPos = 0
 		if bb.end {
-			if bb.loop {
-				bb.blockPointer = bb.restartAddr
-			} else {
-				v.state = IDLE
-			}
+			v.regs[0x7C] |= v.idMask
+			bb.blockPointer = bb.restartAddr
 		}
 	}
 }
