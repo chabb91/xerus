@@ -92,7 +92,7 @@ type Voice struct {
 	pitchAccumulator uint16
 	pitchValue       uint16
 
-	sampleBuffer [12]int16
+	sampleBuffer [12]int32
 	sampleCursor int
 
 	brrBlock brrBlock
@@ -135,6 +135,7 @@ func (v *Voice) keyOn() {
 	brrRestartAddr := uint16(v.ram[brrAddr+3])<<8 | uint16(v.ram[brrAddr+2])
 	v.brrBlock.reset(brrStartAddr, brrRestartAddr)
 	v.pitchAccumulator = 0
+	v.sampleCursor = 0
 
 	v.brrBlock.decode4(v)
 	v.brrBlock.decode4(v)
@@ -148,8 +149,6 @@ func (v *Voice) keyOff() {
 type brrBlock struct {
 	shift, filter byte
 	loop, end     bool
-
-	hist1, hist2 int32
 
 	blockPos                  uint16
 	blockPointer, restartAddr uint16
@@ -182,22 +181,29 @@ func (bb *brrBlock) decode4(v *Voice) {
 			nibble = data & 0x0F
 		}
 
-		sample := (signExtend4(nibble) << bb.shift) >> 1
+		sample := (int32(int8(nibble<<4)>>4) << bb.shift) >> 1
+		if bb.shift >= 0xD { //shift is between 0-12
+			//	sample = (sample >> 25) << 11
+			if sample < 0 {
+				sample = -0x800
+			} else {
+				sample = 0
+			}
+		}
+
+		hist1, hist2 := v.getBrrHistory()
 
 		switch bb.filter {
 		case 1:
-			sample += bb.hist1 + (-bb.hist1 >> 4)
+			sample += hist1 + (-hist1 >> 4)
 		case 2:
-			sample += bb.hist1<<1 + (-(bb.hist1<<1 + bb.hist1) >> 5) - bb.hist2 + (bb.hist2 >> 4)
+			sample += hist1<<1 + (-(hist1<<1 + hist1) >> 5) - hist2 + (hist2 >> 4)
 		case 3:
-			sample += bb.hist1<<1 + (-(bb.hist1 + bb.hist1<<2 + bb.hist1<<3) >> 6) - bb.hist2 + ((bb.hist2<<1 + bb.hist2) >> 4)
+			sample += hist1<<1 + (-(hist1 + hist1<<2 + hist1<<3) >> 6) - hist2 + ((hist2<<1 + hist2) >> 4)
 		}
 
 		sample = clamp16(sample)
-
-		v.writeSample(int16(sample) << 1)
-		bb.hist2 = bb.hist1
-		bb.hist1 = sample
+		v.writeSample(sample << 1)
 	}
 
 	if bb.blockPos == 9 {
@@ -217,18 +223,23 @@ func (bb *brrBlock) reset(startAddr, restartAddr uint16) {
 	bb.blockPos = 0
 }
 
-func (v *Voice) writeSample(sample int16) {
+func (v *Voice) writeSample(sample int32) {
 	v.sampleBuffer[v.sampleCursor] = sample
 	v.sampleCursor = (v.sampleCursor + 1) % 12
 }
 
-func (v *Voice) getWindow(from int) [4]int16 {
-	var window [4]int16
+func (v *Voice) getWindow(from int) (window [4]int16) {
 	startIdx := v.sampleCursor + from
 	for i := range 4 {
-		window[i] = v.sampleBuffer[(startIdx+i)%12]
+		window[i] = int16(v.sampleBuffer[(startIdx+i)%12])
 	}
-	return window
+	return
+}
+
+func (v *Voice) getBrrHistory() (hist1, hist2 int32) {
+	hist1 = v.sampleBuffer[(v.sampleCursor+11)%12] >> 1
+	hist2 = v.sampleBuffer[(v.sampleCursor+10)%12] >> 1
+	return
 }
 
 func (v *Voice) interpolateGaussian(window [4]int16, fraction uint16) int16 {
@@ -257,14 +268,6 @@ func clamp16(v int32) int32 {
 	*/
 	if int32(int16(v)) != v {
 		v = (v >> 31) ^ 0x7FFF
-	}
-	return v
-}
-
-func signExtend4(n byte) int32 {
-	v := int32(n & 0xF)
-	if v&0x8 != 0 {
-		v |= ^int32(0xF)
 	}
 	return v
 }
