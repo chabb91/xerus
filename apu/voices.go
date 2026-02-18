@@ -254,12 +254,12 @@ func (v *Voice) interpolateGaussian(window [4]int16, fraction uint16) int16 {
 	return int16(outx)
 }
 
-type gainFunc func(int) int
+type gainFunc func(envelope, unclampedEnvelope int) int
 
 type envelope struct {
 	adsrEnable, isFixedGain bool
 	///gain
-	fixedGainVal     uint16
+	fixedGainVal     int
 	gainRate         byte
 	gainFunc         gainFunc
 	sustainLevelGain byte
@@ -267,9 +267,10 @@ type envelope struct {
 	attackRate, decayRate, sustainRate byte
 	sustainLevelAdsr                   byte
 
-	advanceEnvelope func(byte) bool
-	state           envelopeState
-	envelope        int
+	advanceEnvelope   func(byte) bool
+	state             envelopeState
+	envelope          int
+	unclampedEnvelope int
 }
 
 func (e *envelope) setAdsr1(val byte) {
@@ -285,7 +286,7 @@ func (e *envelope) setAdsr2(val byte) {
 
 func (e *envelope) setGain(val byte) {
 	e.isFixedGain = val&0x80 == 0
-	e.fixedGainVal = uint16(val&0x7F) << 4
+	e.fixedGainVal = int(val&0x7F) << 4
 	e.gainRate = val & 0x1F
 	e.sustainLevelGain = val >> 5
 
@@ -302,73 +303,99 @@ func (e *envelope) setGain(val byte) {
 }
 
 func (e *envelope) applyLevel(sample *int32) {
-	finalEnvelope := int32(0)
-	if !e.adsrEnable {
-		if e.isFixedGain {
-			finalEnvelope = int32(e.fixedGainVal)
+	///////////////////
+	//anomies docs are very opaque on this but apparently what he tried to say was
+	//a candidate envelope value is calculated every sample and then
+	//that candidate is used to advance the state if necessary, regardless if we
+	//are doing adsr or gain. then apply envelope if the rate result is zero.
+	//the logic is very close to Bsnes now and this saddens me greatly because
+	//also only envelope updates are tied to the counter, the state updates arent.
+	//i was robbed from the joy of discovery
+	//////////////////
+	envelope := e.envelope
+	if e.state == RELEASE {
+		//if e.advanceEnvelope(0x1F) {
+		e.envelope -= 8
+		e.envelope = max(0, min(e.envelope, 0x7FF))
+		//}
+	} else {
+		var rate byte
+
+		if e.adsrEnable {
+			switch e.state {
+			case DECAY:
+				rate = e.decayRate
+				envelope = gainExpDercrease(envelope, e.unclampedEnvelope)
+			case SUSTAIN:
+				rate = e.sustainRate
+				envelope = gainExpDercrease(envelope, e.unclampedEnvelope)
+			case ATTACK:
+				rate = e.attackRate
+				if rate == 0x1F {
+					envelope += 0x400
+				} else {
+					envelope = gainLinearIncrease(envelope, e.unclampedEnvelope)
+				}
+			}
 		} else {
-			if e.advanceEnvelope(e.gainRate) {
-				e.envelope = e.gainFunc(e.envelope)
-				e.envelope = max(0, min(e.envelope, 0x7FF))
-				finalEnvelope = int32(e.envelope)
+			if e.isFixedGain {
+				envelope = e.fixedGainVal
+				rate = 0x1F
+			} else {
+				rate = e.gainRate
+				envelope = e.gainFunc(envelope, e.unclampedEnvelope)
 			}
 		}
-	} else {
+		//state advancement
 		switch e.state {
 		case ATTACK:
-			if e.advanceEnvelope(e.attackRate) {
-				if e.attackRate == 0x1F {
-					e.envelope += 0x400
-				} else {
-					e.envelope = gainLinearIncrease(e.envelope)
-				}
-				if e.envelope > 0x7FF || e.envelope < 0 {
-					e.state = DECAY
-				}
-				e.envelope = max(0, min(e.envelope, 0x7FF))
+			if uint(envelope) > 0x7FF {
+				e.state = DECAY
 			}
 		case DECAY:
-			if e.advanceEnvelope(e.decayRate) {
-				e.envelope = gainExpDercrease(e.envelope)
-				e.envelope = max(0, min(e.envelope, 0x7FF))
+			var sustainLevel int
+			if e.adsrEnable {
+				sustainLevel = int(e.sustainLevelAdsr)
+			} else {
+				sustainLevel = int(e.sustainLevelGain)
+			}
+			if (envelope>>8)&7 == sustainLevel {
+				e.state = SUSTAIN
+			}
+		}
+		e.unclampedEnvelope = envelope
 
-				if e.envelope&7 == int(e.sustainLevelAdsr) { //TODO
-					e.state = SUSTAIN
-				}
-			}
-		case SUSTAIN:
-			if e.advanceEnvelope(e.sustainRate) {
-				e.envelope = gainExpDercrease(e.envelope)
-				e.envelope = max(0, min(e.envelope, 0x7FF))
-			}
-		case RELEASE:
+		if uint(envelope) > 0x7FF {
+			envelope = max(0, min(e.envelope, 0x7FF))
+		}
+		if e.advanceEnvelope(rate) {
+			e.envelope = envelope
 		}
 	}
-	*sample = (*sample * finalEnvelope) >> 11
+	*sample = (*sample * int32(e.envelope)) >> 11
 }
 
-func gainLinearDercrease(envelope int) int {
+func gainLinearDercrease(envelope, _ int) int {
 	envelope -= 32
 	return envelope
 }
 
-func gainExpDercrease(envelope int) int {
+func gainExpDercrease(envelope, _ int) int {
 	envelope -= ((envelope - 1) >> 8) + 1
 	return envelope
 }
 
-func gainLinearIncrease(envelope int) int {
+func gainLinearIncrease(envelope, _ int) int {
 	envelope += 32
 	return envelope
 }
 
-func gainBentIncrease(envelope int) int {
+func gainBentIncrease(envelope, unclampedEnvelope int) int {
 	//this needs the pre clamp envelope for some reason
-	//even tho 0x600 has nothing to do with out of range
-	if envelope < 0x600 {
-		envelope += 32
-	} else {
+	if uint(unclampedEnvelope) > 0x600 {
 		envelope += 8
+	} else {
+		envelope += 32
 	}
 	return envelope
 }
