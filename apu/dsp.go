@@ -39,6 +39,39 @@ var counter_offsets = [32]int{
 
 const DSP_REG_SIZE = 0x80
 
+type dspReg byte
+
+const (
+	//the 10 per voice register masks
+	VxVolL   dspReg = 0x00 //Left volume for Vx
+	VxVolR   dspReg = 0x01 //Right volume for Vx
+	VxPitchL dspReg = 0x02 //Pitch scaler low byte for Vx
+	VxPitchH dspReg = 0x03 //Pitch scaler high byte for Vx
+	VxScrn   dspReg = 0x04 //Source number for Vx
+	VxAdsr1  dspReg = 0x05 //ADSR part 1 for Vx
+	VxAdsr2  dspReg = 0x06 //ADSR part 2 for Vx
+	VxGain   dspReg = 0x07 //GAIN for Vx
+	VxEnvX   dspReg = 0x08 //The current envelope value for Vx
+	VxOutX   dspReg = 0x09 //The current sample value for Vx
+	//general purpose registers
+	MVolL dspReg = 0x0C //Left channel master volume
+	MVolR dspReg = 0x1C //Right channel master volume
+	EVolL dspReg = 0x2C //Left channel echo volume
+	EVolR dspReg = 0x3C //Right channel echo volume
+	KOn   dspReg = 0x4C //Key on for all voices
+	KOff  dspReg = 0x5C //Key off for all voices
+	FLG   dspReg = 0x6C //Reset, Mute, Echo-Write flags and Noise Clock
+	EndX  dspReg = 0x7C //Voice end flags
+	EFB   dspReg = 0x0D //Echo feedback volume
+	PMOn  dspReg = 0x2D //Pitch modulation enable
+	NOn   dspReg = 0x3D //Noise enable
+	EOn   dspReg = 0x4D //Echo enable
+	DIR   dspReg = 0x5D //Sample table address
+	ESA   dspReg = 0x6D //Echo ring buffer address
+	EDL   dspReg = 0x7D //Echo delay (ring buffer size)
+	FFCx  dspReg = 0x0F //FIR filter coefficient for Vx
+)
+
 type DSPInterface interface {
 	ReadRegister(reg byte) byte
 	WriteRegister(reg byte, val byte)
@@ -74,16 +107,16 @@ func (dsp *DSP) Step() {
 		}
 		if dsp.state == 14 {
 			for i := range 8 {
-				id := dsp.Voices[i].id << 4
-				dsp.Voices[i].envelope.setAdsr1(dsp.registers[id|0x05])
-				dsp.Voices[i].envelope.setAdsr2(dsp.registers[id|0x06])
-				dsp.Voices[i].envelope.setGain(dsp.registers[id|0x07])
+				id := dsp.Voices[i].idReg
+				dsp.Voices[i].envelope.setAdsr1(dsp.registers[id|VxAdsr1])
+				dsp.Voices[i].envelope.setAdsr2(dsp.registers[id|VxAdsr2])
+				dsp.Voices[i].envelope.setGain(dsp.registers[id|VxGain])
 			}
 		}
 		if dsp.state == 23 {
 			for i := range 8 {
-				id := dsp.Voices[i].id << 4
-				dsp.registers[id|0x08] = byte(dsp.Voices[i].envelope.envelope >> 4)
+				id := dsp.Voices[i].idReg
+				dsp.registers[id|VxEnvX] = byte(dsp.Voices[i].envelope.level >> 4)
 			}
 		}
 		return
@@ -113,6 +146,9 @@ func (d *DSP) rateEvent(rate byte) bool {
 }
 
 func (d *DSP) ReadRegister(reg byte) byte {
+	if dspReg(reg) == VxOutX {
+		fmt.Println("READING OUTX ")
+	}
 	return d.registers[reg&0x7F]
 }
 
@@ -120,7 +156,9 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 	if reg <= 0x7F {
 		d.registers[reg] = val
 
-		if reg == 0x4C {
+		reg := dspReg(reg)
+
+		if reg == KOn {
 			//fmt.Println("KEYON: ", val)
 			for i := range 8 {
 				if val&(1<<i) != 0 {
@@ -128,7 +166,7 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 				}
 			}
 		}
-		if reg == 0x5C {
+		if reg == KOff {
 			//fmt.Println("KEYOFF: ", val)
 			for i := range 8 {
 				if val&(1<<i) != 0 {
@@ -136,15 +174,15 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 				}
 			}
 		}
-		if reg&0x0F == 0x02 {
+		if reg&0x0F == VxPitchL {
 			pitch := &d.Voices[reg>>4].pitchValue
 			*pitch = (*pitch & 0x3F00) | uint16(val)
 		}
-		if reg&0x0F == 0x03 {
+		if reg&0x0F == VxPitchH {
 			pitch := &d.Voices[reg>>4].pitchValue
 			*pitch = (*pitch & 0xFF) | uint16(val&0x3F)<<8
 		}
-		if reg == 0x2D {
+		if reg == PMOn {
 			fmt.Println("PMON: ", val)
 		}
 	}

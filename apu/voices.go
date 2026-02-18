@@ -82,6 +82,7 @@ const (
 type Voice struct {
 	id     int
 	idMask byte
+	idReg  dspReg
 
 	regs *[DSP_REG_SIZE]byte
 	ram  *[PSRAM_SIZE]byte
@@ -100,6 +101,7 @@ func newVoice(id int, dspRegs *[DSP_REG_SIZE]byte, psram *[PSRAM_SIZE]byte) *Voi
 	return &Voice{
 		id:     id,
 		idMask: 1 << id,
+		idReg:  dspReg(id) << 4,
 		regs:   dspRegs,
 		ram:    psram,
 	}
@@ -118,16 +120,14 @@ func (v *Voice) Tick() int16 {
 	}
 	v.envelope.applyLevel(&sample)
 
-	v.regs[v.id<<4|0x09] = byte(sample >> 8) //VxOutx
+	v.regs[v.idReg|VxOutX] = byte(sample >> 8)
 	return sample
 }
 
 func (v *Voice) keyOn() {
-	v.envelope.state = ATTACK
+	v.regs[EndX] &= ^v.idMask
 
-	v.regs[0x7C] &= ^v.idMask
-
-	brrAddr := uint16(v.regs[0x5D])<<8 | uint16(v.regs[v.id<<4|0x04])
+	brrAddr := uint16(v.regs[DIR])<<8 | uint16(v.regs[v.idReg|VxScrn])
 	brrStartAddr := uint16(v.ram[brrAddr+1])<<8 | uint16(v.ram[brrAddr])
 	brrRestartAddr := uint16(v.ram[brrAddr+3])<<8 | uint16(v.ram[brrAddr+2])
 
@@ -138,6 +138,8 @@ func (v *Voice) keyOn() {
 	v.brrBlock.decode4(v)
 	v.brrBlock.decode4(v)
 	v.brrBlock.decode4(v)
+
+	v.envelope.reset()
 }
 
 func (v *Voice) keyOff() {
@@ -207,7 +209,7 @@ func (bb *brrBlock) decode4(v *Voice) {
 	if bb.blockPos == 9 {
 		bb.blockPos = 0
 		if bb.end {
-			v.regs[0x7C] |= v.idMask
+			v.regs[EndX] |= v.idMask
 			bb.blockPointer = bb.restartAddr
 		}
 	}
@@ -265,10 +267,16 @@ type envelope struct {
 	attackRate, decayRate, sustainRate byte
 	sustainLevelAdsr                   byte
 
-	advanceEnvelope   func(byte) bool
-	state             envelopeState
-	envelope          int
-	unclampedEnvelope int
+	advanceEnvelope func(byte) bool
+	state           envelopeState
+	level           int
+	unclampedLevel  int
+}
+
+func (e *envelope) reset() {
+	e.level = 0
+	e.unclampedLevel = 0
+	e.state = ATTACK
 }
 
 func (e *envelope) setAdsr1(val byte) {
@@ -310,29 +318,30 @@ func (e *envelope) applyLevel(sample *int16) {
 	//i was robbed from the joy of discovery
 	//also only envelope updates are tied to the counter, the state updates arent.
 	//////////////////
-	envelope := e.envelope
+	envelope := e.level
 	if e.state == RELEASE {
 		//if e.advanceEnvelope(0x1F) {
-		e.envelope -= 8
-		e.envelope = max(0, min(e.envelope, 0x7FF))
+		e.level -= 8
+		e.level = max(0, min(e.level, 0x7FF))
 		//}
 	} else {
 		var rate byte
 
+		//calculate candidate envelope level and rate
 		if e.adsrEnable {
 			switch e.state {
 			case DECAY:
 				rate = e.decayRate
-				envelope = gainExpDercrease(envelope, e.unclampedEnvelope)
+				envelope = gainExpDercrease(envelope, e.unclampedLevel)
 			case SUSTAIN:
 				rate = e.sustainRate
-				envelope = gainExpDercrease(envelope, e.unclampedEnvelope)
+				envelope = gainExpDercrease(envelope, e.unclampedLevel)
 			case ATTACK:
 				rate = e.attackRate
 				if rate == 0x1F {
 					envelope += 0x400
 				} else {
-					envelope = gainLinearIncrease(envelope, e.unclampedEnvelope)
+					envelope = gainLinearIncrease(envelope, e.unclampedLevel)
 				}
 			}
 		} else {
@@ -341,7 +350,7 @@ func (e *envelope) applyLevel(sample *int16) {
 				rate = 0x1F
 			} else {
 				rate = e.gainRate
-				envelope = e.gainFunc(envelope, e.unclampedEnvelope)
+				envelope = e.gainFunc(envelope, e.unclampedLevel)
 			}
 		}
 		//state advancement
@@ -361,16 +370,16 @@ func (e *envelope) applyLevel(sample *int16) {
 				e.state = SUSTAIN
 			}
 		}
-		e.unclampedEnvelope = envelope
+		e.unclampedLevel = envelope
 
 		if e.advanceEnvelope(rate) {
 			if uint(envelope) > 0x7FF {
 				envelope = max(0, min(envelope, 0x7FF))
 			}
-			e.envelope = envelope
+			e.level = envelope
 		}
 	}
-	*sample = int16((int(*sample) * e.envelope) >> 11)
+	*sample = int16((int(*sample) * e.level) >> 11)
 }
 
 func gainLinearDercrease(envelope, _ int) int {
