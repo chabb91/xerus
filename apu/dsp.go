@@ -83,17 +83,25 @@ type DSP struct {
 
 	counter int
 
+	noiseRate      byte
+	noiseSampleRaw uint16
+	noiseSample    int16
+
 	Buffer
 
 	Voices [8]*Voice
 }
 
 func NewDsp(psram *SPCMemory) *DSP {
-	dsp := &DSP{Buffer: newRingBuffer(11)}
+	dsp := &DSP{
+		noiseSampleRaw: 0x4000,
+		Buffer:         newRingBuffer(11),
+	}
 	//dsp := &DSP{Buffer: newChannelBuffer(10)}
 	for i := range len(dsp.Voices) {
 		dsp.Voices[i] = newVoice(i, &dsp.registers, &psram.ram)
 		dsp.Voices[i].envelope.advanceEnvelope = dsp.rateEvent
+		dsp.Voices[i].currentNoiseSample = &dsp.noiseSample
 	}
 
 	return dsp
@@ -104,6 +112,17 @@ func (dsp *DSP) Step() {
 	if dsp.state <= 31 {
 		if dsp.state == 29 {
 			dsp.counter = (dsp.counter - 1) & 0x77FF
+		}
+		if dsp.state == 28 {
+			non := dsp.registers[NOn]
+			for i := range 8 {
+				dsp.Voices[i].useNoiseSample = non&dsp.Voices[i].idMask != 0
+			}
+			if dsp.rateEvent(dsp.noiseRate) {
+				N := int(dsp.noiseSampleRaw)
+				dsp.noiseSampleRaw = uint16((N >> 1) | (((N << 14) ^ (N << 13)) & 0x4000))
+				dsp.noiseSample = int16(dsp.noiseSampleRaw << 1)
+			}
 		}
 		if dsp.state == 14 {
 			for i := range 8 {
@@ -184,6 +203,18 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 		}
 		if reg == PMOn {
 			fmt.Println("PMON: ", val)
+		}
+		if reg == FLG {
+			fmt.Println("FLG: ", val)
+			if val >= 0x80 {
+				for i := range 8 {
+					if val&(1<<i) != 0 {
+						d.Voices[i].keyOff()
+						d.Voices[i].envelope.reset()
+					}
+				}
+			}
+			d.noiseRate = val & 0x1F
 		}
 	}
 

@@ -95,6 +95,9 @@ type Voice struct {
 
 	brrBlock brrBlock
 	envelope envelope
+
+	useNoiseSample     bool
+	currentNoiseSample *int16
 }
 
 func newVoice(id int, dspRegs *[DSP_REG_SIZE]byte, psram *[PSRAM_SIZE]byte) *Voice {
@@ -118,6 +121,9 @@ func (v *Voice) Tick() int16 {
 		v.brrBlock.decode4(v)
 		v.pitchAccumulator -= 0x4000
 	}
+	if v.useNoiseSample {
+		sample = *v.currentNoiseSample
+	}
 	v.envelope.applyLevel(&sample)
 
 	v.regs[v.idReg|VxOutX] = byte(sample >> 8)
@@ -129,17 +135,17 @@ func (v *Voice) keyOn() {
 
 	brrAddr := uint16(v.regs[DIR])<<8 | uint16(v.regs[v.idReg|VxScrn])
 	brrStartAddr := uint16(v.ram[brrAddr+1])<<8 | uint16(v.ram[brrAddr])
-	brrRestartAddr := uint16(v.ram[brrAddr+3])<<8 | uint16(v.ram[brrAddr+2])
 
 	v.pitchAccumulator = 0
 	v.sampleCursor = 0
 
-	v.brrBlock.reset(brrStartAddr, brrRestartAddr)
+	v.brrBlock.reset(brrStartAddr)
 	v.brrBlock.decode4(v)
 	v.brrBlock.decode4(v)
 	v.brrBlock.decode4(v)
 
 	v.envelope.reset()
+	v.envelope.state = ATTACK
 }
 
 func (v *Voice) keyOff() {
@@ -150,8 +156,8 @@ type brrBlock struct {
 	shift, filter byte
 	loop, end     bool
 
-	blockPos                  uint16
-	blockPointer, restartAddr uint16
+	blockPos     uint16
+	blockPointer uint16
 }
 
 func (bb *brrBlock) decode4(v *Voice) {
@@ -210,13 +216,14 @@ func (bb *brrBlock) decode4(v *Voice) {
 		bb.blockPos = 0
 		if bb.end {
 			v.regs[EndX] |= v.idMask
-			bb.blockPointer = bb.restartAddr
+
+			brrAddr := uint16(v.regs[DIR])<<8 | uint16(v.regs[v.idReg|VxScrn])
+			bb.blockPointer = uint16(v.ram[brrAddr+3])<<8 | uint16(v.ram[brrAddr+2])
 		}
 	}
 }
-func (bb *brrBlock) reset(startAddr, restartAddr uint16) {
+func (bb *brrBlock) reset(startAddr uint16) {
 	bb.blockPointer = startAddr
-	bb.restartAddr = restartAddr
 	bb.blockPos = 0
 }
 
@@ -276,7 +283,6 @@ type envelope struct {
 func (e *envelope) reset() {
 	e.level = 0
 	e.unclampedLevel = 0
-	e.state = ATTACK
 }
 
 func (e *envelope) setAdsr1(val byte) {
