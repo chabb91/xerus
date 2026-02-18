@@ -82,11 +82,9 @@ const (
 type Voice struct {
 	id     int
 	idMask byte
-	state  envelopeState
-	regs   *[DSP_REG_SIZE]byte
-	ram    *[PSRAM_SIZE]byte
 
-	envLevel int // 0-2047
+	regs *[DSP_REG_SIZE]byte
+	ram  *[PSRAM_SIZE]byte
 
 	pitchAccumulator uint16
 	pitchValue       uint16
@@ -118,14 +116,14 @@ func (v *Voice) Tick() int16 {
 		v.brrBlock.decode4(v)
 		v.pitchAccumulator -= 0x4000
 	}
-	if v.state == RELEASE {
-		return 0
-	}
+	v.envelope.applyLevel(&sample)
+
+	v.regs[v.id<<4|0x09] = byte(sample >> 8) //VxOutx
 	return sample
 }
 
 func (v *Voice) keyOn() {
-	v.state = ATTACK
+	v.envelope.state = ATTACK
 
 	v.regs[0x7C] &= ^v.idMask
 
@@ -143,7 +141,7 @@ func (v *Voice) keyOn() {
 }
 
 func (v *Voice) keyOff() {
-	v.state = RELEASE
+	v.envelope.state = RELEASE
 }
 
 type brrBlock struct {
@@ -165,7 +163,7 @@ func (bb *brrBlock) decode4(v *Voice) {
 		bb.blockPos++
 
 		if bb.end && !bb.loop {
-			v.state = RELEASE
+			v.envelope.state = RELEASE
 		}
 	}
 
@@ -302,15 +300,15 @@ func (e *envelope) setGain(val byte) {
 	}
 }
 
-func (e *envelope) applyLevel(sample *int32) {
+func (e *envelope) applyLevel(sample *int16) {
 	///////////////////
 	//anomies docs are very opaque on this but apparently what he tried to say was
 	//a candidate envelope value is calculated every sample and then
 	//that candidate is used to advance the state if necessary, regardless if we
 	//are doing adsr or gain. then apply envelope if the rate result is zero.
 	//the logic is very close to Bsnes now and this saddens me greatly because
-	//also only envelope updates are tied to the counter, the state updates arent.
 	//i was robbed from the joy of discovery
+	//also only envelope updates are tied to the counter, the state updates arent.
 	//////////////////
 	envelope := e.envelope
 	if e.state == RELEASE {
@@ -372,7 +370,7 @@ func (e *envelope) applyLevel(sample *int32) {
 			e.envelope = envelope
 		}
 	}
-	*sample = (*sample * int32(e.envelope)) >> 11
+	*sample = int16((int(*sample) * e.envelope) >> 11)
 }
 
 func gainLinearDercrease(envelope, _ int) int {

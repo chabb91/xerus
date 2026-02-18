@@ -72,6 +72,20 @@ func (dsp *DSP) Step() {
 		if dsp.state == 29 {
 			dsp.counter = (dsp.counter - 1) & 0x77FF
 		}
+		if dsp.state == 14 {
+			for i := range 8 {
+				id := dsp.Voices[i].id << 4
+				dsp.Voices[i].envelope.setAdsr1(dsp.registers[id|0x05])
+				dsp.Voices[i].envelope.setAdsr2(dsp.registers[id|0x06])
+				dsp.Voices[i].envelope.setGain(dsp.registers[id|0x07])
+			}
+		}
+		if dsp.state == 23 {
+			for i := range 8 {
+				id := dsp.Voices[i].id << 4
+				dsp.registers[id|0x08] = byte(dsp.Voices[i].envelope.envelope >> 4)
+			}
+		}
 		return
 	}
 	var out int32
