@@ -365,10 +365,10 @@ func (e *envelope) applyLevel(sample *int32) {
 		}
 		e.unclampedEnvelope = envelope
 
-		if uint(envelope) > 0x7FF {
-			envelope = max(0, min(e.envelope, 0x7FF))
-		}
 		if e.advanceEnvelope(rate) {
+			if uint(envelope) > 0x7FF {
+				envelope = max(0, min(envelope, 0x7FF))
+			}
 			e.envelope = envelope
 		}
 	}
