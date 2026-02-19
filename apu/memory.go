@@ -50,7 +50,6 @@ func (s *SPCMemory) Read8(addr uint16) byte {
 	case addr == 0xF2:
 		return s.dspAddr
 	case addr == 0xF3:
-		//fmt.Printf("READING ADDRESS: %x\n", s.dspAddr)
 		return s.dspRegs.ReadRegister(s.dspAddr)
 	case addr >= 0xF4 && addr <= 0xF7:
 		return s.ports[addr-0xF4].fromCPU

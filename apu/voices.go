@@ -319,12 +319,11 @@ func (e *envelope) applyLevel(sample *int16) {
 	//anomies docs are very opaque on this but apparently what he tried to say was
 	//a candidate envelope value is calculated every sample and then
 	//that candidate is used to advance the state if necessary, regardless if we
-	//are doing adsr or gain. then apply envelope if the rate result is zero.
+	//are doing adsr or gain or if counter(rate) is zero or not.
+	//then update the envelope with the candidate but only if the rate result is zero.
 	//the logic is very close to Bsnes now and this saddens me greatly because
 	//i was robbed from the joy of discovery
-	//also only envelope updates are tied to the counter, the state updates arent.
 	//////////////////
-	envelope := e.level
 	if e.state == RELEASE {
 		//if e.advanceEnvelope(0x1F) {
 		e.level -= 8
@@ -332,16 +331,11 @@ func (e *envelope) applyLevel(sample *int16) {
 		//}
 	} else {
 		var rate byte
+		envelope := e.level
 
-		//calculate candidate envelope level and rate
+		//1. calculate a candidate envelope level and rate
 		if e.adsrEnable {
 			switch e.state {
-			case DECAY:
-				rate = e.decayRate
-				envelope = gainExpDercrease(envelope, e.unclampedLevel)
-			case SUSTAIN:
-				rate = e.sustainRate
-				envelope = gainExpDercrease(envelope, e.unclampedLevel)
 			case ATTACK:
 				rate = e.attackRate
 				if rate == 0x1F {
@@ -349,6 +343,12 @@ func (e *envelope) applyLevel(sample *int16) {
 				} else {
 					envelope = gainLinearIncrease(envelope, e.unclampedLevel)
 				}
+			case DECAY:
+				rate = e.decayRate
+				envelope = gainExpDercrease(envelope, e.unclampedLevel)
+			case SUSTAIN:
+				rate = e.sustainRate
+				envelope = gainExpDercrease(envelope, e.unclampedLevel)
 			}
 		} else {
 			if e.isFixedGain {
@@ -359,7 +359,7 @@ func (e *envelope) applyLevel(sample *int16) {
 				envelope = e.gainFunc(envelope, e.unclampedLevel)
 			}
 		}
-		//state advancement
+		//2. state advancement
 		switch e.state {
 		case ATTACK:
 			if uint(envelope) > 0x7FF {
@@ -376,13 +376,14 @@ func (e *envelope) applyLevel(sample *int16) {
 				e.state = SUSTAIN
 			}
 		}
+		//3. envelope level update
 		e.unclampedLevel = envelope
 
 		if e.advanceEnvelope(rate) {
-			if uint(envelope) > 0x7FF {
-				envelope = max(0, min(envelope, 0x7FF))
-			}
-			e.level = envelope
+			//if uint(envelope) > 0x7FF {
+			//	envelope = max(0, min(envelope, 0x7FF))
+			//}
+			e.level = max(0, min(envelope, 0x7FF))
 		}
 	}
 	*sample = int16((int(*sample) * e.level) >> 11)

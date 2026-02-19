@@ -165,6 +165,7 @@ func (d *DSP) rateEvent(rate byte) bool {
 }
 
 func (d *DSP) ReadRegister(reg byte) byte {
+	//fmt.Printf("READING ADDRESS: %x\n", reg)
 	if dspReg(reg) == VxOutX {
 		fmt.Println("READING OUTX ")
 	}
