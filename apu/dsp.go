@@ -119,7 +119,7 @@ func (dsp *DSP) Step() {
 				dsp.Voices[i].useNoiseSample = non&dsp.Voices[i].idMask != 0
 			}
 			if dsp.rateEvent(dsp.noiseRate) {
-				N := uint(dsp.noiseSampleRaw)
+				N := uint(dsp.noiseSampleRaw) //just storing the generated noise bits as unsigned
 				dsp.noiseSampleRaw = uint16((N >> 1) | (((N << 14) ^ (N << 13)) & 0x4000))
 				dsp.noiseSample = int16(dsp.noiseSampleRaw << 1)
 			}

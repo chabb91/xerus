@@ -133,7 +133,7 @@ func (v *Voice) Tick() int16 {
 func (v *Voice) keyOn() {
 	v.regs[EndX] &= ^v.idMask
 
-	brrAddr := uint16(v.regs[DIR])<<8 + uint16(v.regs[v.idReg|VxScrn]<<2)
+	brrAddr := uint16(v.regs[DIR])<<8 + uint16(v.regs[v.idReg|VxScrn])<<2
 	brrStartAddr := uint16(v.ram[brrAddr+1])<<8 | uint16(v.ram[brrAddr])
 
 	v.pitchAccumulator = 0
@@ -217,7 +217,7 @@ func (bb *brrBlock) decode4(v *Voice) {
 		if bb.end {
 			v.regs[EndX] |= v.idMask
 
-			brrAddr := uint16(v.regs[DIR])<<8 + uint16(v.regs[v.idReg|VxScrn]<<2)
+			brrAddr := uint16(v.regs[DIR])<<8 + uint16(v.regs[v.idReg|VxScrn])<<2
 			bb.blockPointer = uint16(v.ram[brrAddr+3])<<8 | uint16(v.ram[brrAddr+2])
 		}
 	}
