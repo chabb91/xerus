@@ -15,7 +15,7 @@ type Timer struct {
 func NewTimer(rate byte) *Timer {
 	return &Timer{
 		stage1Rate: rate,
-		output:     0x0F,
+		output:     0xF,
 	}
 }
 
@@ -27,8 +27,8 @@ func (t *Timer) Tick() {
 		if t.enabled {
 			t.stage2Counter++
 
-			if t.stage2Counter == t.target || (t.target == 0 && t.stage2Counter == 0) {
-				t.output = (t.output + 1) & 0x0F
+			if t.stage2Counter == t.target {
+				t.output = (t.output + 1) & 0xF
 				t.stage2Counter = 0
 			}
 		}
