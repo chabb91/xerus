@@ -97,7 +97,6 @@ func NewDsp(psram *SPCMemory) *DSP {
 		noiseSampleRaw: 0x4000,
 		Buffer:         newRingBuffer(11),
 	}
-	//dsp := &DSP{Buffer: newChannelBuffer(10)}
 	for i := range len(dsp.Voices) {
 		dsp.Voices[i] = newVoice(i, &dsp.registers, &psram.ram)
 		dsp.Voices[i].envelope.advanceEnvelope = dsp.rateEvent
@@ -153,12 +152,18 @@ func (dsp *DSP) Step() {
 			echoR = clamp16(echoR + outR)
 		}
 	}
+
 	mainL := int16(clamp16(outL * int32(int8(dsp.registers[MVolL])) >> 7))
 	mainR := int16(clamp16(outR * int32(int8(dsp.registers[MVolR])) >> 7))
+
+	if dsp.registers[FLG]&0x40 == 0 {
+		dsp.Buffer.Write(mainL, mainR)
+	} else {
+		dsp.Buffer.Write(0, 0)
+	}
 	//fmt.Printf("masterL: %v, masterR: %v\n", mainL, mainR)
 	//fmt.Println(dsp.registers[MVolL])
 
-	dsp.Buffer.Write(mainL, mainR)
 	dsp.state = 0
 }
 
@@ -287,25 +292,4 @@ func (ab *RingBuffer) Read(p []byte) (n int, err error) {
 		}
 	}
 	return len(p), nil
-}
-
-type ChannelBuffer struct {
-	ch chan int16
-}
-
-func newChannelBuffer(chanSize int) *ChannelBuffer {
-	return &ChannelBuffer{ch: make(chan int16, chanSize)}
-}
-
-func (b *ChannelBuffer) Read(p []byte) (int, error) {
-	for i := 0; i < len(p); i += 2 {
-		s := <-b.ch
-		p[i] = byte(s)
-		p[i+1] = byte(s >> 8)
-	}
-	return len(p), nil
-}
-
-func (b *ChannelBuffer) Write(sample int16) {
-	b.ch <- sample
 }
