@@ -125,33 +125,40 @@ func (dsp *DSP) Step() {
 			}
 		}
 		if dsp.state == 14 {
-			for i := range 8 {
-				id := dsp.Voices[i].idReg
-				dsp.Voices[i].envelope.setAdsr1(dsp.registers[id|VxAdsr1])
-				dsp.Voices[i].envelope.setAdsr2(dsp.registers[id|VxAdsr2])
-				dsp.Voices[i].envelope.setGain(dsp.registers[id|VxGain])
+			for _, v := range dsp.Voices {
+				id := v.idReg
+				v.envelope.setAdsr1(dsp.registers[id|VxAdsr1])
+				v.envelope.setAdsr2(dsp.registers[id|VxAdsr2])
+				v.envelope.setGain(dsp.registers[id|VxGain])
 			}
 		}
 		if dsp.state == 23 {
-			for i := range 8 {
-				id := dsp.Voices[i].idReg
-				dsp.registers[id|VxEnvX] = byte(dsp.Voices[i].envelope.level >> 4)
+			for _, v := range dsp.Voices {
+				id := v.idReg
+				dsp.registers[id|VxEnvX] = byte(v.envelope.level >> 4)
 			}
 		}
 		return
 	}
-	var out int32
-	for _, v := range dsp.Voices {
-		out += int32(v.Tick()) / 10
-		/*if out > 16383 {
-			out = 16383
-		} else if out < -16384 {
-			out = -16384
-		}*/
-		out = clamp16(out)
-	}
 
-	dsp.Buffer.Write(int16(out))
+	var outL, outR, echoL, echoR int32
+	for _, v := range dsp.Voices {
+		out := int32(v.Tick()) //>> 1
+		outL += (out * int32(int8(dsp.registers[v.idReg|VxVolL]))) >> 7
+		outL = clamp16(outL)
+		outR += (out * int32(int8(dsp.registers[v.idReg|VxVolR]))) >> 7
+		outR = clamp16(outR)
+		if dsp.registers[EOn]&v.idMask != 0 {
+			echoL = clamp16(echoL + outL)
+			echoR = clamp16(echoR + outR)
+		}
+	}
+	mainL := int16(clamp16(outL * int32(int8(dsp.registers[MVolL])) >> 7))
+	mainR := int16(clamp16(outR * int32(int8(dsp.registers[MVolR])) >> 7))
+	//fmt.Printf("masterL: %v, masterR: %v\n", mainL, mainR)
+	//fmt.Println(dsp.registers[MVolL])
+
+	dsp.Buffer.Write(mainL, mainR)
 	dsp.state = 0
 }
 
@@ -222,13 +229,13 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 }
 
 type Buffer interface {
-	Write(sample int16)
+	Write(sampleL, sampleR int16)
 	Read(p []byte) (n int, err error)
 }
 
 type RingBuffer struct {
 	sync.Mutex
-	storage []int16
+	storage []uint32
 	head    int
 	tail    int
 	count   int
@@ -241,15 +248,16 @@ func newRingBuffer(sizeShift int) *RingBuffer {
 	mask := 1 << sizeShift
 	return &RingBuffer{
 		size:    mask - 1,
-		storage: make([]int16, mask),
+		storage: make([]uint32, mask),
 	}
 }
 
-func (ab *RingBuffer) Write(sample int16) {
+func (ab *RingBuffer) Write(sampleL, sampleR int16) {
 	ab.Lock()
 	defer ab.Unlock()
 
-	ab.storage[ab.head] = sample
+	//go sign extends uint32(sample) so the inner cast isnt optional
+	ab.storage[ab.head] = (uint32(uint16(sampleR)) << 16) | uint32(uint16(sampleL))
 	ab.head = (ab.head + 1) & ab.size
 
 	if ab.count <= ab.size {
@@ -264,16 +272,18 @@ func (ab *RingBuffer) Read(p []byte) (n int, err error) {
 	ab.Lock()
 	defer ab.Unlock()
 
-	for i := 0; i < len(p); i += 2 {
+	for i := 0; i < len(p); i += 4 {
 		if ab.count > 0 {
 			sample := ab.storage[ab.tail]
 			p[i] = byte(sample)
 			p[i+1] = byte(sample >> 8)
+			p[i+2] = byte(sample >> 16)
+			p[i+3] = byte(sample >> 24)
 			ab.tail = (ab.tail + 1) & ab.size
 			ab.count--
 		} else { //empty buffer
-			p[i] = 0
-			p[i+1] = 0
+			clear(p[i:]) //only works because this holds the mutex and so
+			break        //once the buffer is empty it stays so
 		}
 	}
 	return len(p), nil

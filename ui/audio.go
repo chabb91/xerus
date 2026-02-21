@@ -20,7 +20,7 @@ func GetEmulatorAudio() *emulatorAudio {
 	if audio == nil {
 		options := &oto.NewContextOptions{
 			SampleRate:   32000,
-			ChannelCount: 1, //mono for now
+			ChannelCount: 2,
 			Format:       oto.FormatSignedInt16LE,
 			BufferSize:   time.Millisecond * 16,
 		}
