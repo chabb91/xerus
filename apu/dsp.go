@@ -87,6 +87,12 @@ type DSP struct {
 	noiseSampleRaw uint16
 	noiseSample    int16
 
+	echoBufferIdx, echoBufferAddress uint16
+	echoBufferSize                   uint16
+	fir                              fir
+
+	ram *[PSRAM_SIZE]byte
+
 	Buffer
 
 	Voices [8]*Voice
@@ -96,12 +102,17 @@ func NewDsp(psram *SPCMemory) *DSP {
 	dsp := &DSP{
 		noiseSampleRaw: 0x4000,
 		Buffer:         newRingBuffer(11),
+		ram:            &psram.ram,
 	}
 	for i := range len(dsp.Voices) {
 		dsp.Voices[i] = newVoice(i, &dsp.registers, &psram.ram)
 		dsp.Voices[i].envelope.advanceEnvelope = dsp.rateEvent
 		dsp.Voices[i].currentNoiseSample = &dsp.noiseSample
 	}
+
+	//TODO this is not the right way to do this but
+	//echo samples cant be generated during the boot sequence no matter what
+	dsp.registers[FLG] = 0x20
 
 	return dsp
 }
@@ -137,27 +148,41 @@ func (dsp *DSP) Step() {
 				dsp.registers[id|VxEnvX] = byte(v.envelope.level >> 4)
 			}
 		}
+		if dsp.state == 24 {
+			//dsp.echoBufferSize = uint16(dsp.registers[EDL]&0xF) << 9
+			dsp.echoBufferAddress = uint16(dsp.registers[ESA]) << 8
+			//fmt.Println(dsp.echoBufferAddress, "      ", dsp.registers[ESA])
+		}
 		return
 	}
 
 	var outL, outR, echoL, echoR int32
 	for _, v := range dsp.Voices {
 		out := int32(v.Tick()) //>> 1
-		outL += (out * int32(int8(dsp.registers[v.idReg|VxVolL]))) >> 7
-		outL = clamp16(outL)
-		outR += (out * int32(int8(dsp.registers[v.idReg|VxVolR]))) >> 7
-		outR = clamp16(outR)
+		leftChan := (out * int32(int8(dsp.registers[v.idReg|VxVolL]))) >> 7
+		rightChan := (out * int32(int8(dsp.registers[v.idReg|VxVolR]))) >> 7
+		outL = clamp16(outL + leftChan)
+		outR = clamp16(outR + rightChan)
 		if dsp.registers[EOn]&v.idMask != 0 {
-			echoL = clamp16(echoL + outL)
-			echoR = clamp16(echoR + outR)
+			echoL = clamp16(echoL + leftChan)
+			echoR = clamp16(echoR + rightChan)
 		}
 	}
 
-	mainL := int16(clamp16(outL * int32(int8(dsp.registers[MVolL])) >> 7))
-	mainR := int16(clamp16(outR * int32(int8(dsp.registers[MVolR])) >> 7))
+	firL, firR := dsp.fir.getSample(dsp)
+
+	efb := int32(int8(dsp.registers[EFB]))
+	dsp.writeEchoBuffer(int16(clamp16(((firL*efb)>>7)+echoL))&^1,
+		int16(clamp16(((firR*efb)>>7)+echoR))&^1)
+
+	firL = (int32(firL) * int32(int8(dsp.registers[EVolL])) >> 7)
+	firR = (int32(firR) * int32(int8(dsp.registers[EVolR])) >> 7)
+
+	outL = (outL * int32(int8(dsp.registers[MVolL])) >> 7)
+	outR = (outR * int32(int8(dsp.registers[MVolR])) >> 7)
 
 	if dsp.registers[FLG]&0x40 == 0 {
-		dsp.Buffer.Write(mainL, mainR)
+		dsp.Buffer.Write(int16(clamp16(outL+firL)), int16(clamp16(outR+firR)))
 	} else {
 		dsp.Buffer.Write(0, 0)
 	}
@@ -174,6 +199,66 @@ func (d *DSP) rateEvent(rate byte) bool {
 	} else {
 		return (d.counter+counter_offsets[rate])%counter_rates[rate] == 0
 	}
+}
+
+// TODO figure out how the real snes writes these bytes
+func (d *DSP) writeEchoBuffer(echoL, echoR int16) {
+	if d.registers[FLG]&0x20 == 0 {
+		idx := d.echoBufferAddress + d.echoBufferIdx<<2
+		d.ram[idx+0], d.ram[idx+1] = byte(uint16(echoL)), byte(uint16(echoL)>>8)
+		d.ram[idx+2], d.ram[idx+3] = byte(uint16(echoR)), byte(uint16(echoR)>>8)
+	} else {
+		//fmt.Println("echo locked")
+	}
+	if d.echoBufferIdx == 0 {
+		d.echoBufferSize = uint16(d.registers[EDL]&0xF) << 9
+	}
+	d.echoBufferIdx++
+	if d.echoBufferIdx >= d.echoBufferSize {
+		d.echoBufferIdx = 0
+	}
+}
+
+func (d *DSP) readEchoBuffer() (echoL, echoR int16) {
+	idx := d.echoBufferAddress + d.echoBufferIdx<<2
+	echoL = int16(uint16(d.ram[idx+0])|uint16(d.ram[idx+1])<<8) >> 1 // <<1
+	echoR = int16(uint16(d.ram[idx+2])|uint16(d.ram[idx+3])<<8) >> 1 // <<1
+
+	return
+}
+
+type fir struct {
+	leftSampleBuffer  [8]int16
+	rightSampleBuffer [8]int16
+
+	idx int
+}
+
+func (f *fir) getSample(d *DSP) (echoL, echoR int32) {
+	f.leftSampleBuffer[f.idx], f.rightSampleBuffer[f.idx] = d.readEchoBuffer()
+	f.idx = (f.idx + 1) & 7
+
+	var L, R int32
+
+	for i := range 8 {
+		idx := (f.idx + i) & 7
+		firCoeff := int32(int8(d.registers[i<<4|int(FFCx)]))
+		L += (int32(f.leftSampleBuffer[idx]) * firCoeff) >> 6
+		R += (int32(f.rightSampleBuffer[idx]) * firCoeff) >> 6
+
+		if i == 6 {
+			L = int32(int16(L))
+			R = int32(int16(R))
+		}
+		if i == 7 { //newest sample
+			L = clamp16(L)
+			R = clamp16(R)
+		}
+	}
+	echoL = (L &^ 1)
+	echoR = (R &^ 1)
+
+	return
 }
 
 func (d *DSP) ReadRegister(reg byte) byte {
@@ -221,10 +306,9 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 			fmt.Println("FLG: ", val)
 			if val >= 0x80 {
 				for i := range 8 {
-					if val&(1<<i) != 0 {
-						d.Voices[i].keyOff()
-						d.Voices[i].envelope.reset()
-					}
+					//TODO voices are supposed to stay this state till the bit is reset
+					d.Voices[i].keyOff()
+					d.Voices[i].envelope.reset()
 				}
 			}
 			d.noiseRate = val & 0x1F
