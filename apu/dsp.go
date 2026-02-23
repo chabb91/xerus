@@ -108,6 +108,10 @@ func NewDsp(psram *SPCMemory) *DSP {
 		dsp.Voices[i] = newVoice(i, &dsp.registers, &psram.ram)
 		dsp.Voices[i].envelope.advanceEnvelope = dsp.rateEvent
 		dsp.Voices[i].currentNoiseSample = &dsp.noiseSample
+
+		if i > 0 {
+			dsp.Voices[i].prevVoiceOut = &dsp.Voices[i-1].voiceOut
+		}
 	}
 
 	//TODO this is not the right way to do this but
@@ -121,7 +125,11 @@ func (dsp *DSP) Step() {
 	dsp.state++
 	if dsp.state <= 31 {
 		if dsp.state == 29 {
-			dsp.counter = (dsp.counter - 1) & 0x77FF
+			//dsp.counter = (dsp.counter - 1) & 0x77FF
+			dsp.counter--
+			if dsp.counter < 0 {
+				dsp.counter = 0x77FF
+			}
 		}
 		if dsp.state == 28 {
 			non := dsp.registers[NOn]
@@ -130,7 +138,7 @@ func (dsp *DSP) Step() {
 			}
 			if dsp.rateEvent(dsp.noiseRate) {
 				N := uint(dsp.noiseSampleRaw) //just storing the generated noise bits as unsigned
-				dsp.noiseSampleRaw = uint16((N >> 1) | (((N << 14) ^ (N << 13)) & 0x4000))
+				dsp.noiseSampleRaw = uint16((N>>1)|(((N<<14)^(N<<13))&0x4000)) & 0x7FFF
 				dsp.noiseSample = int16(dsp.noiseSampleRaw << 1)
 			}
 		}
@@ -152,6 +160,12 @@ func (dsp *DSP) Step() {
 			//dsp.echoBufferSize = uint16(dsp.registers[EDL]&0xF) << 9
 			dsp.echoBufferAddress = uint16(dsp.registers[ESA]) << 8
 			//fmt.Println(dsp.echoBufferAddress, "      ", dsp.registers[ESA])
+		}
+		if dsp.state == 27 {
+			pmon := dsp.registers[PMOn]
+			for _, v := range dsp.Voices {
+				v.pmon = pmon&v.idMask > 1
+			}
 		}
 		return
 	}
@@ -266,6 +280,9 @@ func (d *DSP) ReadRegister(reg byte) byte {
 	if dspReg(reg) == VxOutX {
 		fmt.Println("READING OUTX ")
 	}
+	//if dspReg(reg) == VxEnvX {
+	//	fmt.Println("READING EVNELOPE FOR VOICE ", reg>>4)
+	//}
 	return d.registers[reg&0x7F]
 }
 

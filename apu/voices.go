@@ -96,8 +96,13 @@ type Voice struct {
 	brrBlock brrBlock
 	envelope envelope
 
+	voiceOut int16
+
 	useNoiseSample     bool
 	currentNoiseSample *int16
+
+	prevVoiceOut *int16
+	pmon         bool
 }
 
 func newVoice(id int, dspRegs *[DSP_REG_SIZE]byte, psram *[PSRAM_SIZE]byte) *Voice {
@@ -115,7 +120,12 @@ func (v *Voice) Tick() int16 {
 	fraction := (v.pitchAccumulator >> 4) & 0xFF
 	sample := v.interpolateGaussian(window, fraction)
 
-	v.pitchAccumulator += v.pitchValue
+	pitch := int16(v.pitchValue)
+	if v.pmon && !v.useNoiseSample && v.id > 0 {
+		pitch += ((*v.prevVoiceOut >> 5) * pitch) >> 10
+	}
+
+	v.pitchAccumulator += uint16(pitch)
 	v.pitchAccumulator &= 0x7FFF
 	if v.pitchAccumulator >= 0x4000 {
 		v.brrBlock.decode4(v)
@@ -126,6 +136,7 @@ func (v *Voice) Tick() int16 {
 	}
 	v.envelope.applyLevel(&sample)
 
+	v.voiceOut = sample
 	v.regs[v.idReg|VxOutX] = byte(sample >> 8)
 	return sample
 }
