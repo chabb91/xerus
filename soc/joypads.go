@@ -18,12 +18,15 @@ type JoypadDataHandler struct {
 	joypad        Joypad
 	latchedValues uint16
 	positionCnt   uint16
+
+	dataLineId byte
 }
 
 func (jdh *JoypadDataHandler) ReadNextKey(state int) byte {
 	if jdh.positionCnt >= 16 {
-		//BSNES RETURNS 1 HERE
-		return 0
+		//hardware returns 1 here for the data 0 line and 0 for data 1 line on each port
+		//not doing this can break input handling for some games
+		return jdh.dataLineId ^ 1
 	}
 	var ret byte
 	if jdh.joypad == nil {
@@ -59,6 +62,11 @@ func NewJoypadController(bus memory.Bus, joypads []Joypad) *JoypadController {
 	jc := &JoypadController{
 		bus: bus,
 	}
+
+	//setting up the return value after 16 reads.
+	jc.joypads[0][1].dataLineId = 1
+	jc.joypads[1][1].dataLineId = 1
+
 	jc.AttachMultiple(joypads)
 
 	bus.RegisterRange(0x4016, 0x4017, jc, "Joypad")
@@ -68,6 +76,7 @@ func NewJoypadController(bus memory.Bus, joypads []Joypad) *JoypadController {
 // joypad id [0-3],
 // null safe,
 // port 0, 1, 0, 1
+// (p0:l0, p1:l0, p0:l1, p1:l1)
 func (jc *JoypadController) Attach(number int, joypad Joypad) {
 	port := number & 1
 	data := (number & 2) >> 1
