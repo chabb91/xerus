@@ -9,7 +9,9 @@ type renderedSpriteOnDot struct {
 }
 
 type Objects struct {
-	ds tileDataSource
+	priorityRotation func() byte
+
+	CGRAM []uint16
 
 	Sprites [128]Sprite
 
@@ -33,23 +35,27 @@ type Objects struct {
 	timeOver, rangeOver byte
 }
 
-func newObjects(ds tileDataSource, layer ppuLayer) *Objects {
+func newObjects(ds tileDataSource, priorityRotation func() byte, layer ppuLayer) *Objects {
 	obj := &Objects{
-		ds:                             ds,
 		layerId:                        layer,
 		colorDepth:                     bpp4,
+		priorityRotation:               priorityRotation,
+		CGRAM:                          ds.getCGRAM(),
 		spritesParticipatingOnScanLine: make([]*Sprite, 32),
 	}
+
 	for i := range len(obj.Sprites) {
-		obj.Sprites[i].ob = obj
 		obj.Sprites[i].id = i
+		obj.Sprites[i].ob = obj
+		obj.Sprites[i].OAMLow = ds.getOAMLow()
+		obj.Sprites[i].OAMHigh = ds.getOAMHigh()
 		obj.Sprites[i].isValid = false
 	}
 
 	for i := range 2 {
 		for j := range OBJ_CHAR_PER_TABLE {
 			obj.charTiles[i][j].layerEpoch = obj
-			obj.charTiles[i][j].ds = obj.ds
+			obj.charTiles[i][j].VRAM = ds.getVRAM()
 			obj.charTiles[i][j].isValid = false
 		}
 	}
@@ -104,7 +110,7 @@ func (ob *Objects) Invalidate(addr uint16) {
 func (ob *Objects) prepareScanLine(V uint16) {
 	spriteCnt := 0
 	tileCnt := int16(0)
-	priority := ob.ds.getPriorityRotation()
+	priority := ob.priorityRotation()
 	for i := range ob.Sprites {
 		sprite := &ob.Sprites[(priority+byte(i))&0x7F]
 		sprite.setup()
@@ -143,7 +149,6 @@ func (ob *Objects) prepareScanLine(V uint16) {
 	if !ob.isActive() {
 		return
 	}
-	cgram := ob.ds.getCGRAM()
 	for i := range SCREEN_WIDTH {
 		ob.resolvedDotsOnScanLine[i].color = BG_BACKDROP_COLOR
 	}
@@ -154,7 +159,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 		for screenPos := sprite.posX; screenPos < limit; {
 			if screenPos < int16(SCREEN_WIDTH) && screenPos >= 0 {
 				if ob.resolvedDotsOnScanLine[screenPos].color == BG_BACKDROP_COLOR {
-					screenPos += ob.drawASpriteTileRow(sprite, dimensions, uint16(screenPos), V, cgram)
+					screenPos += ob.drawASpriteTileRow(sprite, dimensions, uint16(screenPos), V)
 					continue
 				}
 			}
@@ -163,7 +168,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 	}
 }
 
-func (ob *Objects) drawASpriteTileRow(sprite *Sprite, dimensions OBTileSize, H, V uint16, cgram []uint16) int16 {
+func (ob *Objects) drawASpriteTileRow(sprite *Sprite, dimensions OBTileSize, H, V uint16) int16 {
 	x := H - uint16(sprite.posX)
 	y := uint16(sprite.posY)
 	if V >= y {
@@ -188,6 +193,8 @@ func (ob *Objects) drawASpriteTileRow(sprite *Sprite, dimensions OBTileSize, H, 
 	px := x & 7
 	flipXTtable := &tileFlipXLUT[sprite.flipIndex]
 	r := tileFlipYLUT[sprite.flipIndex][y&7]
+
+	cgram := ob.CGRAM
 
 	char := &ob.charTiles[sprite.nameTable][tileIndex]
 	rowData := char.getRowAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, r)
@@ -215,6 +222,8 @@ type Sprite struct {
 	id int
 	ob *Objects
 
+	OAMHigh, OAMLow []byte
+
 	posX int16
 	posY byte
 
@@ -237,9 +246,9 @@ func (sprite *Sprite) setup() {
 
 	//apparently this thing is GIGA heavy
 	id := sprite.id
-	lowTable := sprite.ob.ds.getOAMLow()
+	lowTable := sprite.OAMLow
 
-	hi := (sprite.ob.ds.getOAMHigh()[id>>2] >> (byte(id&3) << 1)) & 0x03
+	hi := (sprite.OAMHigh[id>>2] >> (byte(id&3) << 1)) & 0x03
 	id <<= 2
 	lo3 := lowTable[id+3]
 

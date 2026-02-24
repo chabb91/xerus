@@ -7,7 +7,8 @@ const (
 )
 
 type Mode7 struct {
-	ds tileDataSource
+	VRAM  []uint16
+	CGRAM []uint16
 
 	m7A, m7B, m7C, m7D int16
 	m7X, m7Y           int16 //13 bit twos complement signed
@@ -23,7 +24,8 @@ type Mode7 struct {
 
 func newMode7(ds tileDataSource, bg1, bg2 *Background) *Mode7 {
 	return &Mode7{
-		ds:            ds,
+		CGRAM:         ds.getCGRAM(),
+		VRAM:          ds.getVRAM(),
 		isDirectColor: &bg1.isDirectColor,
 		bg1Mosaic:     &bg1.mosaic,
 		bg2Mosaic:     &bg2.mosaic,
@@ -42,7 +44,7 @@ func (bg *Mode7) prepareScanLine(V uint16) {
 		//is this how it should be who knows
 		V = (256 << interlace) - 1 - V
 	}
-	vram := bg.ds.getVRAM()
+	vram := bg.VRAM
 
 	dx := clip(int32(bg.hScroll) - int32(bg.m7X))
 	dy := clip(int32(bg.vScroll) - int32(bg.m7Y))
@@ -92,7 +94,7 @@ func (bg *Mode7) GetDotAt(H, _ uint16) (int, byte, bool) {
 			blue := char & 0xC0
 			color = int(uint16(blue)<<7 | uint16(green)<<4 | uint16(red)<<2)
 		} else {
-			color = int(bg.ds.getCGRAM()[char])
+			color = int(bg.CGRAM[char])
 		}
 	}
 	return color, 1, true
@@ -108,7 +110,7 @@ func (bg *Mode7) GetDotAtEXTBG(H, _ uint16) (int, byte, bool) {
 	if colorId := char & 0x7F; colorId == 0 {
 		return BG_BACKDROP_COLOR, 0, true
 	} else {
-		color := bg.ds.getCGRAM()[colorId]
+		color := bg.CGRAM[colorId]
 		return int(color), (char & 0x80 >> 7), true
 	}
 }

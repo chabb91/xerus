@@ -14,7 +14,6 @@ type tileDataSource interface {
 	getOAMHigh() []byte
 	getVRAM() []uint16
 	getCGRAM() []uint16
-	getPriorityRotation() byte
 }
 
 type tileValidator interface {
@@ -96,6 +95,12 @@ func NewPPU(bus memory.Bus, isPal bool) *PPU {
 		SETINI:  NewSETINI(timing),
 		bus:     bus,
 	}
+
+	//these 3 need to be initialized first so the DI works later
+	ppu.VRAM = NewVRAM(ppu)
+	ppu.OAM = NewOAM(ppu)
+	ppu.CGRAM = NewCGRAM(&ppu.ppu2OB)
+
 	ppu.mainRenderPipeline = make([]pipelineTemplate, 0, 12)
 	ppu.subRenderPipeline = make([]pipelineTemplate, 0, 12)
 
@@ -103,7 +108,7 @@ func NewPPU(bus memory.Bus, isPal bool) *PPU {
 	ppu.Bg2 = NewBackground(ppu, bg2)
 	ppu.Bg3 = NewBackground(ppu, bg3)
 	ppu.Bg4 = NewBackground(ppu, bg4)
-	ppu.Obj = newObjects(ppu, obj)
+	ppu.Obj = newObjects(ppu, ppu.OAM.GetSpritePriority, obj)
 
 	ppu.Mode7 = newMode7(ppu, ppu.Bg1, ppu.Bg2)
 
@@ -112,10 +117,6 @@ func NewPPU(bus memory.Bus, isPal bool) *PPU {
 	ppu.bgEpochs[bg3] = &ppu.Bg3.currentEpoch
 	ppu.bgEpochs[bg4] = &ppu.Bg4.currentEpoch
 	ppu.bgEpochs[obj] = &ppu.Obj.currentEpoch
-
-	ppu.VRAM = NewVRAM(ppu)
-	ppu.OAM = NewOAM(ppu)
-	ppu.CGRAM = NewCGRAM(&ppu.ppu2OB)
 
 	bus.RegisterRange(0x2100, 0x213F, ppu, "PPU")
 	return ppu
@@ -298,19 +299,19 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		ppu.Bg4.vScroll = ppu.BGxnOFS.vFormula(value)
 	case 0x2115:
 		ppu.VRAM.setupVMAIN(value)
-		fmt.Println("VMAIN: ", value)
+		//fmt.Println("VMAIN: ", value)
 	case 0x2116:
 		ppu.VRAM.UpdateAddressLow(value)
-		fmt.Println("VMADDLOW: ", value)
+		//fmt.Println("VMADDLOW: ", value)
 	case 0x2117:
 		ppu.VRAM.UpdateAddressHigh(value)
-		fmt.Println("VMADDHIGH: ", value)
+		//fmt.Println("VMADDHIGH: ", value)
 	case 0x2118:
 		ppu.VRAM.WriteDataLow(value)
 	case 0x2119:
 		ppu.VRAM.WriteDataHigh(value)
 	case 0x211A:
-		fmt.Println("M7SEL: ", value)
+		//fmt.Println("M7SEL: ", value)
 		ppu.Mode7.setM7Sel(value)
 	case 0x211B:
 		//fmt.Println("WRITING A ", value)
@@ -427,10 +428,6 @@ func (ppu *PPU) getVRAM() []uint16 {
 
 func (ppu *PPU) getCGRAM() []uint16 {
 	return ppu.CGRAM.CGRAM[:]
-}
-
-func (ppu *PPU) getPriorityRotation() byte {
-	return ppu.OAM.GetSpritePriority()
 }
 
 func (ppu *PPU) tryInvalidate(addr uint16) {

@@ -1,6 +1,7 @@
 package ppu
 
 import (
+	"fmt"
 	"math/bits"
 )
 
@@ -25,7 +26,17 @@ const (
 )
 
 func (cd *colorDepth) trailingZeros() int {
-	return bits.TrailingZeros(uint(*cd)) // V=2 (0010) k=1, V=4 (0100) k=2, V=8 (1000), k=3
+	// V=2 (0010) k=1, V=4 (0100) k=2, V=8 (1000), k=3
+	switch *cd {
+	case 2:
+		return 1
+	case 4:
+		return 2
+	case 8:
+		return 3
+	default:
+		return bits.TrailingZeros(uint(*cd))
+	}
 }
 
 type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
@@ -44,7 +55,8 @@ type renderedDotCache struct {
 }
 
 type Background struct {
-	ds tileDataSource
+	VRAM  []uint16
+	CGRAM []uint16
 
 	tileMap        [0x1000]BgTile //4x400
 	tileMapAddress uint16
@@ -78,7 +90,8 @@ type Background struct {
 
 func NewBackground(ds tileDataSource, layer ppuLayer) *Background {
 	bg := &Background{
-		ds:      ds,
+		VRAM:    ds.getVRAM(),
+		CGRAM:   ds.getCGRAM(),
 		layerId: layer,
 	}
 
@@ -88,7 +101,7 @@ func NewBackground(ds tileDataSource, layer ppuLayer) *Background {
 
 	for i := range len(bg.charTiles) {
 		bg.charTiles[i].layerEpoch = bg
-		bg.charTiles[i].ds = bg.ds
+		bg.charTiles[i].VRAM = ds.getVRAM()
 		bg.charTiles[i].isValid = false
 	}
 
@@ -194,7 +207,7 @@ func (bg *Background) GetDotAt(H, V uint16) (int, byte, bool) {
 	charTile := tile.charTiles[charMapID]
 	flipXTtable := &tileFlipXLUT[tile.flipIndex]
 	rowData := charTile.getRowAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, row)
-	cgram := bg.ds.getCGRAM()
+	cgram := bg.CGRAM
 
 	for i := H; i < bg.renderCacheEnd; i++ {
 		if !bg.mosaic || (bg.mosaic && (i-H)%(uint16(mosaicSize)) == 0) {
@@ -240,7 +253,7 @@ func resolveOPTMode26(bg *Background, H, V uint16) (uint16, uint16) {
 	}
 
 	optM := bg.OPTMap
-	vram := bg.ds.getVRAM()
+	vram := bg.VRAM
 
 	//hLookup := ((H - 8) + optM.hScroll) & 0xFFF8
 	hLookup := HOFS&7 | (((H - 8) & 0xFFF8) + (optM.hScroll & 0xFFF8))
@@ -285,7 +298,7 @@ func resolveOPTMode4(bg *Background, H, V uint16) (uint16, uint16) {
 	_, _, _, tileIndex := getTileIndexAndPixelCoordinates(
 		optM.tileMapSize, optM.charTileSize, hLookup, vLookup)
 
-	scrollData := bg.ds.getVRAM()[optM.tileMapAddress+tileIndex]
+	scrollData := bg.VRAM[optM.tileMapAddress+tileIndex]
 
 	checkBit := uint16(1 << (13 + layer))
 	if scrollData&checkBit != 0 {
@@ -314,7 +327,7 @@ type BgTile struct {
 }
 
 func (bt *BgTile) setup(tileIndex uint16, currentEpoch uint64) {
-	params := bt.bg.ds.getVRAM()[(bt.bg.tileMapAddress+tileIndex)&0x7FFF]
+	params := bt.bg.VRAM[(bt.bg.tileMapAddress+tileIndex)&0x7FFF]
 	bt.flipIndex = byte((params >> 14) & 3)
 	bt.priority = byte(params>>13) & 1
 	bt.paletteNum = byte(params>>10) & 7
@@ -348,7 +361,7 @@ type CharTile struct {
 	resolvedData [8][8]byte
 
 	tileAddress uint16
-	ds          tileDataSource
+	VRAM        []uint16
 
 	lastRenderEpoch uint64
 	layerEpoch      LayerEpochSource
@@ -363,8 +376,7 @@ func (ct *CharTile) setup(bitPlanes colorDepth) {
 	case 8:
 		ct.renderer = RenderTile8bppLUT
 	default:
-		//WHY WOULD A ROM NOT CALL BGMODE
-		ct.renderer = RenderTile2bppLUT
+		panic(fmt.Errorf("PPU: Could not set up CharTile"))
 	}
 }
 
@@ -383,7 +395,7 @@ func (ct *CharTile) getPixelAt(bitplanes colorDepth, addr VRAMAddressCalculator,
 
 RENDER_AND_CACHE:
 	ct.setup(bitplanes)
-	ct.renderer(ct.ds.getVRAM(), ct.tileAddress, &ct.resolvedData)
+	ct.renderer(ct.VRAM, ct.tileAddress, &ct.resolvedData)
 	ct.isValid = true
 	ct.lastRenderEpoch = currentEpoch
 
@@ -405,7 +417,7 @@ func (ct *CharTile) getRowAt(bitplanes colorDepth, addr VRAMAddressCalculator, t
 
 RENDER_AND_CACHE:
 	ct.setup(bitplanes)
-	ct.renderer(ct.ds.getVRAM(), ct.tileAddress, &ct.resolvedData)
+	ct.renderer(ct.VRAM, ct.tileAddress, &ct.resolvedData)
 	ct.isValid = true
 	ct.lastRenderEpoch = currentEpoch
 
