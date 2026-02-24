@@ -40,15 +40,15 @@ type PPU struct {
 	Bg2     *Background
 	Bg3     *Background
 	Bg4     *Background
-	BGxnOFS *BGxnOFS
+	BGxnOFS BGxnOFS
 
 	Mode7 *Mode7
-	M7x   *M7Registers
+	M7x   M7Registers
+
+	Obj *Objects
 
 	BGMODE                 byte
 	registerPreviousValues [64]uint16
-
-	Obj *Objects
 
 	FBlank, VBlank, HBlank bool
 	brightness             byte
@@ -58,7 +58,7 @@ type PPU struct {
 	HLatch, VLatch int
 	HHigh, VHigh   bool
 	Wrio           *byte //maintained elsewhere but the ppu needs access to this
-	LatchFlag      byte
+	LatchFlag      byte  //1 == latched, 0 == unlatched
 
 	modePriority       []pipelineTemplate
 	mainRenderPipeline []pipelineTemplate
@@ -90,10 +90,8 @@ func NewPPU(bus memory.Bus, isPal bool) *PPU {
 	}
 
 	ppu := &PPU{
-		BGxnOFS: &BGxnOFS{},
-		M7x:     &M7Registers{},
-		SETINI:  NewSETINI(timing),
-		bus:     bus,
+		SETINI: NewSETINI(timing),
+		bus:    bus,
 	}
 
 	//these 3 need to be initialized first so the DI works later
@@ -200,7 +198,6 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 }
 
 // TODO some of these heavy register operations should be deferred to the next scanline for accuracy
-// its called mode latch delay
 // bgmode and mosaic for sure belong in this category
 func (ppu *PPU) Write(addr uint16, value byte) error {
 	switch addr {
