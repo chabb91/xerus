@@ -98,11 +98,11 @@ func (soc *SoC) Read(addr uint16) (byte, error) {
 func (soc *SoC) Write(addr uint16, value byte) error {
 	switch addr {
 	case 0x4200:
-		fmt.Println("NMITIMEN: ", value)
+		//fmt.Println("NMITIMEN: ", value)
 		soc.InterruptController.SetNmitimen(value)
 	case 0x4201:
 		//TODO add Lightgun High-to-Low transition support
-		fmt.Println("WRIO: ", value)
+		//fmt.Println("WRIO: ", value)
 		wrio := &soc.InterruptController.WRIO
 		if *wrio&0x80 != 0 && value&0x80 == 0 {
 			soc.Ppu.LatchHV()
@@ -120,16 +120,16 @@ func (soc *SoC) Write(addr uint16, value byte) error {
 	case 0x4206:
 		soc.MulDiv.SetDivisorB(value)
 	case 0x4207:
-		fmt.Println("HTIMEL: ", value)
+		//fmt.Println("HTIMEL: ", value)
 		soc.InterruptController.SetHtimeL(value)
 	case 0x4208:
-		fmt.Println("HTIMEH: ", value)
+		//fmt.Println("HTIMEH: ", value)
 		soc.InterruptController.SetHtimeH(value)
 	case 0x4209:
-		fmt.Println("VTIMEL: ", value)
+		//fmt.Println("VTIMEL: ", value)
 		soc.InterruptController.SetVtimeL(value)
 	case 0x420A:
-		fmt.Println("VTIMEH: ", value)
+		//fmt.Println("VTIMEH: ", value)
 		soc.InterruptController.SetVtimeH(value)
 	case 0x420B:
 		soc.Dma.Mdmaen = value
