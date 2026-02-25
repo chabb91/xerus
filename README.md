@@ -10,7 +10,7 @@ Why not use the C/C++? GO is the language I'm trying to learn and most source co
 
 ## Building
 
-**SNES-emulator** only has one dependency at this moment i.e. [Ebitengine](https://ebitengine.org/) which is used to handle displaying the image, reading controller input and (hopefully soon) audio playback.
+**SNES-emulator** only has one dependency at this moment i.e. [Ebitengine](https://ebitengine.org/) which is used to handle displaying the image, reading controller input and audio playback.
 In order to build the project **Ebitengine** and all of its dependencies need to be [installed](https://ebitengine.org/en/documents/install.html).
 
 Then the project can be ran like:
@@ -57,7 +57,7 @@ The SPC700 audio chip is fully implemented with its own memory controller, timer
 
 #### DSP
 
-The dsp chip is currently work in progress.
+The dsp chip is currently work in progress. The current implementation is just a proof of concept. Audio playback is mostly fine but all voices are calculated in one batch. There is a rewrite coming up however in which I will attempt to mimic the 32 step sound sample generation pipeline that can be found on hardware.
 
 ### Scheduler
 
@@ -69,9 +69,9 @@ Haven't started working on them yet.
 
 ## Future Goals
 
-- Learn enough about waveform audio to be able to finish the DSP.
 - Implement coprocessors
 - Improve timings
+- Improve the S-DSP
 - Create config files
 
 ## References
