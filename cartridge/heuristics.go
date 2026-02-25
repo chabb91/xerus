@@ -31,13 +31,13 @@ func testCandidateHeader(romType int, headerLocation int, romData []byte, checks
 	resetVector := uint16(headerData[0x3D])<<8 | uint16(headerData[0x3C])
 
 	if checksum == candidateChecksum {
-		points += 10
+		points += 4
 	}
 	if candidateChecksum == ^candidateChecksumComplement {
 		points++
 	}
-	if containsOnlyASCIIBytes(headerData[:0x15]) {
-		points++
+	if containsOnlyPrintableASCIIBytes(headerData[:0x15]) {
+		points += 4
 	}
 	if headerData[0x15]&0xF == byte(romType) {
 		points++
@@ -45,10 +45,10 @@ func testCandidateHeader(romType int, headerLocation int, romData []byte, checks
 	if isPowerOfTwo(len(romData)) &&
 		//assuming we are dealing with padded rom data and size is power of 2 this should be true
 		headerData[0x17] == byte(bits.TrailingZeros(uint(len(romData))))-10 {
-		points++
+		points += 3
 	}
 	if resetVector >= 0x8000 {
-		points++
+		points += 2
 	} else {
 		return -1
 	}
@@ -58,8 +58,6 @@ func testCandidateHeader(romType int, headerLocation int, romData []byte, checks
 
 // any automated header detection in chat
 func findRomHeader(romData []byte) (romMapper, error) {
-	yellow := "\033[33m"
-	reset := "\033[0m"
 	checksum := computeChecksum(romData)
 
 	loRomPt := testCandidateHeader(LoROM, 0x7FC0, romData, checksum)
@@ -67,10 +65,7 @@ func findRomHeader(romData []byte) (romMapper, error) {
 	exHiRomPt := testCandidateHeader(ExHiROM, 0x40FFC0, romData, checksum)
 
 	bestResult := max(loRomPt, hiRomPt, exHiRomPt)
-	if bestResult > 0 {
-		if bestResult < 10 {
-			log.Printf("Cartridge: %s[WARNING]%s Checksum mismatch!", yellow, reset)
-		}
+	if bestResult > 4 {
 		if bestResult == loRomPt {
 			log.Printf("Cartridge: LoROM detected with a fitness of: %v", bestResult)
 			return mapLoRom, nil
@@ -84,7 +79,6 @@ func findRomHeader(romData []byte) (romMapper, error) {
 			return mapExHiRom, nil
 		}
 	}
-	log.Printf("Cartridge: [WARNING] Failed to detect the rom header.")
 	return nil, fmt.Errorf("Cartridge: [FATAL] The rom header could not be located.")
 }
 
@@ -157,6 +151,16 @@ func prevPow2(x int) int {
 func containsOnlyASCIIBytes(b []byte) bool {
 	for i := range b {
 		if b[i] >= 128 {
+			return false
+		}
+	}
+	return true
+}
+
+func containsOnlyPrintableASCIIBytes(b []byte) bool {
+	//maybe also count the space padding at the end
+	for i := range b {
+		if b[i] > 126 || b[i] < 32 {
 			return false
 		}
 	}

@@ -11,8 +11,7 @@ func mapLoRom(bank byte, offset uint16, hasSram bool) (int, romRegionType) {
 		}
 	}
 	offset = (offset & 0x7FFF) | (uint16(bank&1) << 15)
-	bank = (bank & 0x7F) >> 1
-	return int(bank)<<16 | int(offset), romAddress
+	return int(maskedBank>>1)<<16 | int(offset), romAddress
 }
 
 func mapHiRom(bank byte, offset uint16, hasSram bool) (int, romRegionType) {
