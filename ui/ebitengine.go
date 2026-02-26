@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"unsafe"
+
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -10,6 +12,35 @@ const BufferWidthShift = 8
 
 const MaxScreenHeight = BufferHeight
 const MaxScreenWidth = BufferWidth * 2
+
+const shaderSource = `
+//kage:unit pixels
+package main
+
+func Fragment(dstPos vec4, srcPos vec2, color vec4) vec4 {
+	raw := imageSrc0UnsafeAt(srcPos)
+
+	val := int(raw.r * 255.0) | (int(raw.g * 255.0)<<8)
+
+	r := float((val&0x1F)<<3)/255.0
+	g := float(((val>>5)&0x1F)<<3)/255.0
+	b := float(((val>>10)&0x1F)<<3)/255.0
+
+	brightness := (raw.b*255)/15
+
+	return vec4(r*brightness, g*brightness, b*brightness, 1.0)
+}
+`
+
+var bgrShader *ebiten.Shader
+
+func init() {
+	var err error
+	bgrShader, err = ebiten.NewShader([]byte(shaderSource))
+	if err != nil {
+		panic("Shader Bad")
+	}
+}
 
 type UiConfig interface {
 	GetDisplayScale() float64
@@ -26,8 +57,12 @@ func (scd *SnesColorData) SetColor(color1, color2 uint16, brightness byte) {
 }
 
 type Framebuffer struct {
-	front, Back *[BufferHeight][BufferWidth]SnesColorData
-	swap        chan *[BufferHeight][BufferWidth]SnesColorData
+	swap            chan *[BufferHeight << (BufferWidthShift + 3)]byte
+	f, B            *[BufferHeight << (BufferWidthShift + 3)]byte //H*512*4
+	backPointer     unsafe.Pointer
+	backPointerBase unsafe.Pointer
+	idx             uintptr
+	lineCnt         int
 
 	CurrentHeight int
 	Interlace     byte
@@ -35,19 +70,59 @@ type Framebuffer struct {
 
 func NewFramebuffer() *Framebuffer {
 	fb := &Framebuffer{
-		front:         new([BufferHeight][BufferWidth]SnesColorData),
-		Back:          new([BufferHeight][BufferWidth]SnesColorData),
-		swap:          make(chan *[BufferHeight][BufferWidth]SnesColorData, 1),
+		swap:          make(chan *[BufferHeight << (BufferWidthShift + 3)]byte, 1),
 		CurrentHeight: 224,
+
+		f: new([BufferHeight << (BufferWidthShift + 3)]byte),
+		B: new([BufferHeight << (BufferWidthShift + 3)]byte),
 	}
+	fb.backPointer = unsafe.Pointer(&fb.B[0])
+	fb.backPointerBase = unsafe.Pointer(&fb.B[0])
 	return fb
 }
 
+func (fb *Framebuffer) WriteDot(color1, color2 uint16, brightness byte) {
+	/*
+		fb.B[fb.idx] = byte(color1)
+		fb.B[fb.idx+1] = byte(color1 >> 8)
+		fb.B[fb.idx+2] = brightness
+		fb.B[fb.idx+3] = 0
+
+		fb.B[fb.idx+4] = byte(color2)
+		fb.B[fb.idx+5] = byte(color2 >> 8)
+		fb.B[fb.idx+6] = brightness
+		fb.B[fb.idx+7] = 0
+		fb.idx += 8
+		if fb.Interlace == 1 && fb.idx&0x7FF == 0 {
+			fb.lineCnt++
+			fb.idx += 0x800
+			if fb.idx >= len(fb.B) || fb.lineCnt == fb.CurrentHeight {
+				fb.idx = 0x800
+			}
+		}
+	*/
+	*(*uint64)(fb.backPointer) = (uint64(color1) | uint64(brightness)<<16 |
+		uint64(color2)<<32 | uint64(brightness)<<48)
+	step := 8 + uintptr(fb.backPointer)
+	if fb.Interlace == 1 && step&0x7FF == 0 {
+		fb.lineCnt++
+		step += 0x800
+		if /*fb.idx >= len(fb.B) ||*/ fb.lineCnt == fb.CurrentHeight {
+			step = uintptr(fb.backPointerBase) + 0x800
+		}
+	}
+	fb.backPointer = unsafe.Pointer(uintptr(step))
+}
+
 func (fb *Framebuffer) Swap() {
-	fb.front, fb.Back = fb.Back, fb.front
+	fb.idx = 0
+	fb.lineCnt = 0
+	fb.backPointer = unsafe.Pointer(&fb.B[0])
+	fb.backPointerBase = unsafe.Pointer(&fb.B[0])
+	fb.f, fb.B = fb.B, fb.f
 
 	select {
-	case fb.swap <- fb.front:
+	case fb.swap <- fb.f:
 	default:
 		//non blocking send
 	}
@@ -102,10 +177,9 @@ func (ed *EmulatorDisplay) Update() error {
 			ed.ScreenHeight = newHeight
 			ed.ActiveImage = updateActiveImage(newHeight, ed.ScalingFactor)
 		}
-		ed.convertBGR15ToRGBA(frame)
 
-		activePixelsSlice := ed.transformedBuffer[:ed.ScreenWidth*ed.ScreenHeight*4]
-		ed.ActiveImage.WritePixels(activePixelsSlice)
+		//ed.transformedBuffer = frame[:]
+		ed.ActiveImage.WritePixels(frame[:ed.ScreenWidth*ed.ScreenHeight*4])
 	default:
 		// no new frame yet
 	}
@@ -121,11 +195,19 @@ func (ed *EmulatorDisplay) Draw(screen *ebiten.Image) {
 	if ed.ActiveImage == nil {
 		return
 	}
-	op := &ebiten.DrawImageOptions{}
+	/*
+		op := &ebiten.DrawImageOptions{}
+		scaleX := float64(1)
+		scaleY := float64(int(2 >> ed.fb.Interlace))
+		op.GeoM.Scale(scaleX, scaleY)
+		screen.DrawImage(ed.ActiveImage, op)
+	*/
+	op := &ebiten.DrawRectShaderOptions{}
+	op.Images[0] = ed.ActiveImage
 	scaleX := float64(1)
 	scaleY := float64(int(2 >> ed.fb.Interlace))
 	op.GeoM.Scale(scaleX, scaleY)
-	screen.DrawImage(ed.ActiveImage, op)
+	screen.DrawRectShader(ed.ScreenWidth, ed.ScreenHeight, bgrShader, op)
 }
 
 func (ed *EmulatorDisplay) Layout(outsideWidth, outsideHeight int) (int, int) {
