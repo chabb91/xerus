@@ -4,6 +4,8 @@ import (
 	"unsafe"
 
 	"github.com/hajimehoshi/ebiten/v2"
+
+	_ "embed"
 )
 
 const BufferHeight = 478
@@ -11,30 +13,14 @@ const BufferWidthShift = 8
 
 const ScreenWidth = 1 << (BufferWidthShift + 1)
 
-const shaderSource = `
-//kage:unit pixels
-package main
-
-func Fragment(dstPos vec4, srcPos vec2, color vec4) vec4 {
-	raw := imageSrc0UnsafeAt(srcPos)
-
-	val := int(raw.r * 255.0) | (int(raw.g * 255.0)<<8)
-
-	r := float((val&0x1F)<<3)/255.0
-	g := float(((val>>5)&0x1F)<<3)/255.0
-	b := float(((val>>10)&0x1F)<<3)/255.0
-
-	brightness := (raw.b*255)/15
-
-	return vec4(r*brightness, g*brightness, b*brightness, 1.0)
-}
-`
+//go:embed shaders/bgr15.kage
+var shaderSource []byte
 
 var bgrShader *ebiten.Shader
 
 func init() {
 	var err error
-	bgrShader, err = ebiten.NewShader([]byte(shaderSource))
+	bgrShader, err = ebiten.NewShader(shaderSource)
 	if err != nil {
 		panic("Kage: Shader compilation failed.")
 	}
@@ -52,6 +38,7 @@ type Framebuffer struct {
 	backPointer     unsafe.Pointer
 	backPointerBase unsafe.Pointer
 	lineCnt         int
+	idx             int
 
 	CurrentHeight int
 	Interlace     byte
@@ -78,22 +65,27 @@ func NewFramebuffer() *Framebuffer {
 func (fb *Framebuffer) WriteDot(color1, color2 uint16, brightness byte) {
 	*(*uint64)(fb.backPointer) = (uint64(color1) | uint64(brightness)<<16 |
 		uint64(color2)<<32 | uint64(brightness)<<48)
+
 	step := 8 + uintptr(fb.backPointer)
+
 	if fb.Interlace == 1 && step&0x7FF == 0 {
 		fb.lineCnt++
-		step += 0x800
 		if fb.lineCnt == fb.CurrentHeight {
 			step = uintptr(fb.backPointerBase) + 0x800
+		} else {
+			step += 0x800
 		}
 	}
+
 	fb.backPointer = unsafe.Pointer(uintptr(step))
 }
 
 func (fb *Framebuffer) Swap() {
-	fb.lineCnt = 0
+	fb.f, fb.B = fb.B, fb.f
+
 	fb.backPointer = unsafe.Pointer(&fb.B[0])
 	fb.backPointerBase = unsafe.Pointer(&fb.B[0])
-	fb.f, fb.B = fb.B, fb.f
+	fb.lineCnt = 0
 
 	select {
 	case fb.swap <- fb.f:
