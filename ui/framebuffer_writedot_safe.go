@@ -18,12 +18,14 @@ func (fb *Framebuffer) WriteDot(color1, color2 uint16, brightness byte) {
 
 	fb.backPointerIdx += 8
 
-	if fb.Interlace == 1 && fb.backPointerIdx&0x7FF == 0 {
+	if fb.backPointerIdx&0x7FF == 0 {
 		fb.lineCnt++
-		if fb.lineCnt == fb.CurrentHeight {
-			fb.backPointerIdx = uintptr(fb.backPointerBase) + 0x800
-		} else {
-			fb.backPointerIdx += 0x800
+		if fb.Interlace == 1 {
+			if fb.lineCnt == fb.CurrentHeight {
+				fb.backPointerIdx = uintptr(fb.backPointerBase) + 0x800
+			} else {
+				fb.backPointerIdx += 0x800
+			}
 		}
 	}
 }
