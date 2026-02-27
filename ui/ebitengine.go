@@ -22,7 +22,7 @@ func init() {
 	var err error
 	bgrShader, err = ebiten.NewShader(shaderSource)
 	if err != nil {
-		panic("Kage: Shader compilation failed.")
+		panic(string("Kage: Shader compilation failed. " + err.Error()))
 	}
 }
 
@@ -35,10 +35,9 @@ type Framebuffer struct {
 	swap chan *[BufferHeight << (BufferWidthShift + 3)]byte
 	f, B *[BufferHeight << (BufferWidthShift + 3)]byte //H*512*4
 
-	backPointer     unsafe.Pointer
 	backPointerBase unsafe.Pointer
+	backPointerIdx  uintptr
 	lineCnt         int
-	idx             int
 
 	CurrentHeight int
 	Interlace     byte
@@ -52,8 +51,8 @@ func NewFramebuffer() *Framebuffer {
 		f: new([BufferHeight << (BufferWidthShift + 3)]byte),
 		B: new([BufferHeight << (BufferWidthShift + 3)]byte),
 	}
-	fb.backPointer = unsafe.Pointer(&fb.B[0])
 	fb.backPointerBase = unsafe.Pointer(&fb.B[0])
+	fb.backPointerIdx = uintptr(fb.backPointerBase)
 	return fb
 }
 
@@ -61,30 +60,29 @@ func NewFramebuffer() *Framebuffer {
 // to the gpu as is (bgr, brightness, 0, bgr, brightness, 0)
 // this pretends to be 2xRGBA sample and then the gpu applies a shader in order to convert it
 // eliminating this task from the cpu. this also immediately puts everything into the correct
-// []byte slice format.
+// []byte slice format. Doesnt work on big endian systems
 func (fb *Framebuffer) WriteDot(color1, color2 uint16, brightness byte) {
-	*(*uint64)(fb.backPointer) = (uint64(color1) | uint64(brightness)<<16 |
+	currentPointer := unsafe.Pointer(uintptr(fb.backPointerIdx))
+	*(*uint64)(currentPointer) = (uint64(color1) | uint64(brightness)<<16 |
 		uint64(color2)<<32 | uint64(brightness)<<48)
 
-	step := 8 + uintptr(fb.backPointer)
+	fb.backPointerIdx += 8
 
-	if fb.Interlace == 1 && step&0x7FF == 0 {
+	if fb.Interlace == 1 && fb.backPointerIdx&0x7FF == 0 {
 		fb.lineCnt++
 		if fb.lineCnt == fb.CurrentHeight {
-			step = uintptr(fb.backPointerBase) + 0x800
+			fb.backPointerIdx = uintptr(fb.backPointerBase) + 0x800
 		} else {
-			step += 0x800
+			fb.backPointerIdx += 0x800
 		}
 	}
-
-	fb.backPointer = unsafe.Pointer(uintptr(step))
 }
 
 func (fb *Framebuffer) Swap() {
 	fb.f, fb.B = fb.B, fb.f
 
-	fb.backPointer = unsafe.Pointer(&fb.B[0])
 	fb.backPointerBase = unsafe.Pointer(&fb.B[0])
+	fb.backPointerIdx = uintptr(fb.backPointerBase)
 	fb.lineCnt = 0
 
 	select {
@@ -95,8 +93,7 @@ func (fb *Framebuffer) Swap() {
 }
 
 type EmulatorDisplay struct {
-	fb                *Framebuffer
-	transformedBuffer []byte
+	fb *Framebuffer
 
 	ScreenWidth   int
 	ScreenHeight  int
@@ -113,12 +110,11 @@ func NewEmulatorDisplay(fb *Framebuffer, config UiConfig) *EmulatorDisplay {
 	displayScale := config.GetDisplayScale()
 	controllers := config.GetInputMapping()
 	return &EmulatorDisplay{
-		fb:                fb,
-		ActiveImage:       updateActiveImage(BufferHeight, displayScale),
-		transformedBuffer: make([]byte, 4*ScreenWidth*BufferHeight),
-		ScreenWidth:       ScreenWidth,
-		ScreenHeight:      BufferHeight,
-		ScalingFactor:     displayScale,
+		fb:            fb,
+		ActiveImage:   updateActiveImage(BufferHeight, displayScale),
+		ScreenWidth:   ScreenWidth,
+		ScreenHeight:  BufferHeight,
+		ScalingFactor: displayScale,
 
 		Controller0: controllers[0],
 		Controller1: controllers[1],
