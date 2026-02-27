@@ -32,8 +32,8 @@ type UiConfig interface {
 }
 
 type Framebuffer struct {
-	swap chan *[BufferHeight << (BufferWidthShift + 3)]byte
-	f, B *[BufferHeight << (BufferWidthShift + 3)]byte //H*512*4
+	swap        chan *[BufferHeight << (BufferWidthShift + 3)]byte
+	front, Back *[BufferHeight << (BufferWidthShift + 3)]byte //H*512*4
 
 	backPointerBase unsafe.Pointer
 	backPointerIdx  uintptr
@@ -48,45 +48,23 @@ func NewFramebuffer() *Framebuffer {
 		swap:          make(chan *[BufferHeight << (BufferWidthShift + 3)]byte, 1),
 		CurrentHeight: 224,
 
-		f: new([BufferHeight << (BufferWidthShift + 3)]byte),
-		B: new([BufferHeight << (BufferWidthShift + 3)]byte),
+		front: new([BufferHeight << (BufferWidthShift + 3)]byte),
+		Back:  new([BufferHeight << (BufferWidthShift + 3)]byte),
 	}
-	fb.backPointerBase = unsafe.Pointer(&fb.B[0])
+	fb.backPointerBase = unsafe.Pointer(&fb.Back[0])
 	fb.backPointerIdx = uintptr(fb.backPointerBase)
 	return fb
 }
 
-// the idea is to have the two uint16 color data and brightness be uploaded directly
-// to the gpu as is (bgr, brightness, 0, bgr, brightness, 0)
-// this pretends to be 2xRGBA sample and then the gpu applies a shader in order to convert it
-// eliminating this task from the cpu. this also immediately puts everything into the correct
-// []byte slice format. Doesnt work on big endian systems
-func (fb *Framebuffer) WriteDot(color1, color2 uint16, brightness byte) {
-	currentPointer := unsafe.Pointer(uintptr(fb.backPointerIdx))
-	*(*uint64)(currentPointer) = (uint64(color1) | uint64(brightness)<<16 |
-		uint64(color2)<<32 | uint64(brightness)<<48)
-
-	fb.backPointerIdx += 8
-
-	if fb.Interlace == 1 && fb.backPointerIdx&0x7FF == 0 {
-		fb.lineCnt++
-		if fb.lineCnt == fb.CurrentHeight {
-			fb.backPointerIdx = uintptr(fb.backPointerBase) + 0x800
-		} else {
-			fb.backPointerIdx += 0x800
-		}
-	}
-}
-
 func (fb *Framebuffer) Swap() {
-	fb.f, fb.B = fb.B, fb.f
+	fb.front, fb.Back = fb.Back, fb.front
 
-	fb.backPointerBase = unsafe.Pointer(&fb.B[0])
+	fb.backPointerBase = unsafe.Pointer(&fb.Back[0])
 	fb.backPointerIdx = uintptr(fb.backPointerBase)
 	fb.lineCnt = 0
 
 	select {
-	case fb.swap <- fb.f:
+	case fb.swap <- fb.front:
 	default:
 		//non blocking send
 	}
