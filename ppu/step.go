@@ -1,6 +1,6 @@
 package ppu
 
-func (ppu *PPU) Step() {
+func (ppu *PPU) Step() uint64 {
 	draw := currentTimingLUT[ppu.V][ppu.H] //TODO cache &currentTimingLUT[V] between scanlines
 	if draw.IsVisible {
 		h := draw.H
@@ -63,15 +63,28 @@ func (ppu *PPU) Step() {
 		//}
 	}
 
+	cycles := uint64(3)
+	if (ppu.H != 323 && ppu.H != 327) ||
+		//NTSC Short Line check
+		(!ppu.SETINI.Timing.Pal && ppu.V == 240 && (interlace^1)&interlaceStep == 1) {
+		cycles = 2
+	}
+
 	ppu.H++
-	if ppu.H >= H_TOTAL {
+	if ppu.H >= ppu.HTotal {
 		ppu.H = 0
 		ppu.V++
-		timing := &ppu.SETINI.Timing
-		if ppu.V >= timing.TotalScanlines+int(interlace&(1-interlaceStep)) {
+		//PAL Long line check
+		if ppu.SETINI.Timing.Pal && ppu.V == 311 && interlaceStep&interlace == 1 {
+			ppu.HTotal = H_TOTAL
+		} else {
+			ppu.HTotal = H_TOTAL - 1
+		}
+		if ppu.V >= ppu.SETINI.Timing.TotalScanlines-(int(interlace&(interlaceStep^1))^1) {
 			ppu.V = 0
 		}
 	}
+	return cycles
 }
 
 type InterruptScheduler interface {
@@ -98,7 +111,6 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 		if interlace == 0 || interlaceStep == 1 {
 			ppu.Framebuffer.Swap()
 		}
-		interlaceStep ^= 1
 	case ActionVBlankEnd:
 		ppu.VBlank = false
 		ppu.InterruptScheduler.SetRdnmi(false)
@@ -108,6 +120,9 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 	case ActionHBlankStart:
 		ppu.HBlank = true
 	case ActionHBlankEnd:
+		if ppu.V == 0 {
+			interlaceStep ^= 1
+		}
 		ppu.HBlank = false
 	case ActionSetHvbjoyV:
 		ppu.InterruptScheduler.SetHvbjoyV(true)
@@ -123,21 +138,6 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 		ppu.HdmaScheduler.DoTransfer()
 	case ActionHDMAReload:
 		ppu.HdmaScheduler.Reload()
-	case ActionShortLine:
-		if interlace == 0 && interlaceStep == 1 {
-			ppu.H++
-		}
-	case ActionLongLine:
-		if interlace == 1 {
-			if interlaceStep == 1 {
-				if interlaceLongLine {
-					ppu.H--
-					interlaceLongLine = false
-				}
-			} else {
-				interlaceLongLine = true
-			}
-		}
 	case ActionSetNmi:
 		//TODO
 	case ActionJoypadReadStart:

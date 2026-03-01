@@ -40,10 +40,10 @@ func (soc SoC) Run() {
 			soc.timing.sync()
 		}
 
-		ppuCnt++
-		if ppuCnt == PPU_TICK_RATE {
-			soc.Ppu.Step()
-			ppuCnt = 0
+		if ppuCnt > 1 {
+			ppuCnt--
+		} else {
+			ppuCnt = soc.Ppu.Step()
 		}
 
 		apuDebt += apuRatio

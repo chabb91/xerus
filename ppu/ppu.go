@@ -78,6 +78,8 @@ type PPU struct {
 	//required for like 1 thing only. unlucky
 	bus memory.Bus
 
+	HTotal int
+
 	Framebuffer *ui.Framebuffer
 }
 
@@ -93,6 +95,8 @@ func NewPPU(bus memory.Bus, isPal bool) *PPU {
 		SETINI: NewSETINI(timing),
 		bus:    bus,
 	}
+
+	ppu.HTotal = H_TOTAL - 1
 
 	//these 3 need to be initialized first so the DI works later
 	ppu.VRAM = NewVRAM(ppu)
@@ -123,8 +127,8 @@ func NewPPU(bus memory.Bus, isPal bool) *PPU {
 // initializing the ppu to a known state at start
 func (ppu *PPU) Init() {
 	for i := range uint16(64) {
+		ppu.registerPreviousValues[i] = 0xFFFF
 		ppu.Write(0x2100|i, 0)
-		ppu.registerPreviousValues[i] = 0xFFFF //TODO first call should run regardless of this value
 	}
 }
 
@@ -236,7 +240,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 
 		ms := value>>4 + 1
 		if ms != mosaicSize {
-			if ppu.V > 0 && ppu.SETINI.getScreenHeight() >= ppu.V {
+			if ppu.V > 0 && ppu.SETINI.ScreenHeight >= ppu.V {
 				mosaicStartLine = uint16(ppu.V)
 			} else {
 				mosaicStartLine = 0
@@ -396,7 +400,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 
 		prevEXTBG := ppu.SETINI.m7EXTBG
 		ppu.SETINI.setup(value)
-		ppu.Framebuffer.CurrentHeight = ppu.SETINI.getScreenHeight() // - (1 << interlace)
+		ppu.Framebuffer.CurrentHeight = ppu.SETINI.ScreenHeight // - (1 << interlace)
 		ppu.Framebuffer.Interlace = byte(interlace)
 
 		if ppu.BGMODE == 7 && prevEXTBG != ppu.SETINI.m7EXTBG {

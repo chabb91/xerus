@@ -31,10 +31,10 @@ func testCandidateHeader(romType int, headerLocation int, romData []byte, checks
 	resetVector := uint16(headerData[0x3D])<<8 | uint16(headerData[0x3C])
 
 	if checksum == candidateChecksum {
-		points += 4
+		points += 3
 	}
 	if candidateChecksum == ^candidateChecksumComplement {
-		points++
+		points += 2
 	}
 	if containsOnlyPrintableASCIIBytes(headerData[:0x15]) {
 		points += 4
@@ -65,7 +65,7 @@ func findRomHeader(romData []byte) (romMapper, error) {
 	exHiRomPt := testCandidateHeader(ExHiROM, 0x40FFC0, romData, checksum)
 
 	bestResult := max(loRomPt, hiRomPt, exHiRomPt)
-	if bestResult > 4 {
+	if bestResult >= 4 {
 		if bestResult == loRomPt {
 			log.Printf("Cartridge: LoROM detected with a fitness of: %v", bestResult)
 			return mapLoRom, nil

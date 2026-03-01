@@ -2,7 +2,6 @@ package ppu
 
 import (
 	"fmt"
-	"time"
 )
 
 type PPUAction byte
@@ -16,8 +15,6 @@ const (
 	ActionOAMReset
 	ActionHDMAStart
 	ActionHDMAReload
-	ActionShortLine
-	ActionLongLine
 	ActionSetNmi
 	//ActionSetRdnmi
 	ActionJoypadReadStart
@@ -37,14 +34,12 @@ const (
 	H_BLANK_START = 22
 	H_BLANK_END   = 277
 
-	NTSC_STANDARD_HEIGHT = 224
-	NTSC_TOTAL_SCANLINES = 262
+	SCREEN_HEIGHT          = 224
+	SCREEN_HEIGHT_OVERSCAN = 239
 
-	PAL_STANDARD_HEIGHT = 239
-	PAL_TOTAL_SCANLINES = 312
+	NTSC_TOTAL_SCANLINES = 263 //accounting for the extra scanline at interlace field 0
+	PAL_TOTAL_SCANLINES  = 313
 )
-
-const LONG_SHORT_SCANLINE_H_TRIGGER = 339
 
 type VisibilityEntry struct {
 	H, V      uint16
@@ -52,61 +47,45 @@ type VisibilityEntry struct {
 	Action    PPUAction
 }
 
-func (vt *VideoTiming) getScreenHeight(overscan bool) int {
+func getScreenHeight(overscan bool) int {
 	if overscan {
-		return vt.OverscanHeight
+		return SCREEN_HEIGHT_OVERSCAN
 	} else {
-		return vt.ScreenHeight
+		return SCREEN_HEIGHT
 	}
 }
 
 type VisibilityLUT [][H_TOTAL]VisibilityEntry
 
 type VideoTiming struct {
-	ScreenWidth     int
-	ScreenHeight    int
-	OverscanHeight  int
-	InterlaceHeight int
-
 	TotalScanlines int
-	TargetFrameMS  time.Duration
 	RegionId       byte
+	Pal            bool
 
 	VisibilityLUTs map[bool]VisibilityLUT
 }
 
 var NTSC_TIMING = VideoTiming{
-	ScreenWidth:     SCREEN_WIDTH,
-	ScreenHeight:    NTSC_STANDARD_HEIGHT,
-	OverscanHeight:  239,
-	InterlaceHeight: NTSC_STANDARD_HEIGHT * 2,
-	TotalScanlines:  NTSC_TOTAL_SCANLINES,
-	TargetFrameMS:   time.Millisecond * 1000.0 / 60,
-	RegionId:        0,
-	VisibilityLUTs:  make(map[bool]VisibilityLUT),
+	TotalScanlines: NTSC_TOTAL_SCANLINES,
+	RegionId:       0,
+	Pal:            false,
+	VisibilityLUTs: make(map[bool]VisibilityLUT),
 }
 
 var PAL_TIMING = VideoTiming{
-	ScreenWidth:     SCREEN_WIDTH,
-	ScreenHeight:    224,
-	OverscanHeight:  PAL_STANDARD_HEIGHT,
-	InterlaceHeight: PAL_STANDARD_HEIGHT * 2,
-	TotalScanlines:  PAL_TOTAL_SCANLINES,
-	TargetFrameMS:   time.Millisecond * 1000.0 / 50.0,
-	RegionId:        1,
-	VisibilityLUTs:  make(map[bool]VisibilityLUT),
+	TotalScanlines: PAL_TOTAL_SCANLINES,
+	RegionId:       1,
+	Pal:            true,
+	VisibilityLUTs: make(map[bool]VisibilityLUT),
 }
 
 func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
-	vActive := timing.ScreenHeight
-	if isOverscan {
-		vActive = timing.OverscanHeight
-	}
+	vActive := getScreenHeight(isOverscan)
 
 	//added +1 to cover the extra scanline edge case every other frame
-	lut := make(VisibilityLUT, timing.TotalScanlines+1)
+	lut := make(VisibilityLUT, timing.TotalScanlines)
 
-	for v := 0; v < timing.TotalScanlines+1; v++ {
+	for v := 0; v < timing.TotalScanlines; v++ {
 		for h := 0; h < H_TOTAL; h++ {
 
 			action := ActionNone
@@ -136,7 +115,7 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 			if v == 0 && h == 6 {
 				action = setAction(action, ActionHDMAReload, v, h)
 			}
-			if (v >= 0 && v < vActive) && h == 278 {
+			if (v >= 0 && v <= vActive) && h == 278 {
 				action = setAction(action, ActionHDMAStart, v, h)
 			}
 			if (v >= 1 && v <= vActive) && h == H_BLANK_START-1 {
@@ -156,18 +135,6 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 			}
 			if h == 134 {
 				action = setAction(action, ActionCpuRefresh, v, h)
-			}
-			if v == 311 && h == LONG_SHORT_SCANLINE_H_TRIGGER && timing.TotalScanlines == PAL_TOTAL_SCANLINES {
-				action = setAction(action, ActionLongLine, v, h)
-			}
-			if v == 240 && h == LONG_SHORT_SCANLINE_H_TRIGGER && timing.TotalScanlines == NTSC_TOTAL_SCANLINES {
-				action = setAction(action, ActionShortLine, v, h)
-			}
-
-			if (v == 311 || v == 240) &&
-				(h == LONG_SHORT_SCANLINE_H_TRIGGER-1 ||
-					h == LONG_SHORT_SCANLINE_H_TRIGGER+1) && action != ActionNone {
-				panic(fmt.Sprintf("PPU: Long and Short scanline timings conflict with neighboring actions at V=%d H=%d", v, h))
 			}
 
 			isVisible := (h >= H_BLANK_START && h <= H_BLANK_END) && (v >= 1 && v <= vActive)
