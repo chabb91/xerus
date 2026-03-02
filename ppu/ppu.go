@@ -96,7 +96,7 @@ func NewPPU(bus memory.Bus, isPal bool) *PPU {
 		bus:    bus,
 	}
 
-	ppu.HTotal = H_TOTAL - 1
+	ppu.HTotal = H_TOTAL
 
 	//these 3 need to be initialized first so the DI works later
 	ppu.VRAM = NewVRAM(ppu)

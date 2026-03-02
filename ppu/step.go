@@ -76,9 +76,9 @@ func (ppu *PPU) Step() uint64 {
 		ppu.V++
 		//PAL Long line check
 		if ppu.SETINI.Timing.Pal && ppu.V == 311 && interlaceStep&interlace == 1 {
-			ppu.HTotal = H_TOTAL
+			ppu.HTotal = H_TOTAL + 1
 		} else {
-			ppu.HTotal = H_TOTAL - 1
+			ppu.HTotal = H_TOTAL
 		}
 		if ppu.V >= ppu.SETINI.Timing.TotalScanlines-(int(interlace&(interlaceStep^1))^1) {
 			ppu.V = 0

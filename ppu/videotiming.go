@@ -30,7 +30,7 @@ const (
 const (
 	SCREEN_WIDTH = 256
 
-	H_TOTAL       = 341
+	H_TOTAL       = 340
 	H_BLANK_START = 22
 	H_BLANK_END   = 277
 
@@ -55,7 +55,7 @@ func getScreenHeight(overscan bool) int {
 	}
 }
 
-type VisibilityLUT [][H_TOTAL]VisibilityEntry
+type VisibilityLUT [][H_TOTAL + 1]VisibilityEntry
 
 type VideoTiming struct {
 	TotalScanlines int
@@ -86,7 +86,7 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 	lut := make(VisibilityLUT, timing.TotalScanlines)
 
 	for v := 0; v < timing.TotalScanlines; v++ {
-		for h := 0; h < H_TOTAL; h++ {
+		for h := 0; h < H_TOTAL+1; h++ {
 
 			action := ActionNone
 			if v == 0 && h == 0 {
