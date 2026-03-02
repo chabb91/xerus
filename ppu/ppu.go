@@ -527,7 +527,6 @@ func (ppu *PPU) setHiresFlag() {
 	}
 }
 
-// TODO no idea if latchFlag should be high or low when the latch is active gotta figure this out
 func (ppu *PPU) LatchHV() {
 	if *ppu.Wrio >= 0x80 {
 		ppu.HLatch = ppu.H

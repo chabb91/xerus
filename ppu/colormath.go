@@ -27,9 +27,9 @@ func addColors(main, sub uint16, halve bool) uint16 {
 	return (b << 10) | (g << 5) | r
 }
 
-// TODO subtraction using half colors is untested and might be wrong!
 // the result is shifted to the right (after ?) clipping to 0
 // the docs are unsure
+// tested using bbbradsmith's colormath test rom
 func subColors(main, sub uint16, halve bool) uint16 {
 	halfShift := int32(0)
 	if halve {
