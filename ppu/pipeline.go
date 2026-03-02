@@ -262,7 +262,7 @@ func setMode6(ppu *PPU, _ bool) {
 }
 
 func setMode7(ppu *PPU, _ bool) {
-	if ppu.SETINI.m7EXTBG {
+	if ppu.m7EXTBG {
 		ppu.modePriority = modePriorityOrder[renderMode7Extbg]
 	} else {
 		ppu.modePriority = modePriorityOrder[renderMode7]

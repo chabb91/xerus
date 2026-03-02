@@ -55,38 +55,39 @@ func getScreenHeight(overscan bool) int {
 	}
 }
 
-type VisibilityLUT [][H_TOTAL + 1]VisibilityEntry
+type VisibilityLUT [][H_TOTAL]VisibilityEntry
 
 type VideoTiming struct {
 	TotalScanlines int
 	RegionId       byte
 	Pal            bool
 
-	VisibilityLUTs map[bool]VisibilityLUT
+	VisibilityLUTs map[bool]*VisibilityLUT
+
+	activeVisibilityLUT *VisibilityLUT
 }
 
 var NTSC_TIMING = VideoTiming{
 	TotalScanlines: NTSC_TOTAL_SCANLINES,
 	RegionId:       0,
 	Pal:            false,
-	VisibilityLUTs: make(map[bool]VisibilityLUT),
+	VisibilityLUTs: make(map[bool]*VisibilityLUT),
 }
 
 var PAL_TIMING = VideoTiming{
 	TotalScanlines: PAL_TOTAL_SCANLINES,
 	RegionId:       1,
 	Pal:            true,
-	VisibilityLUTs: make(map[bool]VisibilityLUT),
+	VisibilityLUTs: make(map[bool]*VisibilityLUT),
 }
 
-func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
+func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) *VisibilityLUT {
 	vActive := getScreenHeight(isOverscan)
 
-	//added +1 to cover the extra scanline edge case every other frame
 	lut := make(VisibilityLUT, timing.TotalScanlines)
 
 	for v := 0; v < timing.TotalScanlines; v++ {
-		for h := 0; h < H_TOTAL+1; h++ {
+		for h := 0; h < H_TOTAL; h++ {
 
 			action := ActionNone
 			if v == 0 && h == 0 {
@@ -149,7 +150,7 @@ func GenerateVisibilityLUT(timing *VideoTiming, isOverscan bool) VisibilityLUT {
 		}
 	}
 
-	return lut
+	return &lut
 }
 
 func setAction(current PPUAction, newVal PPUAction, v, h int) PPUAction {

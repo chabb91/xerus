@@ -1,7 +1,7 @@
 package ppu
 
 func (ppu *PPU) Step() uint64 {
-	draw := currentTimingLUT[ppu.V][ppu.H] //TODO cache &currentTimingLUT[V] between scanlines
+	draw := currentTimingRow[min(ppu.H, H_TOTAL-1)] //pal long line smh
 	if draw.IsVisible {
 		h := draw.H
 		v := draw.V<<interlace + (interlaceStep & interlace)
@@ -66,7 +66,7 @@ func (ppu *PPU) Step() uint64 {
 	cycles := uint64(3)
 	if (ppu.H != 323 && ppu.H != 327) ||
 		//NTSC Short Line check
-		(!ppu.SETINI.Timing.Pal && ppu.V == 240 && (interlace^1)&interlaceStep == 1) {
+		(!ppu.Timing.Pal && ppu.V == 240 && (interlace^1)&interlaceStep == 1) {
 		cycles = 2
 	}
 
@@ -75,14 +75,15 @@ func (ppu *PPU) Step() uint64 {
 		ppu.H = 0
 		ppu.V++
 		//PAL Long line check
-		if ppu.SETINI.Timing.Pal && ppu.V == 311 && interlaceStep&interlace == 1 {
+		if ppu.Timing.Pal && ppu.V == 311 && interlaceStep&interlace == 1 {
 			ppu.HTotal = H_TOTAL + 1
 		} else {
 			ppu.HTotal = H_TOTAL
 		}
-		if ppu.V >= ppu.SETINI.Timing.TotalScanlines-(int(interlace&(interlaceStep^1))^1) {
+		if ppu.V >= ppu.Timing.TotalScanlines-(int(interlace&(interlaceStep^1))^1) {
 			ppu.V = 0
 		}
+		currentTimingRow = &(*ppu.Timing.activeVisibilityLUT)[ppu.V] //setup the next row
 	}
 	return cycles
 }
@@ -147,7 +148,7 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 	case ActionCpuRefresh:
 		ppu.Refresh = true
 	case ActionPrepareScanline:
-		ppu.Obj.prepareScanLine(draw.V<<ppu.SETINI.objInterlace + interlace&interlaceStep)
+		ppu.Obj.prepareScanLine(draw.V<<ppu.objInterlace + interlace&interlaceStep)
 
 		shouldReset := true
 		if hasMosaic && mosaicSize > 1 {

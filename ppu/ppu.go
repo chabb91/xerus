@@ -28,7 +28,13 @@ type spriteValidator interface {
 }
 
 type PPU struct {
-	SETINI *SETINI
+	externalSync bool //not used
+	m7EXTBG      bool
+	objInterlace uint16
+
+	Timing VideoTiming
+
+	ScreenHeight int //overscan or not
 
 	OAM   *OAMController
 	VRAM  *VRAMController
@@ -84,19 +90,16 @@ type PPU struct {
 }
 
 func NewPPU(bus memory.Bus, isPal bool) *PPU {
-	var timing VideoTiming
-	if isPal {
-		timing = PAL_TIMING
-	} else {
-		timing = NTSC_TIMING
-	}
-
 	ppu := &PPU{
-		SETINI: NewSETINI(timing),
 		bus:    bus,
+		HTotal: H_TOTAL,
 	}
 
-	ppu.HTotal = H_TOTAL
+	if isPal {
+		ppu.Timing = PAL_TIMING
+	} else {
+		ppu.Timing = NTSC_TIMING
+	}
 
 	//these 3 need to be initialized first so the DI works later
 	ppu.VRAM = NewVRAM(ppu)
@@ -184,7 +187,7 @@ func (ppu *PPU) Read(addr uint16) (byte, error) {
 		return ppu.returnAndSetPpu1OB(ppu.Obj.timeOver | ppu.Obj.rangeOver | ppu.ppu1OB&0x10 | CHIP_5C77_VERSION), nil
 	case 0x213F:
 		ppu.VHigh, ppu.HHigh = false, false
-		ret := byte(interlaceStep&1)<<7 | ppu.ppu2OB&0x20 | ppu.SETINI.Timing.RegionId<<4 | CHIP_5C78_VERSION
+		ret := byte(interlaceStep&1)<<7 | ppu.ppu2OB&0x20 | ppu.Timing.RegionId<<4 | CHIP_5C78_VERSION
 		if *ppu.Wrio >= 0x80 {
 			ret |= ppu.LatchFlag << 6
 			ppu.LatchFlag = 0
@@ -240,7 +243,7 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 
 		ms := value>>4 + 1
 		if ms != mosaicSize {
-			if ppu.V > 0 && ppu.SETINI.ScreenHeight >= ppu.V {
+			if ppu.V > 0 && ppu.ScreenHeight >= ppu.V {
 				mosaicStartLine = uint16(ppu.V)
 			} else {
 				mosaicStartLine = 0
@@ -398,12 +401,12 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		}
 		ppu.registerPreviousValues[0x33] = uint16(value)
 
-		prevEXTBG := ppu.SETINI.m7EXTBG
-		ppu.SETINI.setup(value)
-		ppu.Framebuffer.CurrentHeight = ppu.SETINI.ScreenHeight // - (1 << interlace)
+		prevEXTBG := ppu.m7EXTBG
+		ppu.setupSETINI(value)
+		ppu.Framebuffer.CurrentHeight = ppu.ScreenHeight // - (1 << interlace)
 		ppu.Framebuffer.Interlace = byte(interlace)
 
-		if ppu.BGMODE == 7 && prevEXTBG != ppu.SETINI.m7EXTBG {
+		if ppu.BGMODE == 7 && prevEXTBG != ppu.m7EXTBG {
 			setMode7(ppu, false)
 			ppu.regeneratePipelines()
 			ppu.invalidateAllBackgrounds()
@@ -413,6 +416,19 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		return fmt.Errorf("invalid PPU register write at $%04X", addr)
 	}
 	return nil
+}
+
+func (ppu *PPU) setupSETINI(value byte) {
+	ppu.externalSync = value&0x80 != 0
+	ppu.m7EXTBG = value&0x40 != 0
+	pseudoHires = value & 8 >> 3
+	ppu.objInterlace = uint16(value & 0x02 >> 1)
+	interlace = uint16(value & 1)
+
+	overscan := value&0x04 != 0
+	ppu.Timing.activeVisibilityLUT = ppu.Timing.VisibilityLUTs[overscan]
+	currentTimingRow = &(*ppu.Timing.activeVisibilityLUT)[ppu.V]
+	ppu.ScreenHeight = getScreenHeight(overscan)
 }
 
 func (ppu *PPU) getOAMLow() []byte {

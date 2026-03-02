@@ -11,7 +11,7 @@ var colorCache [5]int
 var spritePrio byte
 var spriteMath bool
 
-var currentTimingLUT VisibilityLUT
+var currentTimingRow *[H_TOTAL]VisibilityEntry
 var currentPixelBufferRow *[SCREEN_WIDTH]ui.SnesColorData
 
 // global mosaic values

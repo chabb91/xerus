@@ -4,7 +4,6 @@ import (
 	"time"
 )
 
-const PPU_TICK_RATE = uint64(2)
 const DMA_OVERHEAD = uint64(4)
 const CPU_REFRESH_DURATION = uint64(20)
 const CPU_DELAY_INTERRUPT_AFTER_DMA = uint64(2) //cpu cycle count
