@@ -5,8 +5,8 @@ import (
 )
 
 const BufferHeight = 478
-const BufferWidth = 256
 const BufferWidthShift = 8
+const BufferWidth = 1 << BufferWidthShift
 
 const MaxScreenHeight = BufferHeight
 const MaxScreenWidth = BufferWidth * 2
@@ -35,10 +35,10 @@ type Framebuffer struct {
 
 func NewFramebuffer() *Framebuffer {
 	fb := &Framebuffer{
-		front:         new([BufferHeight][BufferWidth]SnesColorData),
-		Back:          new([BufferHeight][BufferWidth]SnesColorData),
-		swap:          make(chan *[BufferHeight][BufferWidth]SnesColorData, 1),
-		CurrentHeight: 224,
+		front: new([BufferHeight][BufferWidth]SnesColorData),
+		Back:  new([BufferHeight][BufferWidth]SnesColorData),
+		swap:  make(chan *[BufferHeight][BufferWidth]SnesColorData, 1),
+		//CurrentHeight is set up on ppu init
 	}
 	return fb
 }
@@ -57,7 +57,6 @@ type EmulatorDisplay struct {
 	fb                *Framebuffer
 	transformedBuffer []byte
 
-	ScreenWidth   int
 	ScreenHeight  int
 	ScalingFactor float64
 	ActiveImage   *ebiten.Image
@@ -75,7 +74,6 @@ func NewEmulatorDisplay(fb *Framebuffer, config UiConfig) *EmulatorDisplay {
 		fb:                fb,
 		ActiveImage:       updateActiveImage(MaxScreenHeight, displayScale),
 		transformedBuffer: make([]byte, 4*MaxScreenWidth*MaxScreenHeight),
-		ScreenWidth:       MaxScreenWidth,
 		ScreenHeight:      MaxScreenHeight,
 		ScalingFactor:     displayScale,
 
@@ -103,9 +101,7 @@ func (ed *EmulatorDisplay) Update() error {
 			ed.ActiveImage = updateActiveImage(newHeight, ed.ScalingFactor)
 		}
 		ed.convertBGR15ToRGBA(frame)
-
-		activePixelsSlice := ed.transformedBuffer[:ed.ScreenWidth*ed.ScreenHeight*4]
-		ed.ActiveImage.WritePixels(activePixelsSlice)
+		ed.ActiveImage.WritePixels(ed.transformedBuffer[:MaxScreenWidth*ed.ScreenHeight*4])
 	default:
 		// no new frame yet
 	}
@@ -129,14 +125,15 @@ func (ed *EmulatorDisplay) Draw(screen *ebiten.Image) {
 }
 
 func (ed *EmulatorDisplay) Layout(outsideWidth, outsideHeight int) (int, int) {
-	return ed.ScreenWidth, ed.ScreenHeight
+	return MaxScreenWidth, ed.ScreenHeight
 }
 
 func (ed *EmulatorDisplay) convertBGR15ToRGBA(buffer *[BufferHeight][BufferWidth]SnesColorData) {
-	shift := ed.fb.Interlace ^ 1
-	for y := 0; y < ed.ScreenHeight>>shift; y++ {
+	renderedRows := ed.ScreenHeight >> (ed.fb.Interlace ^ 1)
+	for y := 0; y < renderedRows; y++ {
+		bufferRow := &buffer[y]
 		for x := 0; x < BufferWidth; x++ {
-			v := buffer[y][x]
+			v := bufferRow[x]
 			i := (y<<BufferWidthShift + x) << 3
 
 			r := float32(v.Color1 & 0x1F << 3)
