@@ -1,0 +1,84 @@
+//kage:unit pixels
+package main
+
+// crtBasicKage is a CRT shader that simulates a CRT monitor with a basic pixel grid.
+// Credits: https://quasilyte.dev/blog/post/ebitengine-shaders/
+//          https://github.com/BigJk/crt/blob/v0.0.15/shader/crt_basic.go
+//
+// Converted BigJk's implementation to be ebitengine 2.6 compliant
+// by replacing deprecated functions
+
+var Seed int   //pseudo-random noise seed
+var Tick float //the moving scanline effect counter
+
+// pixel drift
+func applyPixPick(pixCoord vec2, dist float, m, hash int) vec2 {
+	dir := hash % m
+	if dir == 0 {
+		pixCoord.x += dist
+	} else if dir == 1 {
+		pixCoord.x -= dist
+	} else if dir == 2 {
+		pixCoord.y += dist
+	} else if dir == 3 {
+		pixCoord.y -= dist
+	}
+	// Otherwise, don't move it anywhere.
+	return pixCoord
+}
+
+// unique hash for each pixel
+// every time seedMod == 0 the effect is more pronounced
+func shaderRand(pixCoord vec2) (seedMod, randValue int) {
+	size := imageSrc0Size()
+
+	pixelOffset := int(pixCoord.x) + int(pixCoord.y*size.x)
+
+	seedMod = pixelOffset % Seed
+	randValue = pixelOffset + seedMod + Seed
+	return
+}
+
+func applyVideoDegradation(y float, c vec4) vec4 {
+	if c.a != 0.0 {
+		//darken every 4th pixel
+		if int(y+Tick)%4 == 0 {
+			return vec4(c.rgb*0.8, c.a)
+		}
+	}
+	return c
+}
+
+func Fragment(dstPos vec4, srcPos vec2) vec4 {
+	c := imageSrc0At(srcPos)
+
+	if c.a != 0.0 {
+		seedMod, h := shaderRand(srcPos)
+
+		dist := 0.7
+		if seedMod == 0 {
+			dist = 3.0
+		}
+
+		p := applyPixPick(srcPos, dist, 10, h)
+
+		//using destination position (display scale agnostic)
+		return applyVideoDegradation(dstPos.y, formatBGR15(imageSrc0At(p)))
+	}
+
+	return formatBGR15(c)
+}
+
+func formatBGR15(color vec4) vec4 {
+	color = color * 255.0
+	whole := color.g*256 + color.r
+
+	//i. e. base 32 conversion
+	r := mod(floor(whole), 32)
+	g := mod(floor(whole/32), 32)
+	b := mod(floor(whole/1024), 32)
+
+	brightness := color.b / 465.0 //31*15
+
+	return vec4(vec3(r, g, b)*brightness, 1.0)
+}
