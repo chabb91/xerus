@@ -2,6 +2,8 @@ package ui
 
 import (
 	"github.com/hajimehoshi/ebiten/v2"
+
+	_ "embed"
 )
 
 const BufferHeight = 478
@@ -10,6 +12,18 @@ const BufferWidth = 1 << BufferWidthShift
 
 const MaxScreenHeight = BufferHeight
 const MaxScreenWidth = BufferWidth * 2
+
+//go:embed shaders/bgr15.kage
+var bgr15ShaderSource []byte
+var bgrShader *ebiten.Shader
+
+func init() {
+	var err error
+	bgrShader, err = ebiten.NewShader(bgr15ShaderSource)
+	if err != nil {
+		panic(string("Kage: Shader compilation failed. " + err.Error()))
+	}
+}
 
 type UiConfig interface {
 	GetDisplayScale() float64
@@ -100,7 +114,7 @@ func (ed *EmulatorDisplay) Update() error {
 			ed.ScreenHeight = newHeight
 			ed.ActiveImage = updateActiveImage(newHeight, ed.ScalingFactor)
 		}
-		ed.convertBGR15ToRGBA(frame)
+		ed.frameBufferToShader(frame)
 		ed.ActiveImage.WritePixels(ed.transformedBuffer[:MaxScreenWidth*ed.ScreenHeight*4])
 	default:
 		// no new frame yet
@@ -117,18 +131,17 @@ func (ed *EmulatorDisplay) Draw(screen *ebiten.Image) {
 	if ed.ActiveImage == nil {
 		return
 	}
-	op := &ebiten.DrawImageOptions{}
-	scaleX := float64(1)
-	scaleY := float64(int(2 >> ed.fb.Interlace))
-	op.GeoM.Scale(scaleX, scaleY)
-	screen.DrawImage(ed.ActiveImage, op)
+	op := &ebiten.DrawRectShaderOptions{}
+	op.Images[0] = ed.ActiveImage
+	op.GeoM.Scale(1.0, float64(int(2>>ed.fb.Interlace)))
+	screen.DrawRectShader(MaxScreenWidth, ed.ScreenHeight, bgrShader, op)
 }
 
 func (ed *EmulatorDisplay) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return MaxScreenWidth, ed.ScreenHeight
 }
 
-func (ed *EmulatorDisplay) convertBGR15ToRGBA(buffer *[BufferHeight][BufferWidth]SnesColorData) {
+func (ed *EmulatorDisplay) frameBufferToShader(buffer *[BufferHeight][BufferWidth]SnesColorData) {
 	renderedRows := ed.ScreenHeight >> (ed.fb.Interlace ^ 1)
 	for y := 0; y < renderedRows; y++ {
 		bufferRow := &buffer[y]
@@ -136,24 +149,14 @@ func (ed *EmulatorDisplay) convertBGR15ToRGBA(buffer *[BufferHeight][BufferWidth
 			v := bufferRow[x]
 			i := (y<<BufferWidthShift + x) << 3
 
-			r := float32(v.Color1 & 0x1F << 3)
-			g := float32((v.Color1 >> 5) & 0x1F << 3)
-			b := float32((v.Color1 >> 10) & 0x1F << 3)
-
-			scale := float32(v.Brightness) / 15
-
-			ed.transformedBuffer[i+0] = byte(r * scale)
-			ed.transformedBuffer[i+1] = byte(g * scale)
-			ed.transformedBuffer[i+2] = byte(b * scale)
+			ed.transformedBuffer[i+0] = byte(v.Color1)
+			ed.transformedBuffer[i+1] = byte(v.Color1 >> 8)
+			ed.transformedBuffer[i+2] = v.Brightness
 			ed.transformedBuffer[i+3] = 0xFF // alpha always fully opaque
 
-			r = float32(v.Color2 & 0x1F << 3)
-			g = float32((v.Color2 >> 5) & 0x1F << 3)
-			b = float32((v.Color2 >> 10) & 0x1F << 3)
-
-			ed.transformedBuffer[i+4] = byte(r * scale)
-			ed.transformedBuffer[i+5] = byte(g * scale)
-			ed.transformedBuffer[i+6] = byte(b * scale)
+			ed.transformedBuffer[i+4] = byte(v.Color2)
+			ed.transformedBuffer[i+5] = byte(v.Color2 >> 8)
+			ed.transformedBuffer[i+6] = v.Brightness
 			ed.transformedBuffer[i+7] = 0xFF
 		}
 	}

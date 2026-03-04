@@ -1,0 +1,16 @@
+//kage:unit pixels
+package main
+
+func Fragment(dstPos vec4, srcPos vec2) vec4 {
+	raw := (imageSrc0UnsafeAt(srcPos))*255.0
+
+	bgr := int(raw.r+0.5) | (int(raw.g+0.5)<<8)
+
+	r := float(bgr&0x1F)
+	g := float((bgr>>5)&0x1F)
+	b := float((bgr>>10)&0x1F)
+
+	brightness := raw.b/465.0 //31*15
+
+	return vec4(vec3(r, g, b)*brightness, 1.0)
+}
