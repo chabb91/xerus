@@ -4,11 +4,12 @@ package main
 func Fragment(dstPos vec4, srcPos vec2) vec4 {
 	raw := (imageSrc0UnsafeAt(srcPos))*255.0
 
-	bgr := int(raw.r+0.5) | (int(raw.g+0.5)<<8)
+	whole := raw.g*256 + raw.r
 
-	r := float(bgr&0x1F)
-	g := float((bgr>>5)&0x1F)
-	b := float((bgr>>10)&0x1F)
+	//i. e. base 32 conversion
+	r := mod(floor(whole), 32)
+	g := mod(floor(whole/32), 32)
+	b := mod(floor(whole/1024), 32)
 
 	brightness := raw.b/465.0 //31*15
 
