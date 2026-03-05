@@ -2,10 +2,13 @@ package config
 
 import (
 	"SNES_emulator/ui"
+	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -13,7 +16,7 @@ type EmulatorConfig struct {
 	RomPath string
 
 	PProf     bool
-	PProfPath string //TODO check if path is valid
+	PProfPath string
 
 	ForceRegion string
 
@@ -52,13 +55,42 @@ func New() *EmulatorConfig {
 		os.Exit(1)
 	}
 
-	if _, err := os.Stat(args[0]); os.IsNotExist(err) {
+	if _, err := os.Stat(args[0]); errors.Is(err, fs.ErrNotExist) {
 		fmt.Printf("Error: ROM (.sfc) file not found at %s\n", args[0])
 		flag.Usage()
 		os.Exit(1)
 	}
 
 	conf.RomPath = args[0]
+
+	if conf.PProf {
+		ext := filepath.Ext(conf.PProfPath)
+		dir := filepath.Dir(conf.PProfPath)
+		fid, err := os.Stat(dir)
+
+		if ext != ".pprof" {
+			fmt.Printf("Error: Invalid extension '%s', expected '.pprof'\n", ext)
+			flag.Usage()
+			os.Exit(1)
+		}
+
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				fmt.Printf("Error: Directory '%s' does not exist\n", dir)
+			} else {
+				fmt.Printf("Error accessing path: %v\n", err)
+			}
+			flag.Usage()
+			os.Exit(1)
+		}
+
+		if !fid.IsDir() {
+			fmt.Printf("Error: '%s' is not a directory\n", dir)
+			flag.Usage()
+			os.Exit(1)
+		}
+	}
+
 	return conf
 }
 
