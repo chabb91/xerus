@@ -13,18 +13,6 @@ const BufferWidth = 1 << BufferWidthShift
 const MaxScreenHeight = BufferHeight
 const MaxScreenWidth = BufferWidth * 2
 
-//go:embed shaders/bgr15.kage
-var bgr15ShaderSource []byte
-var bgrShader *ebiten.Shader
-
-func init() {
-	var err error
-	bgrShader, err = ebiten.NewShader(bgr15ShaderSource)
-	if err != nil {
-		panic(string("Kage: Shader compilation failed. " + err.Error()))
-	}
-}
-
 type UiConfig interface {
 	GetDisplayScale() float64
 	GetInputMapping() []SnesInput
@@ -74,6 +62,7 @@ type EmulatorDisplay struct {
 	ScreenHeight  int
 	ScalingFactor float64
 	ActiveImage   *ebiten.Image
+	Shader
 
 	Controller0 SnesInput
 	Controller1 SnesInput
@@ -84,9 +73,15 @@ type EmulatorDisplay struct {
 func NewEmulatorDisplay(fb *Framebuffer, config UiConfig) *EmulatorDisplay {
 	displayScale := config.GetDisplayScale()
 	controllers := config.GetInputMapping()
+	shader, err := NewCrtBasicShader()
+	if err != nil {
+		panic(err)
+	}
+
 	return &EmulatorDisplay{
 		fb:                fb,
 		ActiveImage:       updateActiveImage(MaxScreenHeight, displayScale),
+		Shader:            shader,
 		transformedBuffer: make([]byte, 4*MaxScreenWidth*MaxScreenHeight),
 		ScreenHeight:      MaxScreenHeight,
 		ScalingFactor:     displayScale,
@@ -134,7 +129,8 @@ func (ed *EmulatorDisplay) Draw(screen *ebiten.Image) {
 	op := &ebiten.DrawRectShaderOptions{}
 	op.Images[0] = ed.ActiveImage
 	op.GeoM.Scale(1.0, float64(int(2>>ed.fb.Interlace)))
-	screen.DrawRectShader(MaxScreenWidth, ed.ScreenHeight, bgrShader, op)
+	op.Uniforms = ed.GetUniforms()
+	screen.DrawRectShader(MaxScreenWidth, ed.ScreenHeight, ed.GetShader(), op)
 }
 
 func (ed *EmulatorDisplay) Layout(outsideWidth, outsideHeight int) (int, int) {
@@ -145,9 +141,10 @@ func (ed *EmulatorDisplay) frameBufferToShader(buffer *[BufferHeight][BufferWidt
 	renderedRows := ed.ScreenHeight >> (ed.fb.Interlace ^ 1)
 	for y := 0; y < renderedRows; y++ {
 		bufferRow := &buffer[y]
+		fullRows := y << BufferWidthShift
 		for x := 0; x < BufferWidth; x++ {
 			v := bufferRow[x]
-			i := (y<<BufferWidthShift + x) << 3
+			i := (fullRows + x) << 3
 
 			ed.transformedBuffer[i+0] = byte(v.Color1)
 			ed.transformedBuffer[i+1] = byte(v.Color1 >> 8)
