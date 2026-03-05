@@ -5,8 +5,12 @@ package main
 // Credits: https://quasilyte.dev/blog/post/ebitengine-shaders/
 //          https://github.com/BigJk/crt/blob/v0.0.15/shader/crt_basic.go
 //
-// Converted BigJk's implementation to be ebitengine 2.6 compliant
+// Converted BigJk's implementation to be ebitengine 2.6+ compliant
 // by replacing deprecated functions
+// Other changes:
+//	- Seed is passed as int
+//	- applyVideoDegradation doesnt affect the alpha channel
+//	- added built in bgr15 decoding that is necessary for the SNES
 
 var Seed int   //pseudo-random noise seed
 var Tick float //the moving scanline effect counter
@@ -30,9 +34,7 @@ func applyPixPick(pixCoord vec2, dist float, m, hash int) vec2 {
 // unique hash for each pixel
 // every time seedMod == 0 the effect is more pronounced
 func shaderRand(pixCoord vec2) (seedMod, randValue int) {
-	size := imageSrc0Size()
-
-	pixelOffset := int(pixCoord.x) + int(pixCoord.y*size.x)
+	pixelOffset := int(pixCoord.x) + int(pixCoord.y*imageSrc0Size().x)
 
 	seedMod = pixelOffset % Seed
 	randValue = pixelOffset + seedMod + Seed
