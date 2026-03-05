@@ -16,6 +16,7 @@ const MaxScreenWidth = BufferWidth * 2
 type UiConfig interface {
 	GetDisplayScale() float64
 	GetInputMapping() []SnesInput
+	GetSelectedShader() Shader
 }
 
 type SnesColorData struct {
@@ -73,10 +74,7 @@ type EmulatorDisplay struct {
 func NewEmulatorDisplay(fb *Framebuffer, config UiConfig) *EmulatorDisplay {
 	displayScale := config.GetDisplayScale()
 	controllers := config.GetInputMapping()
-	shader, err := NewCrtBasicShader()
-	if err != nil {
-		panic(err)
-	}
+	shader := config.GetSelectedShader()
 
 	return &EmulatorDisplay{
 		fb:                fb,
