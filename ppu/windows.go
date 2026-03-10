@@ -1,5 +1,7 @@
 package ppu
 
+import "fmt"
+
 const WINDOW_INVALIDATION_COUNTER = 10
 
 type wMaskLogic func(bool, bool) bool
@@ -97,10 +99,9 @@ func getWMaskLogic(value byte) wMaskLogic {
 		return wMaskXOR
 	case 3:
 		return wMaskXNOR
+	default:
+		panic(fmt.Errorf("PPU: Window Mask Logic is in an unexpected state."))
 	}
-
-	//should never happen
-	return wMaskXNOR
 }
 
 func (wc *WindowController) W12SEL(value byte) {
@@ -167,82 +168,38 @@ func (wc *WindowController) markAllWindowsDirty() {
 	wc.prepareToRebuild()
 }
 
-func (wc *WindowController) isDotInMask1Range(inverted bool, H uint16) bool {
+func isDotInMaskRange(leftPos, rightPos byte, inverted bool, H uint16) bool {
 	ret := false
-	if wc.w1LeftPos > wc.w1RightPos {
+	if leftPos > rightPos {
 		ret = false
 	} else {
-		if uint16(wc.w1LeftPos) < H && uint16(wc.w1RightPos) > H {
+		if uint16(leftPos) < H && uint16(rightPos) > H {
 			ret = true
 		}
 	}
 
-	if inverted {
-		return !ret
-	}
-
-	return ret
+	return ret != inverted //bool xor i.e toggle
 }
 
-func (wc *WindowController) isDotInMask2Range(inverted bool, H uint16) bool {
-	ret := false
-	if wc.w2LeftPos > wc.w2RightPos {
-		ret = false
+func (lwd *LayerWindowData) isDotMasked(isScreenMasked bool, H uint16, wc *WindowController) bool {
+	if !isScreenMasked {
+		return false
 	} else {
-		if uint16(wc.w2LeftPos) < H && uint16(wc.w2RightPos) > H {
-			ret = true
-		}
-	}
-
-	if inverted {
-		return !ret
-	}
-
-	return ret
-}
-
-func (lwd *LayerWindowData) isDotMasked(isSubscreen bool, H uint16, wc *WindowController) bool {
-	if !isSubscreen && !lwd.mainScreenMasked {
-		return false
-	}
-	if !isSubscreen && lwd.mainScreenMasked {
 		if lwd.w1Active && !lwd.w2Active {
-			return wc.isDotInMask1Range(lwd.w1Inverted, H)
+			return isDotInMaskRange(wc.w1LeftPos, wc.w1RightPos, lwd.w1Inverted, H)
 		}
 		if !lwd.w1Active && lwd.w2Active {
-			return wc.isDotInMask2Range(lwd.w2Inverted, H)
+			return isDotInMaskRange(wc.w2LeftPos, wc.w2RightPos, lwd.w2Inverted, H)
 		}
 		if lwd.w1Active && lwd.w2Active {
-			w1 := wc.isDotInMask1Range(lwd.w1Inverted, H)
-			w2 := wc.isDotInMask2Range(lwd.w2Inverted, H)
+			w1 := isDotInMaskRange(wc.w1LeftPos, wc.w1RightPos, lwd.w1Inverted, H)
+			w2 := isDotInMaskRange(wc.w2LeftPos, wc.w2RightPos, lwd.w2Inverted, H)
 			return lwd.wMaskLogic(w1, w2)
 		}
-		if !lwd.w1Active && !lwd.w2Active {
-			return false
-		}
+
+		return false //both inactive
 	}
 
-	if isSubscreen && !lwd.subScreenMasked {
-		return false
-	}
-	if isSubscreen && lwd.subScreenMasked {
-		if lwd.w1Active && !lwd.w2Active {
-			return wc.isDotInMask1Range(lwd.w1Inverted, H)
-		}
-		if !lwd.w1Active && lwd.w2Active {
-			return wc.isDotInMask2Range(lwd.w2Inverted, H)
-		}
-		if lwd.w1Active && lwd.w2Active {
-			w1 := wc.isDotInMask1Range(lwd.w1Inverted, H)
-			w2 := wc.isDotInMask2Range(lwd.w2Inverted, H)
-			return lwd.wMaskLogic(w1, w2)
-		}
-		if !lwd.w1Active && !lwd.w2Active {
-			return false
-		}
-	}
-
-	return false
 }
 
 func (wc *WindowController) rebuildDirtyLayerWindowCaches() {
@@ -251,22 +208,23 @@ func (wc *WindowController) rebuildDirtyLayerWindowCaches() {
 		layer := &wc.layers[i]
 		if wc.dirtyMainWindows&val != 0 && wc.dirtySubWindows&val == 0 {
 			for j := range uint16(SCREEN_WIDTH) {
-				layer.mainCache[j] = layer.isDotMasked(false, j, wc)
+				layer.mainCache[j] = layer.isDotMasked(layer.mainScreenMasked, j, wc)
 			}
 		} else if wc.dirtyMainWindows&val == 0 && wc.dirtySubWindows&val != 0 {
 			for j := range uint16(SCREEN_WIDTH) {
-				layer.subCache[j] = layer.isDotMasked(true, j, wc)
+				layer.subCache[j] = layer.isDotMasked(layer.subScreenMasked, j, wc)
 			}
 		} else if wc.dirtyMainWindows&val != 0 && wc.dirtySubWindows&val != 0 {
 			for j := range uint16(SCREEN_WIDTH) {
-				layer.mainCache[j] = layer.isDotMasked(false, j, wc)
-				layer.subCache[j] = layer.isDotMasked(true, j, wc)
+				layer.mainCache[j] = layer.isDotMasked(layer.mainScreenMasked, j, wc)
+				layer.subCache[j] = layer.isDotMasked(layer.subScreenMasked, j, wc)
 			}
 		}
 	}
 	if !wc.ColorMath.windowValid {
+		cwd := &wc.ColorMath.colorWindowData
 		for i := range uint16(SCREEN_WIDTH) {
-			wc.ColorMath.colorWindowData.mainCache[i] = wc.isDotInColorMask(i)
+			cwd.mainCache[i] = cwd.isDotMasked(true, i, wc)
 		}
 	}
 
@@ -358,30 +316,9 @@ func getColorClipOrPreventMathMode(value byte) clipOrPreventMathFunction {
 		return colorClipOrPreventMathInsideWindow
 	case 3:
 		return colorClipOrPreventMathAlways
+	default:
+		panic(fmt.Errorf("PPU: Color Clip Logic is in an unexpected state."))
 	}
-
-	//should never happen
-	return colorClipOrPreventMathAlways
-}
-
-func (wc *WindowController) isDotInColorMask(H uint16) bool {
-	lwd := &wc.ColorMath.colorWindowData
-	if lwd.w1Active && !lwd.w2Active {
-		return wc.isDotInMask1Range(lwd.w1Inverted, H)
-	}
-	if !lwd.w1Active && lwd.w2Active {
-		return wc.isDotInMask2Range(lwd.w2Inverted, H)
-	}
-	if lwd.w1Active && lwd.w2Active {
-		w1 := wc.isDotInMask1Range(lwd.w1Inverted, H)
-		w2 := wc.isDotInMask2Range(lwd.w2Inverted, H)
-		return lwd.wMaskLogic(w1, w2)
-	}
-	if !lwd.w1Active && !lwd.w2Active {
-		return false
-	}
-
-	return false
 }
 
 func (wc *WindowController) performColorMath(mainColor, subColor, H uint16, mainLayer, subLayer ppuLayer) uint16 {
@@ -390,10 +327,7 @@ func (wc *WindowController) performColorMath(mainColor, subColor, H uint16, main
 	if colorMath.clipToBlack(inColorMask) {
 		mainColor = 0
 	}
-	if colorMath.preventMath(inColorMask) {
-		return mainColor
-	}
-	if !wc.layers[mainLayer].colorMathActive {
+	if colorMath.preventMath(inColorMask) || !wc.layers[mainLayer].colorMathActive {
 		return mainColor
 	}
 
