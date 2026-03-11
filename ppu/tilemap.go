@@ -452,7 +452,7 @@ func RenderTile4bpp(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 
 // EVERYTHING IS BASED ON 2bpp. in memory 8bpp is just 2bpp 2bpp 2bpp 2bpp
 func RenderTile8bpp(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
-	for row := 0; row < 8; row++ {
+	for row := range 8 {
 		currentRow := wordBase + uint16(row)
 		w01 := VRAM[currentRow]    // bitplanes 0-1
 		w23 := VRAM[currentRow+8]  // bitplanes 2-3
@@ -477,11 +477,9 @@ func RenderTile8bpp(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 func RenderTile2bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 	for row := range 8 {
 		word := VRAM[wordBase+uint16(row)]
-		low := byte(word)
-		high := byte(word >> 8)
 
-		lowBits := bitplaneLUT[low]
-		highBits := bitplaneLUT[high]
+		lowBits := bitplaneLUT[byte(word)]
+		highBits := bitplaneLUT[byte(word>>8)]
 
 		for px := range 8 {
 			out[row][px] = lowBits[px] | (highBits[px] << 1)
@@ -495,16 +493,16 @@ func RenderTile4bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 		w01 := VRAM[currentRow]   // bitplanes 0-1
 		w23 := VRAM[currentRow+8] // bitplanes 2-3
 
-		p0 := byte(w01)
-		p1 := byte(w01 >> 8)
-		p2 := byte(w23)
-		p3 := byte(w23 >> 8)
+		p0 := bitplaneLUT[byte(w01)]
+		p1 := bitplaneLUT[byte(w01>>8)]
+		p2 := bitplaneLUT[byte(w23)]
+		p3 := bitplaneLUT[byte(w23>>8)]
 
 		for px := range 8 {
-			out[row][px] = bitplaneLUT[p0][px] |
-				bitplaneLUT[p1][px]<<1 |
-				bitplaneLUT[p2][px]<<2 |
-				bitplaneLUT[p3][px]<<3
+			out[row][px] = p0[px] |
+				p1[px]<<1 |
+				p2[px]<<2 |
+				p3[px]<<3
 		}
 	}
 }
@@ -517,24 +515,24 @@ func RenderTile8bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 		w45 := VRAM[currentRow+16] // bitplanes 4-5
 		w67 := VRAM[currentRow+24] // bitplanes 6-7
 
-		p0 := byte(w01)
-		p1 := byte(w01 >> 8)
-		p2 := byte(w23)
-		p3 := byte(w23 >> 8)
-		p4 := byte(w45)
-		p5 := byte(w45 >> 8)
-		p6 := byte(w67)
-		p7 := byte(w67 >> 8)
+		p0 := bitplaneLUT[byte(w01)]
+		p1 := bitplaneLUT[byte(w01>>8)]
+		p2 := bitplaneLUT[byte(w23)]
+		p3 := bitplaneLUT[byte(w23>>8)]
+		p4 := bitplaneLUT[byte(w45)]
+		p5 := bitplaneLUT[byte(w45>>8)]
+		p6 := bitplaneLUT[byte(w67)]
+		p7 := bitplaneLUT[byte(w67>>8)]
 
 		for px := range 8 {
-			out[row][px] = bitplaneLUT[p0][px] |
-				bitplaneLUT[p1][px]<<1 |
-				bitplaneLUT[p2][px]<<2 |
-				bitplaneLUT[p3][px]<<3 |
-				bitplaneLUT[p4][px]<<4 |
-				bitplaneLUT[p5][px]<<5 |
-				bitplaneLUT[p6][px]<<6 |
-				bitplaneLUT[p7][px]<<7
+			out[row][px] = p0[px] |
+				p1[px]<<1 |
+				p2[px]<<2 |
+				p3[px]<<3 |
+				p4[px]<<4 |
+				p5[px]<<5 |
+				p6[px]<<6 |
+				p7[px]<<7
 		}
 	}
 }
