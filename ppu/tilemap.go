@@ -139,18 +139,15 @@ func (bg *Background) Invalidate(addr uint16) {
 }
 
 func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V uint16) (byte, byte, byte, uint16) {
-	var px byte
-	var tileIndex uint16
-
 	charTileSize = hires<<1 | charTileSize
 	tileDimensions := tileMapDimensionsLUT[tileMapSize]
 	charDimensions := charTileSizeLUT[charTileSize]
-	rowCnt := (V >> charDimensions.divMaskH) & tileDimensions.modMaskH
 	row := byte(V & charDimensions.modMaskH)
+	px := byte(H & charDimensions.modMaskW)
 	columnCnt := (H >> charDimensions.divMaskW) & tileDimensions.modMaskW
+	rowCnt := (V >> charDimensions.divMaskH) & tileDimensions.modMaskH
 	tileMapID := (rowCnt>>5)<<tileDimensions.mapsPerRowMinusOne + columnCnt>>5
-	tileIndex = tileMapID<<10 + (rowCnt&31)<<5 + columnCnt&31
-	px = byte(H & charDimensions.modMaskW)
+	tileIndex := tileMapID<<10 + (rowCnt&31)<<5 + columnCnt&31
 	if charTileSize == 0 {
 		return px, row, 0, tileIndex
 	}
