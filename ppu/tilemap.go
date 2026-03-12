@@ -25,17 +25,17 @@ const (
 	bpp8 colorDepth = 8
 )
 
-func (cd *colorDepth) trailingZeros() int {
+func (cd *colorDepth) vramSizeShift() int {
 	// V=2 (0010) k=1, V=4 (0100) k=2, V=8 (1000), k=3
 	switch *cd {
 	case 2:
-		return 1
-	case 4:
-		return 2
-	case 8:
 		return 3
+	case 4:
+		return 4
+	case 8:
+		return 5
 	default:
-		return bits.TrailingZeros(uint(*cd))
+		return bits.TrailingZeros(uint(*cd)) + 2
 	}
 }
 
@@ -131,7 +131,7 @@ func (bg *Background) Invalidate(addr uint16) {
 	}
 
 	if addr >= bg.charTileAddressBase {
-		tileIndex := (addr - bg.charTileAddressBase) >> (bg.colorDepth.trailingZeros() + 2)
+		tileIndex := (addr - bg.charTileAddressBase) >> bg.colorDepth.vramSizeShift()
 		if tileIndex < uint16(len(bg.charTiles)) {
 			bg.charTiles[tileIndex].isValid = false
 		}
@@ -141,23 +141,18 @@ func (bg *Background) Invalidate(addr uint16) {
 func getTileIndexAndPixelCoordinates(tileMapSize uint16, charTileSize byte, H, V uint16) (byte, byte, byte, uint16) {
 	var px byte
 	var tileIndex uint16
+
+	charTileSize = hires<<1 | charTileSize
 	tileDimensions := tileMapDimensionsLUT[tileMapSize]
 	charDimensions := charTileSizeLUT[charTileSize]
-	rowCnt := (V >> charDimensions.divMask) & tileDimensions.modMaskH
-	row := byte(V & charDimensions.modMask)
-	if hires == 1 {
-		columnCnt := (H >> 4) & tileDimensions.modMaskW
-		tileMapID := (rowCnt>>5)<<tileDimensions.mapsPerRowMinusOne + columnCnt>>5
-		tileIndex = tileMapID<<10 + (rowCnt&31)<<5 + columnCnt&31
-		px = byte(H & 15)
-	} else {
-		columnCnt := (H >> charDimensions.divMask) & tileDimensions.modMaskW
-		tileMapID := (rowCnt>>5)<<tileDimensions.mapsPerRowMinusOne + columnCnt>>5
-		tileIndex = tileMapID<<10 + (rowCnt&31)<<5 + columnCnt&31
-		px = byte(H & charDimensions.modMask)
-		if charTileSize == 0 {
-			return px, row, 0, tileIndex
-		}
+	rowCnt := (V >> charDimensions.divMaskH) & tileDimensions.modMaskH
+	row := byte(V & charDimensions.modMaskH)
+	columnCnt := (H >> charDimensions.divMaskW) & tileDimensions.modMaskW
+	tileMapID := (rowCnt>>5)<<tileDimensions.mapsPerRowMinusOne + columnCnt>>5
+	tileIndex = tileMapID<<10 + (rowCnt&31)<<5 + columnCnt&31
+	px = byte(H & charDimensions.modMaskW)
+	if charTileSize == 0 {
+		return px, row, 0, tileIndex
 	}
 	charMapID := (row>>3)<<1 + (px >> 3)
 	row &= 7
@@ -183,7 +178,6 @@ func (bg *Background) GetDotAt(H, V uint16) (int, byte, bool) {
 		tile.setup(tileIndex, currentEpoch)
 	}
 
-	row = tileFlipYLUT[tile.flipIndex][row]
 	if bg.mosaic {
 		offset := 8 - px
 		size := (offset / mosaicSize) * mosaicSize
@@ -195,17 +189,14 @@ func (bg *Background) GetDotAt(H, V uint16) (int, byte, bool) {
 		bg.renderCacheEnd = min(H+uint16(8-px), SCREEN_WIDTH<<hires)
 	}
 
-	if tile.flipIndex > 0 {
-		if bg.charTileSize == 1 {
-			charMapID = compositeFlipLUT[charMapID][tile.flipIndex]
-		} else if hires == 1 {
-			charMapID = compositeFlip16x8LUT[charMapID][tile.flipIndex]
-		}
+	if tile.flipIndex > 0 && (bg.charTileSize|hires == 1) {
+		charMapID = compositeFlipLUT[charMapID][tile.flipIndex&(3>>(hires&(bg.charTileSize^1)))]
 	}
 
 	var ret, color int
 	charTile := tile.charTiles[charMapID]
 	flipXTtable := &tileFlipXLUT[tile.flipIndex]
+	row = tileFlipYLUT[tile.flipIndex][row]
 	rowData := charTile.getRowAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, row)
 	cgram := bg.CGRAM
 
@@ -350,7 +341,7 @@ func (bt *BgTile) setup(tileIndex uint16, currentEpoch uint64) {
 }
 
 func (tile *BgTile) GetVramTileWordIndex(tileIndex byte) uint16 {
-	k := tile.bg.colorDepth.trailingZeros() + 2
+	k := tile.bg.colorDepth.vramSizeShift()
 	return ((tile.charIndex+charMapIdToOffsetLUT[tileIndex])<<k + tile.bg.charTileAddressBase) & 0x7FFF
 }
 

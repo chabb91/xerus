@@ -8,6 +8,27 @@ type renderedSpriteOnDot struct {
 	partakesInColorMath bool
 }
 
+type ObTileSize struct {
+	W, H                        uint16
+	divMaskW, divMaskH          uint16
+	modMaskW, modMaskH          uint16
+	tilesPerRow, tilesPerColumn uint16
+}
+
+func newObTileSize(W, H, divMaskW, divMaskH,
+	modMaskW, modMaskH, tilesPerRow, tilesPerColumn uint16) ObTileSize {
+	return ObTileSize{
+		W:              W,
+		H:              H,
+		divMaskW:       divMaskW,
+		divMaskH:       divMaskH,
+		modMaskW:       modMaskW,
+		modMaskH:       modMaskH,
+		tilesPerRow:    tilesPerRow,
+		tilesPerColumn: tilesPerColumn,
+	}
+}
+
 type Objects struct {
 	priorityRotation func() byte
 
@@ -22,7 +43,7 @@ type Objects struct {
 	colorDepth colorDepth
 
 	name, nameBase uint16
-	tileSize       [2]OBTileSize
+	tileSize       [2]ObTileSize
 
 	currentEpoch uint64
 
@@ -168,7 +189,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 	}
 }
 
-func (ob *Objects) drawASpriteTileRow(sprite *Sprite, dimensions OBTileSize, H, V uint16) int16 {
+func (ob *Objects) drawASpriteTileRow(sprite *Sprite, dimensions ObTileSize, H, V uint16) int16 {
 	x := H - uint16(sprite.posX)
 	y := uint16(sprite.posY)
 	if V >= y {
