@@ -16,8 +16,6 @@ var charTileSizeLUT = [4]struct{ W, H, divMaskW, divMaskH, modMaskW, modMaskH ui
 	{16, 16, 4, 4, 15, 15},
 }
 
-var charMapIdToOffsetLUT = [4]uint16{0, 1, 0x10, 0x11}
-
 var obTileSizeLUT = [8][2]ObTileSize{
 	{
 		newObTileSize(8, 8, 3, 3, 7, 7, 1, 1),

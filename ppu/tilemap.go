@@ -62,7 +62,7 @@ type Background struct {
 	tileMapAddress uint16
 	tileMapSize    uint16
 
-	charTiles           [0x1000]CharTile //VRAM is 0x8000 words. 2bpp takes 8 words to store. there are 0x1000 char tiles max
+	charTiles           [0x400]CharTile //each bg can reference 0x400 charTiles at most. wraps
 	charTileAddressBase uint16
 	charTileSize        byte
 	colorDepth          colorDepth
@@ -327,13 +327,13 @@ func (bt *BgTile) setup(tileIndex uint16, currentEpoch uint64) {
 
 	charTiles := &bt.bg.charTiles
 
-	bt.charTiles[0] = &charTiles[bt.charIndex]
+	bt.charTiles[0] = &charTiles[charIndex]
 	if bt.bg.charTileSize == 1 {
-		bt.charTiles[1] = &charTiles[charIndex+charMapIdToOffsetLUT[1]]
-		bt.charTiles[2] = &charTiles[charIndex+charMapIdToOffsetLUT[2]]
-		bt.charTiles[3] = &charTiles[charIndex+charMapIdToOffsetLUT[3]]
+		bt.charTiles[1] = &charTiles[(charIndex+0x01)&0x3FF]
+		bt.charTiles[2] = &charTiles[(charIndex+0x10)&0x3FF]
+		bt.charTiles[3] = &charTiles[(charIndex+0x11)&0x3FF]
 	} else if hires == 1 {
-		bt.charTiles[1] = &charTiles[charIndex+charMapIdToOffsetLUT[1]]
+		bt.charTiles[1] = &charTiles[(charIndex+0x01)&0x3FF]
 	}
 
 	bt.isValid = true
@@ -342,7 +342,13 @@ func (bt *BgTile) setup(tileIndex uint16, currentEpoch uint64) {
 
 func (tile *BgTile) GetVramTileWordIndex(tileIndex byte) uint16 {
 	k := tile.bg.colorDepth.vramSizeShift()
-	return ((tile.charIndex+charMapIdToOffsetLUT[tileIndex])<<k + tile.bg.charTileAddressBase) & 0x7FFF
+	/*
+		if tileIndex == 0 {
+			return (tile.charIndex<<k + tile.bg.charTileAddressBase) & 0x7FFF
+		}
+	*/
+	offset := uint16((tileIndex&2)<<3 | tileIndex&1) // 0, 1, 0x10, 0x11
+	return (((tile.charIndex+offset)&0x3FF)<<k + tile.bg.charTileAddressBase) & 0x7FFF
 }
 
 type CharTile struct {
