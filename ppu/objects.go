@@ -61,6 +61,12 @@ type Objects struct {
 	//TODO fullsnes claims these flags are being set at a certain time gotta look into it
 	//Bit6 when V=OBJ.YLOC/H=OAM.INDEX*2, bit7 when V=OBJ.YLOC+1/H=0
 	timeOver, rangeOver byte
+
+	//sprites are always being evaluated in their 256x256 coordinate space
+	//meaning when interlacing is on, each line is drawn twice.
+	//objInterlace cuts the evaluated sprite height to half and then draws alternating lines
+	//based on interlaceField. this eliminates the doubling and creates a higher resolution image.
+	interlace uint16
 }
 
 func newObjects(ds tileDataSource, priorityRotation func() byte, layer ppuLayer) *Objects {
@@ -144,7 +150,7 @@ func (ob *Objects) prepareScanLine(V uint16) {
 		sprite.setup()
 		dimensions := ob.tileSize[sprite.size]
 		wrapped := false
-		posY := uint16(sprite.posY) + dimensions.H
+		posY := uint16(sprite.posY) + dimensions.H>>ob.interlace
 		if posY > 255 {
 			wrapped = true
 		}
@@ -197,13 +203,14 @@ func (ob *Objects) prepareScanLine(V uint16) {
 }
 
 func (ob *Objects) drawASpriteTileRow(sprite *Sprite, dimensions ObTileSize, H, V uint16) int16 {
-	x := H - uint16(sprite.posX)
+	x := uint16(int16(H) - sprite.posX)
 	y := uint16(sprite.posY)
 	if V >= y {
 		y = V - y
 	} else {
 		y = (256 - y) + V
 	}
+	y = y<<ob.interlace | (interlaceStep & ob.interlace)
 
 	//diff is row-column and it is there to mimic the way the snes handles rectangular sprite flipping
 	//the rectangular sprites are flipped vertically as if they were two square sprites

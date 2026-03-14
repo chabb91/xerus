@@ -4,7 +4,7 @@ func (ppu *PPU) Step() uint64 {
 	draw := currentTimingRow[min(ppu.H, H_TOTAL-1)] //pal long line smh
 	if draw.IsVisible {
 		h := draw.H
-		v := draw.V<<interlace + (interlaceStep & interlace)
+		v := draw.V<<interlace | (interlaceStep & interlace)
 		if h == 0 {
 			currentPixelBufferRow = &ppu.Framebuffer.Back[v]
 		}
@@ -148,7 +148,7 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 	case ActionCpuRefresh:
 		ppu.Refresh = true
 	case ActionPrepareScanline:
-		ppu.Obj.prepareScanLine(draw.V<<ppu.objInterlace + interlace&interlaceStep)
+		ppu.Obj.prepareScanLine(draw.V)
 
 		shouldReset := true
 		if hasMosaic && mosaicSize > 1 {

@@ -30,7 +30,6 @@ type spriteValidator interface {
 type PPU struct {
 	externalSync bool //not used
 	m7EXTBG      bool
-	objInterlace uint16
 
 	Timing VideoTiming
 
@@ -422,8 +421,8 @@ func (ppu *PPU) setupSETINI(value byte) {
 	ppu.externalSync = value&0x80 != 0
 	ppu.m7EXTBG = value&0x40 != 0
 	pseudoHires = value & 8 >> 3
-	ppu.objInterlace = uint16(value & 0x02 >> 1)
 	interlace = uint16(value & 1)
+	ppu.Obj.interlace = uint16(value & 0x02 >> 1)
 
 	overscan := value&0x04 != 0
 	ppu.Timing.activeVisibilityLUT = ppu.Timing.VisibilityLUTs[overscan]
