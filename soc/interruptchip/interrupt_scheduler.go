@@ -194,18 +194,14 @@ func (ic *InterruptController) ReadTimeUp() byte {
 	return ret
 }
 
-// TODO create a mechanic that properly counts the LONGLINE dot number in PAL mode and
-// adjusts <340 to 341 accordingly
 func irqY(ic *InterruptController, ppu *ppu.PPU) bool {
 	return int(ic.Vtime) == ppu.V && ppu.H == 0
 }
 
-// irq cannot be latched over H=339 only in PAL longline. i count dots to <341 but
-// the real snes counts <340 where 4 dots are 5 master cycles long
 func irqX(ic *InterruptController, ppu *ppu.PPU) bool {
-	return ppu.H < 340 && int(ic.Htime) == ppu.H
+	return int(ic.Htime) == ppu.H
 }
 
 func irqXY(ic *InterruptController, ppu *ppu.PPU) bool {
-	return ppu.H < 340 && int(ic.Htime) == ppu.H && int(ic.Vtime) == ppu.V
+	return int(ic.Htime) == ppu.H && int(ic.Vtime) == ppu.V
 }
