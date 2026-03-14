@@ -39,6 +39,19 @@ func (cd *colorDepth) vramSizeShift() int {
 	}
 }
 
+func (cd *colorDepth) transparencyMask() byte {
+	switch *cd {
+	case 2:
+		return 0x3
+	case 4:
+		return 0xF
+	case 8:
+		return 0xFF
+	default:
+		return (1 << *cd) - 1 //uint16 to uint8 ??
+	}
+}
+
 type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
 type optResolver func(*Background, uint16, uint16) (uint16, uint16)
 type VRAMAddressCalculator func(tileIndex byte) uint16
@@ -66,7 +79,6 @@ type Background struct {
 	charTileAddressBase uint16
 	charTileSize        byte
 	colorDepth          colorDepth
-	paletteIndexMask    byte //used for quick transparency check
 	getPaletteIndex     colorIndex
 	isDirectColor       bool
 
@@ -110,11 +122,6 @@ func NewBackground(ds tileDataSource, layer ppuLayer) *Background {
 
 func (bg *Background) isActive() bool {
 	return bg.enabledOnMainScreen || bg.enabledOnSubScreen
-}
-
-func (bg *Background) setBgColorDepth(colorDepth colorDepth) {
-	bg.colorDepth = colorDepth
-	bg.paletteIndexMask = (1 << bg.colorDepth) - 1 //uint16 to uint8 ??
 }
 
 func (bg *Background) GetLayerSourceEpoch() uint64 {
@@ -196,6 +203,7 @@ func (bg *Background) GetDotAt(H, V uint16) (int, byte, bool) {
 	row ^= tile.verticalFlipMask
 	rowData := charTile.getRowAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, row)
 	cgram := bg.CGRAM
+	transparencyMask := bg.colorDepth.transparencyMask()
 
 	for i := H; i < bg.renderCacheEnd; i++ {
 		if !bg.mosaic || (bg.mosaic && (i-H)%(uint16(mosaicSize)) == 0) {
@@ -211,11 +219,11 @@ func (bg *Background) GetDotAt(H, V uint16) (int, byte, bool) {
 					color = int(uint16(blue)<<10 | uint16(green)<<5 | uint16(red))
 				}
 			} else {
-				pIndex := bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum) + charData
-				if pIndex&bg.paletteIndexMask == 0 {
+				paletteIdx := bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum) + charData
+				if paletteIdx&transparencyMask == 0 {
 					color = BG_BACKDROP_COLOR
 				} else {
-					color = int(cgram[pIndex])
+					color = int(cgram[paletteIdx])
 				}
 			}
 			if i == H {

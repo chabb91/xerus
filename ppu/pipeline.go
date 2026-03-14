@@ -142,10 +142,10 @@ var bgModeLUT = [8]bgModeSetter{
 }
 
 func setMode0(ppu *PPU, _ bool) {
-	ppu.Bg1.setBgColorDepth(bpp2)
-	ppu.Bg2.setBgColorDepth(bpp2)
-	ppu.Bg3.setBgColorDepth(bpp2)
-	ppu.Bg4.setBgColorDepth(bpp2)
+	ppu.Bg1.colorDepth = bpp2
+	ppu.Bg2.colorDepth = bpp2
+	ppu.Bg3.colorDepth = bpp2
+	ppu.Bg4.colorDepth = bpp2
 
 	ppu.Bg1.getPaletteIndex = mode0ColorIndex
 	ppu.Bg2.getPaletteIndex = mode0ColorIndex
@@ -162,9 +162,9 @@ func setMode0(ppu *PPU, _ bool) {
 }
 
 func setMode1(ppu *PPU, mode1Prio bool) {
-	ppu.Bg1.setBgColorDepth(bpp4)
-	ppu.Bg2.setBgColorDepth(bpp4)
-	ppu.Bg3.setBgColorDepth(bpp2)
+	ppu.Bg1.colorDepth = bpp4
+	ppu.Bg2.colorDepth = bpp4
+	ppu.Bg3.colorDepth = bpp2
 
 	ppu.Bg1.getPaletteIndex = modeNormalColorNo8bppIndex
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
@@ -184,8 +184,8 @@ func setMode1(ppu *PPU, mode1Prio bool) {
 }
 
 func setMode2(ppu *PPU, _ bool) {
-	ppu.Bg1.setBgColorDepth(bpp4)
-	ppu.Bg2.setBgColorDepth(bpp4)
+	ppu.Bg1.colorDepth = bpp4
+	ppu.Bg2.colorDepth = bpp4
 
 	ppu.Bg1.getPaletteIndex = modeNormalColorNo8bppIndex
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
@@ -200,8 +200,8 @@ func setMode2(ppu *PPU, _ bool) {
 }
 
 func setMode3(ppu *PPU, _ bool) {
-	ppu.Bg1.setBgColorDepth(bpp8)
-	ppu.Bg2.setBgColorDepth(bpp4)
+	ppu.Bg1.colorDepth = bpp8
+	ppu.Bg2.colorDepth = bpp4
 
 	ppu.Bg1.getPaletteIndex = modeNormalColor8BppIndex
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
@@ -216,8 +216,8 @@ func setMode3(ppu *PPU, _ bool) {
 }
 
 func setMode4(ppu *PPU, _ bool) {
-	ppu.Bg1.setBgColorDepth(bpp8)
-	ppu.Bg2.setBgColorDepth(bpp2)
+	ppu.Bg1.colorDepth = bpp8
+	ppu.Bg2.colorDepth = bpp2
 
 	ppu.Bg1.getPaletteIndex = modeNormalColor8BppIndex
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
@@ -232,8 +232,8 @@ func setMode4(ppu *PPU, _ bool) {
 }
 
 func setMode5(ppu *PPU, _ bool) {
-	ppu.Bg1.setBgColorDepth(bpp4)
-	ppu.Bg2.setBgColorDepth(bpp2)
+	ppu.Bg1.colorDepth = bpp4
+	ppu.Bg2.colorDepth = bpp2
 
 	ppu.Bg1.getPaletteIndex = modeNormalColorNo8bppIndex
 	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
@@ -248,7 +248,7 @@ func setMode5(ppu *PPU, _ bool) {
 }
 
 func setMode6(ppu *PPU, _ bool) {
-	ppu.Bg1.setBgColorDepth(bpp4)
+	ppu.Bg1.colorDepth = bpp4
 
 	ppu.Bg1.getPaletteIndex = modeNormalColorNo8bppIndex
 

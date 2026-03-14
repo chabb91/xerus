@@ -238,11 +238,10 @@ func (ob *Objects) drawASpriteTileRow(sprite *Sprite, dimensions ObTileSize, H, 
 			continue
 		}
 
-		colorIndex := 128 + sprite.paletteNum<<4 + rowData[byte(x+i)^sprite.horizontalFlipMask]
-		if colorIndex&0xF == 0 {
+		if paletteIdx := rowData[byte(x+i)^sprite.horizontalFlipMask]; paletteIdx == 0 {
 			renderDot.color = BG_BACKDROP_COLOR
 		} else {
-			renderDot.color = int(cgram[colorIndex])
+			renderDot.color = int(cgram[128|sprite.paletteNum<<4|paletteIdx])
 		}
 		renderDot.priority = sprite.priority
 		renderDot.partakesInColorMath = sprite.paletteNum >= 4
