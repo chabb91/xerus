@@ -1,6 +1,7 @@
 package dma
 
 import (
+	"SNES_emulator/internal/constants"
 	"SNES_emulator/memory"
 )
 
@@ -165,9 +166,9 @@ func (op *HdmaOperation) reload() uint64 {
 
 	if op.addressingMode == indirect {
 		op.loadIndirectAddress(channel.ntlrx)
-		return CYCLE_24
+		return constants.CYCLE_24
 	}
-	return CYCLE_8
+	return constants.CYCLE_8
 }
 
 func (op *HdmaOperation) setup() {
@@ -218,7 +219,7 @@ func (op *HdmaOperation) stepCycle() bool {
 }
 
 func (op *HdmaOperation) stepLineCounter() uint64 {
-	cycles := CYCLE_8
+	cycles := constants.CYCLE_8
 	if op.isTerminated {
 		return cycles
 	}
@@ -242,7 +243,7 @@ func (op *HdmaOperation) stepLineCounter() uint64 {
 
 // returns the indirect table load cycle cost and nothing else
 func (op *HdmaOperation) loadIndirectAddress(ntlrx byte) uint64 {
-	cycles := CYCLE_8
+	cycles := constants.CYCLE_8
 	channel := op.channel
 	lo := op.bus.ReadByte(channel.a1b | uint32(channel.a2w))
 	channel.a2w++

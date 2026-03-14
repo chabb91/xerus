@@ -33,6 +33,6 @@ func (b *TestBus) GetOpenBus() byte {
 	return 0
 }
 
-func (b *TestBus) GetAccessClass(address uint32) byte {
+func (b *TestBus) GetAccessClass(address uint32) uint64 {
 	return FAST_REGION
 }

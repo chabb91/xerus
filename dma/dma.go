@@ -1,6 +1,7 @@
 package dma
 
 import (
+	"SNES_emulator/internal/constants"
 	"SNES_emulator/memory"
 	"fmt"
 	"log"
@@ -14,12 +15,6 @@ const (
 	HDMA_TRANSFER_CH_OVERHEAD
 	//HDMA_TRANSFER_LOAD_INDIRECT
 	HDMA_TRANSFER
-)
-
-const (
-	CYCLE_8  = uint64(4)
-	CYCLE_18 = uint64(9)
-	CYCLE_24 = uint64(12)
 )
 
 type DmaChannel struct {
@@ -93,7 +88,7 @@ func (dma *Dma) Step() uint64 {
 	case HDMA_RELOAD_INIT:
 		dma.initHdma()
 		dma.DmaState = HDMA_RELOAD
-		return CYCLE_18
+		return constants.CYCLE_18
 	case HDMA_RELOAD:
 		log.Printf("RELOADING HDMA with params %+v\n", dma.currentHdmaOp.channel)
 		cycles := dma.currentHdmaOp.reload()
@@ -106,7 +101,7 @@ func (dma *Dma) Step() uint64 {
 	case HDMA_TRANSFER_INIT:
 		dma.initHdma()
 		dma.decideNextHdmaTransferState()
-		return CYCLE_18
+		return constants.CYCLE_18
 	case HDMA_TRANSFER_CH_OVERHEAD:
 		cycles := dma.currentHdmaOp.stepLineCounter()
 		if nextChannel := getNextActiveChannel(dma.HdmaenLatch, dma.currentHdmaOp.channel.id+1); nextChannel == -1 {
@@ -120,7 +115,7 @@ func (dma *Dma) Step() uint64 {
 		if dma.currentHdmaOp.stepCycle() {
 			dma.DmaState = HDMA_TRANSFER_CH_OVERHEAD
 		}
-		return CYCLE_8
+		return constants.CYCLE_8
 	case HDMA_INACTIVE:
 		if dma.Mdmaen != 0 {
 			if dma.currentDmaOp == nil {
@@ -131,7 +126,7 @@ func (dma *Dma) Step() uint64 {
 				dma.Mdmaen &= ^(1 << dma.currentDmaOp.channel.id)
 				dma.currentDmaOp = nil
 			}
-			return CYCLE_8
+			return constants.CYCLE_8
 		}
 		fallthrough
 	default:

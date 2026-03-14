@@ -1,6 +1,7 @@
 package cpu
 
 import (
+	"SNES_emulator/internal/constants"
 	"SNES_emulator/memory"
 )
 
@@ -19,8 +20,8 @@ const (
 	stopState
 )
 
-const CPU_BASE_TICK_RATE = uint64(3)
-const CPU_WAKEUP_COST = uint64(6)
+const CPU_BASE_TICK_RATE = constants.CYCLE_6
+const CPU_WAKEUP_COST = constants.CYCLE_12
 
 type CPU struct {
 	r registers

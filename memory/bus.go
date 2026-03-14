@@ -2,14 +2,15 @@ package memory
 
 import (
 	"SNES_emulator/cartridge"
+	"SNES_emulator/internal/constants"
 	"log"
 )
 
 const WRAM_SIZE = 0x20000 // 128 KB
 
-const FAST_REGION = byte(3)
-const SLOW_REGION = byte(4)
-const XSLOW_REGION = byte(6)
+const FAST_REGION = constants.CYCLE_6
+const SLOW_REGION = constants.CYCLE_8
+const XSLOW_REGION = constants.CYCLE_12
 
 type Bus interface {
 	ReadByte(address uint32) byte
@@ -20,21 +21,21 @@ type Bus interface {
 	//does nothing for fast roms
 	SetMEMSEL(value byte)
 	GetOpenBus() byte
-	GetAccessClass(address uint32) byte
+	GetAccessClass(address uint32) uint64
 }
 
-type RealBus struct {
+type SnesBus struct {
 	openBus byte
 
 	registers *RegisterSystem
 
 	WRAM      [WRAM_SIZE]byte
 	cartridge *cartridge.Cartridge
-	memsel    byte
+	memsel    uint64
 }
 
-func NewBus(cartridge *cartridge.Cartridge) *RealBus {
-	rb := &RealBus{
+func NewBus(cartridge *cartridge.Cartridge) *SnesBus {
+	rb := &SnesBus{
 		registers: NewRegisterSystem(),
 		cartridge: cartridge,
 		memsel:    SLOW_REGION,
@@ -44,7 +45,7 @@ func NewBus(cartridge *cartridge.Cartridge) *RealBus {
 	return rb
 }
 
-func (b *RealBus) ReadByte(address uint32) byte {
+func (b *SnesBus) ReadByte(address uint32) byte {
 	bank, addr := splitAddress24(address)
 
 	index, ok := b.wramIndex(bank, addr)
@@ -80,7 +81,7 @@ func (b *RealBus) ReadByte(address uint32) byte {
 	return b.openBus
 }
 
-func (b *RealBus) WriteByte(address uint32, value byte) {
+func (b *SnesBus) WriteByte(address uint32, value byte) {
 	bank, addr := splitAddress24(address)
 
 	index, ok := b.wramIndex(bank, addr)
@@ -114,7 +115,7 @@ func splitAddress24(address uint32) (byte, uint16) {
 	return byte((address >> 16) & 0xFF), uint16(address & 0xFFFF)
 }
 
-func (b *RealBus) wramIndex(bank byte, offset uint16) (int, bool) {
+func (b *SnesBus) wramIndex(bank byte, offset uint16) (int, bool) {
 	if bank == 0x7E || ((bank <= 0x3F || (bank >= 0x80 && bank <= 0xBF)) && offset <= 0x1FFF) {
 		return int(offset), true
 	}
@@ -124,11 +125,11 @@ func (b *RealBus) wramIndex(bank byte, offset uint16) (int, bool) {
 	return 0, false
 }
 
-func (b *RealBus) RegisterRange(start, end uint16, handler RegisterHandler, name string) {
+func (b *SnesBus) RegisterRange(start, end uint16, handler RegisterHandler, name string) {
 	b.registers.RegisterRange(start, end, handler, name)
 }
 
-func (b *RealBus) SetMEMSEL(value byte) {
+func (b *SnesBus) SetMEMSEL(value byte) {
 
 	if value&1 == 1 {
 		b.memsel = FAST_REGION
@@ -137,11 +138,11 @@ func (b *RealBus) SetMEMSEL(value byte) {
 	}
 }
 
-func (b *RealBus) GetOpenBus() byte {
+func (b *SnesBus) GetOpenBus() byte {
 	return b.openBus
 }
 
-func (b *RealBus) GetAccessClass(address uint32) byte {
+func (b *SnesBus) GetAccessClass(address uint32) uint64 {
 	bank := byte(address >> 16)
 	offset := byte(address >> 8)
 

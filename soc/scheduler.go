@@ -1,11 +1,12 @@
 package soc
 
 import (
+	"SNES_emulator/internal/constants"
 	"time"
 )
 
-const DMA_OVERHEAD = uint64(4)
-const CPU_REFRESH_DURATION = uint64(20)
+const DMA_OVERHEAD = constants.CYCLE_8
+const CPU_REFRESH_DURATION = constants.CYCLE_40
 const CPU_DELAY_INTERRUPT_AFTER_DMA = uint64(2) //cpu cycle count
 
 func (soc SoC) Run() {
@@ -23,7 +24,7 @@ func (soc SoC) Run() {
 
 	var apuDebt int64
 	PrecisionScale := int64(1_000_000_000)
-	apuRatio := int64((float64(SPU_BASE_FREQUENCY) /
+	apuRatio := int64((float64(constants.SPU_BASE_FREQUENCY) /
 		float64(soc.timing.baseFrequency)) *
 		float64(PrecisionScale))
 
@@ -115,18 +116,13 @@ func (soc SoC) Run() {
 	}
 }
 
-const PAL_BASE_FREQUENCY = 21_281_370
-const NTSC_BASE_FREQUENCY = 1_890_000_000 / 88
-
-const SPU_BASE_FREQUENCY = 1_024_000
-
 const INTERVAL_DIVIDER = 66
-const CLOCK_SYNC_INTERVAL = time.Second / INTERVAL_DIVIDER
 const BUSY_WAIT_TIME = time.Millisecond / 4
 
 type timing struct {
 	baseFrequency     uint64
 	cyclesPerInterval uint64
+	syncInterval      time.Duration
 
 	expectedTime time.Time
 }
@@ -134,12 +130,13 @@ type timing struct {
 func newTiming(isPal bool) *timing {
 	var cycles, freq uint64
 	if isPal {
-		freq = PAL_BASE_FREQUENCY / 2
+		freq = constants.PAL_BASE_FREQUENCY
 	} else {
-		freq = NTSC_BASE_FREQUENCY / 2
+		freq = constants.NTSC_BASE_FREQUENCY
 	}
 	cycles = freq / INTERVAL_DIVIDER
-	return &timing{cyclesPerInterval: cycles, baseFrequency: freq}
+	syncInterval := time.Second / INTERVAL_DIVIDER
+	return &timing{cyclesPerInterval: cycles, baseFrequency: freq, syncInterval: syncInterval}
 }
 
 func (t *timing) start() {
@@ -147,7 +144,7 @@ func (t *timing) start() {
 }
 
 func (t *timing) sync() {
-	t.expectedTime = t.expectedTime.Add(CLOCK_SYNC_INTERVAL)
+	t.expectedTime = t.expectedTime.Add(t.syncInterval)
 
 	diff := time.Until(t.expectedTime)
 

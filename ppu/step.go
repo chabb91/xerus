@@ -1,5 +1,7 @@
 package ppu
 
+import "SNES_emulator/internal/constants"
+
 func (ppu *PPU) Step() uint64 {
 	draw := currentTimingRow[min(ppu.H, H_TOTAL-1)] //pal long line smh
 	if draw.IsVisible {
@@ -63,11 +65,11 @@ func (ppu *PPU) Step() uint64 {
 		//}
 	}
 
-	cycles := uint64(3)
+	cycles := constants.CYCLE_6
 	if (ppu.H != 323 && ppu.H != 327) ||
 		//NTSC Short Line check
 		(!ppu.Timing.Pal && ppu.V == 240 && (interlace^1)&interlaceStep == 1) {
-		cycles = 2
+		cycles = constants.CYCLE_4
 	}
 
 	ppu.H++
