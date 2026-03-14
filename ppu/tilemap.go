@@ -186,20 +186,20 @@ func (bg *Background) GetDotAt(H, V uint16) (int, byte, bool) {
 		bg.renderCacheEnd = min(H+uint16(8-px), SCREEN_WIDTH<<hires)
 	}
 
-	if tile.flipIndex > 0 && (bg.charTileSize|hires == 1) {
-		charMapID = compositeFlipLUT[charMapID][tile.flipIndex&(3>>(hires&(bg.charTileSize^1)))]
+	if bg.charTileSize|hires == 1 {
+		//figured out mapId ^ flipIndex accurately calculates flip without any lut. took me a while
+		charMapID ^= tile.flipIndex & (3 >> (hires & (bg.charTileSize ^ 1)))
 	}
 
 	var ret, color int
 	charTile := tile.charTiles[charMapID]
-	flipXTtable := &tileFlipXLUT[tile.flipIndex]
-	row = tileFlipYLUT[tile.flipIndex][row]
+	row ^= tile.verticalFlipMask
 	rowData := charTile.getRowAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, row)
 	cgram := bg.CGRAM
 
 	for i := H; i < bg.renderCacheEnd; i++ {
 		if !bg.mosaic || (bg.mosaic && (i-H)%(uint16(mosaicSize)) == 0) {
-			charData := rowData[flipXTtable[px]]
+			charData := rowData[px^tile.horizontalFlipMask]
 
 			if bg.colorDepth == bpp8 && bg.isDirectColor {
 				if charData == 0 {
@@ -301,9 +301,9 @@ func resolveOPTMode4(bg *Background, H, V uint16) (uint16, uint16) {
 }
 
 type BgTile struct {
-	isValid                      bool
-	verticalFlip, horizontalFlip bool
-	flipIndex                    byte
+	isValid                              bool
+	verticalFlipMask, horizontalFlipMask byte
+	flipIndex                            byte
 
 	priority   byte
 	paletteNum byte
@@ -317,6 +317,8 @@ type BgTile struct {
 func (bt *BgTile) setup(tileIndex uint16, currentEpoch uint64) {
 	params := bt.bg.VRAM[(bt.bg.tileMapAddress+tileIndex)&0x7FFF]
 	bt.flipIndex = byte((params >> 14) & 3)
+	bt.horizontalFlipMask = -(bt.flipIndex & 1) & 7 //0 or 7
+	bt.verticalFlipMask = -(bt.flipIndex >> 1) & 7  //0 or 7
 	bt.priority = byte(params>>13) & 1
 	bt.paletteNum = byte(params>>10) & 7
 	charIndex := params & 0x3FF

@@ -9,23 +9,30 @@ type renderedSpriteOnDot struct {
 }
 
 type ObTileSize struct {
-	W, H                        uint16
-	divMaskW, divMaskH          uint16
-	modMaskW, modMaskH          uint16
-	tilesPerRow, tilesPerColumn uint16
+	W, H                  uint16
+	divMaskW, divMaskH    uint16
+	modMaskW, modMaskH    uint16
+	rowCount, columnCount byte
+
+	//we generate a h/v flip mask anyway. since the largest sprite is 8x8 char tiles in size
+	//we can use the same mask for the outer flip too. just gotta limit the mask for smaller
+	//sprites first. these vars clamp the mask from 3 bits to 0-3
+	rowMaskRange, columnMaskRange byte
 }
 
 func newObTileSize(W, H, divMaskW, divMaskH,
-	modMaskW, modMaskH, tilesPerRow, tilesPerColumn uint16) ObTileSize {
+	modMaskW, modMaskH uint16, rowCount, columnCount byte) ObTileSize {
 	return ObTileSize{
-		W:              W,
-		H:              H,
-		divMaskW:       divMaskW,
-		divMaskH:       divMaskH,
-		modMaskW:       modMaskW,
-		modMaskH:       modMaskH,
-		tilesPerRow:    tilesPerRow,
-		tilesPerColumn: tilesPerColumn,
+		W:               W,
+		H:               H,
+		divMaskW:        divMaskW,
+		divMaskH:        divMaskH,
+		modMaskW:        modMaskW,
+		modMaskH:        modMaskH,
+		rowCount:        rowCount,
+		columnCount:     columnCount,
+		rowMaskRange:    rowCount - 1,
+		columnMaskRange: columnCount - 1,
 	}
 }
 
@@ -198,28 +205,25 @@ func (ob *Objects) drawASpriteTileRow(sprite *Sprite, dimensions ObTileSize, H, 
 		y = (256 - y) + V
 	}
 
-	row := y >> 3
-	column := x >> 3
-	//TODO doesnt flip accurately for the rectangular sprites but i couldnt care less at this moment
-	if sprite.isFlippedHorizontally {
-		column = dimensions.tilesPerRow - 1 - column
-	}
-	if sprite.isFlippedVertically {
-		row = dimensions.tilesPerColumn - 1 - row
-	}
-	tileRow := ((sprite.tileIndex >> 4) + byte(row)) & 0xF
-	tileColumn := (sprite.tileIndex + byte(column)) & 0xF
+	//diff is row-column and it is there to mimic the way the snes handles rectangular sprite flipping
+	//the rectangular sprites are flipped vertically as if they were two square sprites
+	//row := byte((y>>3) + (diff & mask)) & range ^ (mask & range)
+	diff := (dimensions.rowCount - dimensions.columnCount) & sprite.verticalFlipMask
+	row := (byte(y>>3)+diff)&dimensions.rowMaskRange ^ (sprite.verticalFlipMask & dimensions.rowMaskRange)
+	column := byte(x>>3) ^ (sprite.horizontalFlipMask & dimensions.columnMaskRange)
+
+	tileRow := ((sprite.tileIndex >> 4) + row) & 0xF
+	tileColumn := (sprite.tileIndex + column) & 0xF
 	tileIndex := tileRow<<4 | tileColumn
 
-	px := x & 7
-	flipXTtable := &tileFlipXLUT[sprite.flipIndex]
-	r := tileFlipYLUT[sprite.flipIndex][y&7]
+	x &= 7
+	y &= 7
 
 	cgram := ob.CGRAM
 
 	char := &ob.charTiles[sprite.nameTable][tileIndex]
-	rowData := char.getRowAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, r)
-	limit := min(8-px, SCREEN_WIDTH-H)
+	rowData := char.getRowAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, byte(y)^sprite.verticalFlipMask)
+	limit := min(8-x, SCREEN_WIDTH-H)
 
 	for i := uint16(0); i < limit; i++ {
 		renderDot := &ob.resolvedDotsOnScanLine[H+i]
@@ -227,7 +231,7 @@ func (ob *Objects) drawASpriteTileRow(sprite *Sprite, dimensions ObTileSize, H, 
 			continue
 		}
 
-		colorIndex := 128 + sprite.paletteNum<<4 + rowData[(flipXTtable[px+i])]
+		colorIndex := 128 + sprite.paletteNum<<4 + rowData[byte(x+i)^sprite.horizontalFlipMask]
 		if colorIndex&0xF == 0 {
 			renderDot.color = BG_BACKDROP_COLOR
 		} else {
@@ -253,9 +257,8 @@ type Sprite struct {
 	paletteNum byte
 	priority   byte
 
-	flipIndex                                  byte
-	isFlippedHorizontally, isFlippedVertically bool
-	size                                       byte
+	verticalFlipMask, horizontalFlipMask byte
+	size                                 byte
 
 	isValid bool
 }
@@ -279,9 +282,9 @@ func (sprite *Sprite) setup() {
 	sprite.nameTable = lo3 & 1
 	sprite.paletteNum = (lo3 >> 1) & 0x7
 	sprite.priority = (lo3 >> 4) & 0x3
-	sprite.isFlippedVertically = (lo3>>7)&1 == 1
-	sprite.isFlippedHorizontally = (lo3>>6)&1 == 1
-	sprite.flipIndex = (lo3 >> 6) & 3
+	flipIndex := (lo3 >> 6) & 3
+	sprite.horizontalFlipMask = -(flipIndex & 1) & 7 //0 or 7
+	sprite.verticalFlipMask = -(flipIndex >> 1) & 7  //0 or 7
 	sprite.size = (hi >> 1) & 1
 
 	sprite.isValid = true

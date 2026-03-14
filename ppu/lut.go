@@ -42,23 +42,17 @@ var obTileSizeLUT = [8][2]ObTileSize{
 		newObTileSize(64, 64, 6, 6, 63, 63, 8, 8),
 	},
 	{
-		newObTileSize(16, 32, 3, 4, 15, 31, 2, 4),
-		newObTileSize(32, 64, 5, 6, 31, 63, 4, 8),
+		newObTileSize(16, 32, 3, 4, 15, 31, 4, 2),
+		newObTileSize(32, 64, 5, 6, 31, 63, 8, 4),
 	},
 	{
-		newObTileSize(16, 32, 3, 4, 15, 31, 2, 4),
+		newObTileSize(16, 32, 3, 4, 15, 31, 4, 2),
 		newObTileSize(32, 32, 5, 5, 31, 31, 4, 4),
 	},
 }
 
-var tileFlipXLUT [4][8]byte
-var tileFlipYLUT [4][8]byte
-var compositeFlipLUT [4][4]byte
-
 func init() {
 	initBitplaneLUT()
-	initTileFlipLUT()
-	initCompositeFlipLUT()
 
 	NTSC_TIMING.VisibilityLUTs[false] = GenerateVisibilityLUT(&NTSC_TIMING, false)
 	NTSC_TIMING.VisibilityLUTs[true] = GenerateVisibilityLUT(&NTSC_TIMING, true)
@@ -72,48 +66,6 @@ func initBitplaneLUT() {
 	for b := range 256 {
 		for px := range 8 {
 			bitplaneLUT[b][px] = byte((b >> (7 - px)) & 1)
-		}
-	}
-}
-
-func initCompositeFlipLUT() {
-	for charMapID := range 4 {
-		for flipIndex := range 4 {
-			hFlip := (flipIndex & 0b01) != 0
-			vFlip := (flipIndex & 0b10) != 0
-
-			row := charMapID >> 1
-			col := charMapID & 1
-
-			if hFlip {
-				col = 1 - col
-			}
-			if vFlip {
-				row = 1 - row
-			}
-
-			compositeFlipLUT[charMapID][flipIndex] = byte(row<<1 | col)
-		}
-	}
-}
-
-func initTileFlipLUT() {
-	for flipIndex := range 4 {
-		hFlip := (flipIndex & 0b01) != 0
-		vFlip := (flipIndex & 0b10) != 0
-
-		for coord := range byte(8) {
-			finalX := coord
-			if hFlip {
-				finalX = 7 - coord
-			}
-			tileFlipXLUT[flipIndex][coord] = finalX
-
-			finalY := coord
-			if vFlip {
-				finalY = 7 - coord
-			}
-			tileFlipYLUT[flipIndex][coord] = finalY
 		}
 	}
 }
