@@ -218,7 +218,6 @@ func (bg *Background) GetDotAt(H, V uint16) (int, byte, bool) {
 
 	//this makes indirect color faster but is redundant for direct color
 	transparencyMask := bg.colorDepth.transparencyMask()
-	paletteIdx := tile.paletteNum<<bg.colorDepth | byte(bg.layerId<<5)&bg.paletteIndexMask
 
 	for i := H; i < bg.renderCacheEnd; i++ {
 		if !bg.mosaic || (bg.mosaic && (i-H)%(uint16(mosaicSize)) == 0) {
@@ -234,7 +233,7 @@ func (bg *Background) GetDotAt(H, V uint16) (int, byte, bool) {
 					color = int(uint16(blue)<<10 | uint16(green)<<5 | uint16(red))
 				}
 			} else {
-				cgramIdx := paletteIdx | charData
+				cgramIdx := tile.paletteIndex | charData
 				if cgramIdx&transparencyMask == 0 {
 					color = BG_BACKDROP_COLOR
 				} else {
@@ -328,10 +327,11 @@ type BgTile struct {
 	verticalFlipMask, horizontalFlipMask byte
 	flipIndex                            byte
 
-	priority   byte
-	paletteNum byte
-	charIndex  uint16
-	charTiles  [4]*CharTile
+	priority     byte
+	paletteNum   byte
+	paletteIndex byte
+	charIndex    uint16
+	charTiles    [4]*CharTile
 
 	lastRenderEpoch uint64
 	bg              *Background
@@ -344,6 +344,7 @@ func (bt *BgTile) setup(tileIndex uint16, currentEpoch uint64) {
 	bt.verticalFlipMask = -(bt.flipIndex >> 1) & 7  //0 or 7
 	bt.priority = byte(params>>13) & 1
 	bt.paletteNum = byte(params>>10) & 7
+	bt.paletteIndex = bt.paletteNum<<bt.bg.colorDepth | byte(bt.bg.layerId<<5)&bt.bg.paletteIndexMask
 	charIndex := params & 0x3FF
 	bt.charIndex = charIndex
 
