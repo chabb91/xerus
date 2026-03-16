@@ -68,7 +68,6 @@ func (cd *colorDepth) getRenderer() bitPlaneRenderer {
 type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
 type optResolver func(*Background, uint16, uint16) (uint16, uint16)
 type VRAMAddressCalculator func(tileIndex byte) uint16
-type colorIndex func(ppuLayer, colorDepth, byte) byte
 type rendererFunction func(uint16, uint16) (int, byte, bool)
 
 type LayerEpochSource interface {
@@ -92,7 +91,7 @@ type Background struct {
 	charTileAddressBase uint16
 	charTileSize        byte
 	colorDepth          colorDepth
-	getPaletteIndex     colorIndex
+	paletteIndexMask    byte //to mask away the mode0 behavior
 	isDirectColor       bool
 
 	vScroll uint16
@@ -216,7 +215,10 @@ func (bg *Background) GetDotAt(H, V uint16) (int, byte, bool) {
 	row ^= tile.verticalFlipMask
 	rowData := charTile.getRowAt(bg.colorDepth, tile.GetVramTileWordIndex, charMapID, row)
 	cgram := bg.CGRAM
+
+	//this makes indirect color faster but is redundant for direct color
 	transparencyMask := bg.colorDepth.transparencyMask()
+	paletteIdx := tile.paletteNum<<bg.colorDepth | byte(bg.layerId<<5)&bg.paletteIndexMask
 
 	for i := H; i < bg.renderCacheEnd; i++ {
 		if !bg.mosaic || (bg.mosaic && (i-H)%(uint16(mosaicSize)) == 0) {
@@ -232,11 +234,11 @@ func (bg *Background) GetDotAt(H, V uint16) (int, byte, bool) {
 					color = int(uint16(blue)<<10 | uint16(green)<<5 | uint16(red))
 				}
 			} else {
-				paletteIdx := bg.getPaletteIndex(bg.layerId, bg.colorDepth, tile.paletteNum) + charData
-				if paletteIdx&transparencyMask == 0 {
+				cgramIdx := paletteIdx | charData
+				if cgramIdx&transparencyMask == 0 {
 					color = BG_BACKDROP_COLOR
 				} else {
-					color = int(cgram[paletteIdx])
+					color = int(cgram[cgramIdx])
 				}
 			}
 			if i == H {

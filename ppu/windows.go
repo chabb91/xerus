@@ -1,6 +1,9 @@
 package ppu
 
-import "fmt"
+import (
+	"fmt"
+	"image/color"
+)
 
 const WINDOW_INVALIDATION_COUNTER = 10
 
@@ -345,4 +348,44 @@ func (wc *WindowController) performColorMath(mainColor, subColor, H uint16, main
 		blendColor,
 		colorMath.halfColor && mainLayer != backdrop && subLayer != backdrop,
 	)
+}
+
+func addColors(main, sub uint16, halve bool) uint16 {
+	halfShift := uint16(0)
+	if halve {
+		halfShift = 1
+	}
+
+	b := min((main>>10&31+(sub>>10&31))>>halfShift, 0x1F)
+	g := min((main>>5&31+(sub>>5&31))>>halfShift, 0x1F)
+	r := min((main&31+(sub&31))>>halfShift, 0x1F)
+
+	return (b << 10) | (g << 5) | r
+}
+
+// the result is shifted to the right (after ?) clipping to 0
+// the docs are unsure
+// tested using bbbradsmith's colormath test rom
+func subColors(main, sub uint16, halve bool) uint16 {
+	halfShift := int32(0)
+	if halve {
+		halfShift = 1
+	}
+	b := max(int32(main>>10&31)-int32((sub>>10&31)), 0) >> halfShift
+	g := max(int32(main>>5&31)-int32((sub>>5&31)), 0) >> halfShift
+	r := max(int32(main&31)-int32((sub&31)), 0) >> halfShift
+
+	return uint16((b << 10) | (g << 5) | r)
+}
+
+func SNESColorToARGB(snesColor uint16) color.NRGBA {
+	red := byte((snesColor & 0x1F) << 3)
+	green := byte(((snesColor >> 5) & 0x1F) << 3)
+	blue := byte(((snesColor >> 10) & 0x1F) << 3)
+	return color.NRGBA{
+		R: red,
+		G: green,
+		B: blue,
+		A: 0xFF,
+	}
 }

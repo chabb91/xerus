@@ -147,10 +147,10 @@ func setMode0(ppu *PPU, _ bool) {
 	ppu.Bg3.colorDepth = bpp2
 	ppu.Bg4.colorDepth = bpp2
 
-	ppu.Bg1.getPaletteIndex = mode0ColorIndex
-	ppu.Bg2.getPaletteIndex = mode0ColorIndex
-	ppu.Bg3.getPaletteIndex = mode0ColorIndex
-	ppu.Bg4.getPaletteIndex = mode0ColorIndex
+	ppu.Bg1.paletteIndexMask = 0xFF
+	ppu.Bg2.paletteIndexMask = 0xFF
+	ppu.Bg3.paletteIndexMask = 0xFF
+	ppu.Bg4.paletteIndexMask = 0xFF
 
 	ppu.modePriority = modePriorityOrder[renderMode0]
 
@@ -166,9 +166,9 @@ func setMode1(ppu *PPU, mode1Prio bool) {
 	ppu.Bg2.colorDepth = bpp4
 	ppu.Bg3.colorDepth = bpp2
 
-	ppu.Bg1.getPaletteIndex = modeNormalColorNo8bppIndex
-	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
-	ppu.Bg3.getPaletteIndex = modeNormalColorNo8bppIndex
+	ppu.Bg1.paletteIndexMask = 0
+	ppu.Bg2.paletteIndexMask = 0
+	ppu.Bg3.paletteIndexMask = 0
 
 	if mode1Prio {
 		ppu.modePriority = modePriorityOrder[renderMode1Bg3Prio]
@@ -187,8 +187,8 @@ func setMode2(ppu *PPU, _ bool) {
 	ppu.Bg1.colorDepth = bpp4
 	ppu.Bg2.colorDepth = bpp4
 
-	ppu.Bg1.getPaletteIndex = modeNormalColorNo8bppIndex
-	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
+	ppu.Bg1.paletteIndexMask = 0
+	ppu.Bg2.paletteIndexMask = 0
 
 	ppu.modePriority = modePriorityOrder[renderMode2]
 
@@ -203,8 +203,8 @@ func setMode3(ppu *PPU, _ bool) {
 	ppu.Bg1.colorDepth = bpp8
 	ppu.Bg2.colorDepth = bpp4
 
-	ppu.Bg1.getPaletteIndex = modeNormalColor8BppIndex
-	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
+	ppu.Bg1.paletteIndexMask = 0
+	ppu.Bg2.paletteIndexMask = 0
 
 	ppu.modePriority = modePriorityOrder[renderMode3]
 
@@ -219,8 +219,8 @@ func setMode4(ppu *PPU, _ bool) {
 	ppu.Bg1.colorDepth = bpp8
 	ppu.Bg2.colorDepth = bpp2
 
-	ppu.Bg1.getPaletteIndex = modeNormalColor8BppIndex
-	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
+	ppu.Bg1.paletteIndexMask = 0
+	ppu.Bg2.paletteIndexMask = 0
 
 	ppu.modePriority = modePriorityOrder[renderMode4]
 
@@ -235,8 +235,8 @@ func setMode5(ppu *PPU, _ bool) {
 	ppu.Bg1.colorDepth = bpp4
 	ppu.Bg2.colorDepth = bpp2
 
-	ppu.Bg1.getPaletteIndex = modeNormalColorNo8bppIndex
-	ppu.Bg2.getPaletteIndex = modeNormalColorNo8bppIndex
+	ppu.Bg1.paletteIndexMask = 0
+	ppu.Bg2.paletteIndexMask = 0
 
 	ppu.modePriority = modePriorityOrder[renderMode5]
 
@@ -250,7 +250,7 @@ func setMode5(ppu *PPU, _ bool) {
 func setMode6(ppu *PPU, _ bool) {
 	ppu.Bg1.colorDepth = bpp4
 
-	ppu.Bg1.getPaletteIndex = modeNormalColorNo8bppIndex
+	ppu.Bg1.paletteIndexMask = 0
 
 	ppu.modePriority = modePriorityOrder[renderMode6]
 
