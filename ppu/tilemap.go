@@ -52,6 +52,19 @@ func (cd *colorDepth) transparencyMask() byte {
 	}
 }
 
+func (cd *colorDepth) getRenderer() bitPlaneRenderer {
+	switch *cd {
+	case 2:
+		return RenderTile2bppLUT
+	case 4:
+		return RenderTile4bppLUT
+	case 8:
+		return RenderTile8bppLUT
+	default:
+		panic(fmt.Errorf("PPU: Could not set up assign a bitplane renderer."))
+	}
+}
+
 type bitPlaneRenderer func([]uint16, uint16, *[8][8]byte)
 type optResolver func(*Background, uint16, uint16) (uint16, uint16)
 type VRAMAddressCalculator func(tileIndex byte) uint16
@@ -371,23 +384,11 @@ type CharTile struct {
 	layerEpoch      LayerEpochSource
 }
 
-func (ct *CharTile) setup(bitPlanes colorDepth) {
-	switch bitPlanes {
-	case 2:
-		ct.renderer = RenderTile2bppLUT
-	case 4:
-		ct.renderer = RenderTile4bppLUT
-	case 8:
-		ct.renderer = RenderTile8bppLUT
-	default:
-		panic(fmt.Errorf("PPU: Could not set up CharTile"))
-	}
-}
-
 func (ct *CharTile) getPixelAt(bitplanes colorDepth, addr VRAMAddressCalculator, tileId, px, row byte) byte {
 	currentEpoch := ct.layerEpoch.GetLayerSourceEpoch()
 	if ct.lastRenderEpoch != currentEpoch {
 		ct.tileAddress = addr(tileId)
+		ct.renderer = bitplanes.getRenderer()
 		goto RENDER_AND_CACHE
 	}
 
@@ -398,7 +399,6 @@ func (ct *CharTile) getPixelAt(bitplanes colorDepth, addr VRAMAddressCalculator,
 	return ct.resolvedData[row][px]
 
 RENDER_AND_CACHE:
-	ct.setup(bitplanes)
 	ct.renderer(ct.VRAM, ct.tileAddress, &ct.resolvedData)
 	ct.isValid = true
 	ct.lastRenderEpoch = currentEpoch
@@ -410,6 +410,7 @@ func (ct *CharTile) getRowAt(bitplanes colorDepth, addr VRAMAddressCalculator, t
 	currentEpoch := ct.layerEpoch.GetLayerSourceEpoch()
 	if ct.lastRenderEpoch != currentEpoch {
 		ct.tileAddress = addr(tileId)
+		ct.renderer = bitplanes.getRenderer()
 		goto RENDER_AND_CACHE
 	}
 
@@ -420,7 +421,6 @@ func (ct *CharTile) getRowAt(bitplanes colorDepth, addr VRAMAddressCalculator, t
 	return &ct.resolvedData[row]
 
 RENDER_AND_CACHE:
-	ct.setup(bitplanes)
 	ct.renderer(ct.VRAM, ct.tileAddress, &ct.resolvedData)
 	ct.isValid = true
 	ct.lastRenderEpoch = currentEpoch
