@@ -1,6 +1,8 @@
 package cartridge
 
 import (
+	"SNES_emulator/coprocessor"
+	"SNES_emulator/coprocessor/gsu"
 	"errors"
 	"io/fs"
 	"log"
@@ -72,12 +74,6 @@ const (
 
 type romMapper func(bank byte, offset uint16, hasSram bool) (int, romRegionType)
 
-type Coprocessor interface {
-}
-
-type GSU struct {
-}
-
 type Cartridge struct {
 	Mapper romMapper
 
@@ -90,7 +86,7 @@ type Cartridge struct {
 	romPath  string
 	sramPath string
 
-	coprocessor Coprocessor
+	Coprocessor coprocessor.Coprocessor
 }
 
 func NewCartridge(romPath string) *Cartridge {
@@ -102,12 +98,16 @@ func NewCartridge(romPath string) *Cartridge {
 	}
 
 	cart.romData, cart.romMask = padROM(romData)
-	cart.Mapper, cart.coprocessor, err = getRomMapperAndCoprocessor(cart.romData)
+	cart.Mapper, cart.Coprocessor, err = getRomMapperAndCoprocessor(cart.romData)
 	if err != nil {
 		panic(err)
 	}
 	cart.romPath = romPath
 	cart.InitSram()
+
+	if cart.Coprocessor != nil {
+		cart.Coprocessor.SetCartridge(cart)
+	}
 
 	return cart
 }
@@ -150,6 +150,19 @@ func (cart *Cartridge) HasSram() bool {
 	return cart.sramData != nil
 }
 
+// coprocessors carry their own internal mappers, they produce and index to the data
+func (cart *Cartridge) ReadRam(index int) byte {
+	return cart.sramData[uint32(index)&cart.sramMask]
+}
+
+func (cart *Cartridge) ReadRom(index int) byte {
+	return cart.romData[uint32(index)&cart.romMask]
+}
+
+func (cart *Cartridge) WriteRam(index int, value byte) {
+	cart.sramData[uint32(index)&cart.sramMask] = value
+}
+
 // loads (and creates if necessary) the .smc file from storage, based on the rom name and its path
 func (cart *Cartridge) InitSram() {
 	romType, err := cart.ReadByte(0, 0xFFD6)
@@ -163,7 +176,7 @@ func (cart *Cartridge) InitSram() {
 		if err != nil {
 			panic("Cannot read the rom header, the mapper is broken.")
 		}
-		if sizeVal == 0 && cart.coprocessor != nil {
+		if sizeVal == 0 && cart.Coprocessor != nil {
 			log.Printf("Cartridge: Sram detected but size is 0 and a Coprocessor is found. Checking the extended header...")
 			sizeVal, err = cart.ReadByte(0, 0xFFBD) //if has ram but size 0 check expansion RAM
 			if err != nil {
@@ -256,7 +269,7 @@ func (cart *Cartridge) IsPal() bool {
 }
 
 // TODO unfinished function
-func DetectCoprocessor(baseMapper romMapper, romData []byte) (romMapper, Coprocessor) {
+func DetectCoprocessor(baseMapper romMapper, romData []byte) (romMapper, coprocessor.Coprocessor) {
 	chipsetAddr, _ := baseMapper(0, 0xFFD6, false)
 	chipset := romData[chipsetAddr]
 
@@ -265,7 +278,7 @@ func DetectCoprocessor(baseMapper romMapper, romData []byte) (romMapper, Coproce
 		case CpuDSP:
 		case CpuGSU:
 			log.Printf("Cartridge: GSU detected.")
-			return mapGsu, &GSU{}
+			return mapGsu, &gsu.GSU{}
 		case CpuOBC1:
 		case CpuSA1:
 		case CpuSDD1:

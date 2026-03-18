@@ -1,6 +1,7 @@
 package cartridge
 
 import (
+	"SNES_emulator/coprocessor"
 	"fmt"
 	"log"
 	"math/bits"
@@ -57,7 +58,7 @@ func testCandidateHeader(romType int, headerLocation int, romData []byte, checks
 }
 
 // any automated header detection in chat
-func getRomMapperAndCoprocessor(romData []byte) (romMapper, Coprocessor, error) {
+func getRomMapperAndCoprocessor(romData []byte) (romMapper, coprocessor.Coprocessor, error) {
 	checksum := computeChecksum(romData)
 
 	loRomPt := testCandidateHeader(LoROM, 0x7FC0, romData, checksum)
