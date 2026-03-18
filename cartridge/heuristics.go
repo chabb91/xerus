@@ -57,7 +57,7 @@ func testCandidateHeader(romType int, headerLocation int, romData []byte, checks
 }
 
 // any automated header detection in chat
-func findRomHeader(romData []byte) (romMapper, error) {
+func getRomMapperAndCoprocessor(romData []byte) (romMapper, Coprocessor, error) {
 	checksum := computeChecksum(romData)
 
 	loRomPt := testCandidateHeader(LoROM, 0x7FC0, romData, checksum)
@@ -68,18 +68,21 @@ func findRomHeader(romData []byte) (romMapper, error) {
 	if bestResult >= 4 {
 		if bestResult == loRomPt {
 			log.Printf("Cartridge: LoROM detected with a fitness of: %v", bestResult)
-			return mapLoRom, nil
+			mapper, coprocessor := DetectCoprocessor(mapLoRom, romData)
+			return mapper, coprocessor, nil
 		}
 		if bestResult == hiRomPt {
 			log.Printf("Cartridge: HiROM detected with a fitness of: %v", bestResult)
-			return mapHiRom, nil
+			mapper, coprocessor := DetectCoprocessor(mapHiRom, romData)
+			return mapper, coprocessor, nil
 		}
 		if bestResult == exHiRomPt {
 			log.Printf("Cartridge: ExHiROM detected with a fitness of: %v", bestResult)
-			return mapExHiRom, nil
+			mapper, coprocessor := DetectCoprocessor(mapExHiRom, romData)
+			return mapper, coprocessor, nil
 		}
 	}
-	return nil, fmt.Errorf("Cartridge: [FATAL] The rom header could not be located.")
+	return nil, nil, fmt.Errorf("Cartridge: [FATAL] The rom header could not be located.")
 }
 
 func padROM(data []byte) ([]byte, uint32) {

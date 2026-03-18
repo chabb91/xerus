@@ -40,17 +40,17 @@ const (
 	CountryAustralia   CartridgeCountry = 0x11
 )
 
-type Coprocessor int
+type CoprocessorId int
 
 const (
-	CpuDSP    Coprocessor = 0x00
-	CpuGSU    Coprocessor = 0x10
-	CpuOBC1   Coprocessor = 0x20
-	CpuSA1    Coprocessor = 0x30
-	CpuSDD1   Coprocessor = 0x40
-	CpuSRTC   Coprocessor = 0x50
-	CpuOther  Coprocessor = 0xE0 //super game boy/satellaview
-	CpuCustom Coprocessor = 0xF0
+	CpuDSP    CoprocessorId = 0x00
+	CpuGSU    CoprocessorId = 0x10
+	CpuOBC1   CoprocessorId = 0x20
+	CpuSA1    CoprocessorId = 0x30
+	CpuSDD1   CoprocessorId = 0x40
+	CpuSRTC   CoprocessorId = 0x50
+	CpuOther  CoprocessorId = 0xE0 //super game boy/satellaview
+	CpuCustom CoprocessorId = 0xF0
 )
 
 type CoprocessorCustom int
@@ -72,6 +72,12 @@ const (
 
 type romMapper func(bank byte, offset uint16, hasSram bool) (int, romRegionType)
 
+type Coprocessor interface {
+}
+
+type GSU struct {
+}
+
 type Cartridge struct {
 	Mapper romMapper
 
@@ -83,6 +89,8 @@ type Cartridge struct {
 
 	romPath  string
 	sramPath string
+
+	coprocessor Coprocessor
 }
 
 func NewCartridge(romPath string) *Cartridge {
@@ -94,7 +102,7 @@ func NewCartridge(romPath string) *Cartridge {
 	}
 
 	cart.romData, cart.romMask = padROM(romData)
-	cart.Mapper, err = findRomHeader(cart.romData)
+	cart.Mapper, cart.coprocessor, err = getRomMapperAndCoprocessor(cart.romData)
 	if err != nil {
 		panic(err)
 	}
@@ -146,46 +154,55 @@ func (cart *Cartridge) HasSram() bool {
 func (cart *Cartridge) InitSram() {
 	romType, err := cart.ReadByte(0, 0xFFD6)
 	if err != nil {
-		cart.sramData = nil
-		return
+		panic("Cannot read the rom header, the mapper is broken.")
 	}
 
 	switch romType & 0x7 {
 	case 0x1, 0x2, 0x4, 0x5:
 		sizeVal, err := cart.ReadByte(0, 0xFFD8)
-		if sizeVal == 0 || err != nil {
-			cart.sramData = nil
-		} else {
-			size := 1 << (10 + sizeVal) //(1<<sizeVal)*1024)
-			cart.sramMask = uint32(size - 1)
-
-			romExt := filepath.Ext(cart.romPath)
-			basePath := strings.TrimSuffix(cart.romPath, romExt)
-			cart.sramPath = basePath + ".srm"
-			cart.sramData = make([]byte, size)
-
-			info, err := os.Stat(cart.sramPath)
-
-			if errors.Is(err, fs.ErrNotExist) {
-				log.Printf("Cartridge: Sram file(.srm) missing. Creating: %s", cart.sramPath)
-				cart.SaveSramToFile()
-			} else if info.Size() != int64(size) {
-				log.Printf("Cartridge: Sram file size incorrect. Expected %d.", size)
-				sramBackupPath := cart.sramPath + ".bak"
-				log.Printf("Cartridge: Backing up old sram file to: %s", sramBackupPath)
-				err := os.Rename(cart.sramPath, sramBackupPath)
-				if err != nil {
-					log.Printf("Cartridge: [WARNING] Failed to back up the old sram file to: %s", sramBackupPath)
-				}
-				cart.SaveSramToFile()
-			} else {
-				log.Printf("Cartridge: Sram file(.srm) found. Loading: %s", cart.sramPath)
-				sramData, err := load(cart.sramPath)
-				if err != nil {
-					panic(err)
-				}
-				copy(cart.sramData, sramData)
+		if err != nil {
+			panic("Cannot read the rom header, the mapper is broken.")
+		}
+		if sizeVal == 0 && cart.coprocessor != nil {
+			log.Printf("Cartridge: Sram detected but size is 0 and a Coprocessor is found. Checking the extended header...")
+			sizeVal, err = cart.ReadByte(0, 0xFFBD) //if has ram but size 0 check expansion RAM
+			if err != nil {
+				panic("Cannot read the rom header, the mapper is broken.")
 			}
+			if sizeVal == 0 {
+				log.Printf("Cartridge: expansion header size also 0. Defaulting to a Sram size of 32kb.")
+				sizeVal = 5
+			}
+		}
+		size := 1 << (10 + sizeVal) //(1<<sizeVal)*1024)
+		cart.sramMask = uint32(size - 1)
+
+		romExt := filepath.Ext(cart.romPath)
+		basePath := strings.TrimSuffix(cart.romPath, romExt)
+		cart.sramPath = basePath + ".srm"
+		cart.sramData = make([]byte, size)
+
+		info, err := os.Stat(cart.sramPath)
+
+		if errors.Is(err, fs.ErrNotExist) {
+			log.Printf("Cartridge: Sram file(.srm) missing. Creating: %s", cart.sramPath)
+			cart.SaveSramToFile()
+		} else if info.Size() != int64(size) {
+			log.Printf("Cartridge: Sram file size incorrect. Expected %d.", size)
+			sramBackupPath := cart.sramPath + ".bak"
+			log.Printf("Cartridge: Backing up old sram file to: %s", sramBackupPath)
+			err := os.Rename(cart.sramPath, sramBackupPath)
+			if err != nil {
+				log.Printf("Cartridge: [WARNING] Failed to back up the old sram file to: %s", sramBackupPath)
+			}
+			cart.SaveSramToFile()
+		} else {
+			log.Printf("Cartridge: Sram file(.srm) found. Loading: %s", cart.sramPath)
+			sramData, err := load(cart.sramPath)
+			if err != nil {
+				panic(err)
+			}
+			copy(cart.sramData, sramData)
 		}
 	default:
 		cart.sramData = nil
@@ -239,22 +256,24 @@ func (cart *Cartridge) IsPal() bool {
 }
 
 // TODO unfinished function
-func (cart *Cartridge) DetectCoprocessor() {
-	chipsetAddr, _ := cart.Mapper(0, 0xFFD6, false)
-	chipset := cart.romData[chipsetAddr]
+func DetectCoprocessor(baseMapper romMapper, romData []byte) (romMapper, Coprocessor) {
+	chipsetAddr, _ := baseMapper(0, 0xFFD6, false)
+	chipset := romData[chipsetAddr]
 
 	if chipset&0xF >= 3 {
-		switch Coprocessor(chipset & 0xF0) {
+		switch CoprocessorId(chipset & 0xF0) {
 		case CpuDSP:
 		case CpuGSU:
+			log.Printf("Cartridge: GSU detected.")
+			return mapGsu, &GSU{}
 		case CpuOBC1:
 		case CpuSA1:
 		case CpuSDD1:
 		case CpuSRTC:
 		case CpuOther:
 		case CpuCustom:
-			customAddr, _ := cart.Mapper(0, 0xFFBF, false)
-			customCpu := cart.romData[customAddr]
+			customAddr, _ := baseMapper(0, 0xFFBF, false)
+			customCpu := romData[customAddr]
 
 			switch CoprocessorCustom(customCpu) {
 			case CpuSPC7110:
@@ -264,4 +283,5 @@ func (cart *Cartridge) DetectCoprocessor() {
 			}
 		}
 	}
+	return baseMapper, nil
 }
