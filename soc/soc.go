@@ -3,6 +3,7 @@ package soc
 import (
 	"SNES_emulator/apu"
 	"SNES_emulator/cartridge"
+	"SNES_emulator/coprocessor"
 	"SNES_emulator/cpu"
 	"SNES_emulator/dma"
 	"SNES_emulator/memory"
@@ -21,6 +22,7 @@ type SoC struct {
 	Cpu                 *cpu.CPU
 	Ppu                 *ppu.PPU
 	Spu                 *apu.APU
+	Cop                 coprocessor.Coprocessor
 
 	Cartridge *cartridge.Cartridge
 	bus       memory.Bus
@@ -39,6 +41,7 @@ func NewSoC(config ConfigResolver, framebuffer *ui.Framebuffer, controllers ...J
 		Cpu:              cpu.NewCPU(bus),
 		Ppu:              ppu.NewPPU(bus, isPal),
 		Spu:              apu.NewApu(bus),
+		Cop:              cartridge.Coprocessor,
 
 		Cartridge: cartridge,
 		bus:       bus,

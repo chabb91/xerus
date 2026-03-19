@@ -3,6 +3,7 @@ package constants
 const CYCLE_DIVISOR = 2
 
 const (
+	CYCLE_2  = uint64(2 / CYCLE_DIVISOR)
 	CYCLE_4  = uint64(4 / CYCLE_DIVISOR)
 	CYCLE_6  = uint64(6 / CYCLE_DIVISOR)
 	CYCLE_8  = uint64(8 / CYCLE_DIVISOR)

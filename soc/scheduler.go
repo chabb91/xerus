@@ -52,6 +52,10 @@ func (soc SoC) Run() {
 			soc.Spu.Step()
 		}
 
+		if soc.Cop != nil {
+			soc.Cop.Step()
+		}
+
 		if soc.Ppu.Refresh {
 			//TODO there is some variation to this:
 			//refresh pause begins at 538 cycles into the first scanline of the first frame,
