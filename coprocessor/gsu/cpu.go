@@ -19,6 +19,16 @@ type GSU struct {
 	r registers
 
 	cache [0x200]byte
+
+	immediateCnt int
+	fetchedByte  byte
+}
+
+func New() coprocessor.Coprocessor {
+	gsu := &GSU{}
+	gsu.r.gsu = gsu
+
+	return gsu
 }
 
 /*
@@ -31,17 +41,29 @@ my brain hurts
 */
 
 func (gsu *GSU) Step() uint64 {
-	if gsu.r.executionState == stopState {
+	if gsu.r.SFR&FlagGo == 0 {
 		return constants.CYCLE_2
 	}
-	val, _ := gsu.Read8(gsu.r.PBR, gsu.r.cpuRegisters[0xF])
-	gsu.r.cpuRegisters[0xF]++
-	if val == 0x00 {
+	if gsu.fetchedByte == 0x00 {
 		fmt.Println("STOPPING")
-		gsu.r.executionState = stopState
+		gsu.r.SFR &= ^FlagGo
 	}
-	fmt.Printf("%02x\n", val)
+	gsu.preFetchByte()
 	return constants.CYCLE_2
+}
+
+// the gsu is execute -> fetch.
+// TODO prefetch determines cycle cost
+func (gsu *GSU) preFetchByte() {
+	val, err := gsu.Read8(gsu.r.PBR, gsu.r.cpuRegisters[0xF])
+
+	//TODO this can prolly be dropped in production
+	if err != nil {
+		panic(err.Error())
+	}
+	gsu.fetchedByte = val
+	gsu.r.cpuRegisters[0xF]++
+	fmt.Printf("%02x\n", val)
 }
 
 func (gsu *GSU) GetRegisterMap() coprocessor.RegisterMap {

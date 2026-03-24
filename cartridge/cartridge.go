@@ -278,7 +278,7 @@ func DetectCoprocessor(baseMapper romMapper, romData []byte) (romMapper, coproce
 		case CpuDSP:
 		case CpuGSU:
 			log.Printf("Cartridge: GSU detected.")
-			return mapGsu, &gsu.GSU{}
+			return mapGsu, gsu.New()
 		case CpuOBC1:
 		case CpuSA1:
 		case CpuSDD1:

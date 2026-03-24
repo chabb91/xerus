@@ -6,10 +6,14 @@ import (
 )
 
 const (
-	FlagZ uint16 = 1 << 1 //Zero			(0=NotZero/NotEqual, 1=Zero/Equal)
-	FlagC uint16 = 1 << 2 //Carry			(0=Borrow/Carry, 1=Carry/NoBorrow)
-	FlagS uint16 = 1 << 3 //Sign			(0=Positive, 1=Negative)
-	FlagV uint16 = 1 << 4 //OverFlow		(0=NoOverFlow, 1=OverFlow)
+	FlagZ    uint16 = 1 << 1  //Zero			(0=NotZero/NotEqual, 1=Zero/Equal)
+	FlagC    uint16 = 1 << 2  //Carry			(0=Borrow/Carry, 1=Carry/NoBorrow)
+	FlagS    uint16 = 1 << 3  //Sign			(0=Positive, 1=Negative)
+	FlagV    uint16 = 1 << 4  //OverFlow		(0=NoOverFlow, 1=OverFlow)
+	FlagGo   uint16 = 1 << 5  //GSU is running on 1, stopped on 0
+	FlagAlt1 uint16 = 1 << 8  //ALT1, ALT2, ALT3 prefixes
+	FlagAlt2 uint16 = 1 << 9  //ALT1, ALT2, ALT3 prefixes
+	FlagB    uint16 = 1 << 12 //B prefix (used by MOVE/MOVES)
 )
 
 const (
@@ -18,10 +22,10 @@ const (
 )
 
 type registers struct {
+	gsu *GSU //I dont like this
+
 	cpuRegisterByteLatch byte
 	cpuRegisters         [16]uint16
-
-	executionState ExecutionState
 
 	SFR   uint16 //status flag register
 	PBR   byte   //program bank register
@@ -40,6 +44,14 @@ type registers struct {
 	//sreg/dreg //memorized to/from prefix selections??
 }
 
+func (r *registers) getAltNum() byte {
+	return byte((r.SFR & (FlagAlt1 | FlagAlt2)) >> 8)
+}
+
+func (r *registers) hasFlag(flag uint16) bool {
+	return r.SFR&flag != 0
+}
+
 // set cpu register 0-15 as idx<<1 where the lsb signifies LSB or MSB
 // where even addresses LATCH, odd addresses SET.
 func (r *registers) setCpuRegister(byteIdx, value byte) {
@@ -49,7 +61,8 @@ func (r *registers) setCpuRegister(byteIdx, value byte) {
 		wordIdx := byteIdx >> 1
 		r.cpuRegisters[wordIdx] = uint16(r.cpuRegisterByteLatch) | uint16(value)<<8
 		if wordIdx == 0xF {
-			r.executionState = goState
+			r.SFR |= FlagGo
+			r.gsu.preFetchByte()
 		}
 	}
 }
@@ -69,7 +82,7 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 	if addr == 0x3030 {
 		fmt.Println("WAITING FOR GO")
 		//TODO no idea what rom[r14] Read is on bit 6
-		return byte(gsu.r.SFR) | byte(gsu.r.executionState), nil
+		return byte(gsu.r.SFR), nil
 	}
 	if addr == 0x3039 {
 		fmt.Println("CLS: ")
@@ -102,7 +115,6 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 	}
 	if addr == 0x3030 {
 		fmt.Println("SETTING GO")
-		gsu.r.executionState = ExecutionState(value) & goState
 		gsu.r.SFR = (gsu.r.SFR)&0xFF00 | (uint16(value & 0x1E))
 	}
 	if addr == 0x3039 {
