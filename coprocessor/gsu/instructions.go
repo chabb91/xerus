@@ -21,22 +21,22 @@ func (gsu *GSU) processByte() {
 		case opcode&0xF0 == 0x50: //ADD/ADC instructions
 			reg := opcode & 0xF
 			signA := uint16(gsu.r.cpuRegisters[gsu.sReg])
-			dest := uint32(signA)
+			result32 := uint32(signA)
 			signA &= 0x8000
 
 			if gsu.r.SFR&FlagAlt1 != 0 { //adc
-				dest += uint32(min(gsu.r.SFR&FlagC, 1))
+				result32 += uint32(min(gsu.r.SFR&FlagC, 1))
 			}
 			signB := uint16(0)
 			if gsu.r.SFR&FlagAlt2 != 0 {
-				dest += uint32(reg)
+				result32 += uint32(reg)
 			} else {
 				signB = gsu.r.cpuRegisters[reg]
-				dest += uint32(signB)
+				result32 += uint32(signB)
 				signB &= 0x8000
 			}
-			result := uint16(dest)
-			gsu.r.setFlag(FlagC, dest>>16 > 0)
+			result := uint16(result32)
+			gsu.r.setFlag(FlagC, result32>>16 > 0)
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
 			gsu.r.setFlag(FlagV, result&0x8000 != signA && signA == signB)
@@ -65,6 +65,7 @@ func (gsu *GSU) processByte() {
 			fmt.Println("STOPPING")
 			gsu.r.SFR &= ^FlagGo
 			gsu.r.SFR |= FlagIrq
+			gsu.clearPrefixes()
 		case opcode == 0x01: //NOP
 			gsu.clearPrefixes()
 		}
