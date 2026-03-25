@@ -6,12 +6,7 @@ import (
 	"fmt"
 )
 
-type ExecutionState uint16
-
-const (
-	goState   ExecutionState = 1 << 5
-	stopState ExecutionState = 0
-)
+type immediateInstructionFunc func(gsu *GSU)
 
 type GSU struct {
 	cartridge coprocessor.CartridgeDataSource
@@ -20,8 +15,13 @@ type GSU struct {
 
 	cache [0x200]byte
 
-	immediateCnt int
-	fetchedByte  byte
+	immediateBytes       [3]byte
+	immediateOpcode      byte
+	immediateInstruction immediateInstructionFunc
+
+	sReg, dReg byte
+
+	fetchedByte byte
 }
 
 func New() coprocessor.Coprocessor {
@@ -44,10 +44,7 @@ func (gsu *GSU) Step() uint64 {
 	if gsu.r.SFR&FlagGo == 0 {
 		return constants.CYCLE_2
 	}
-	if gsu.fetchedByte == 0x00 {
-		fmt.Println("STOPPING")
-		gsu.r.SFR &= ^FlagGo
-	}
+	gsu.processByte()
 	gsu.preFetchByte()
 	return constants.CYCLE_2
 }

@@ -11,9 +11,13 @@ const (
 	FlagS    uint16 = 1 << 3  //Sign			(0=Positive, 1=Negative)
 	FlagV    uint16 = 1 << 4  //OverFlow		(0=NoOverFlow, 1=OverFlow)
 	FlagGo   uint16 = 1 << 5  //GSU is running on 1, stopped on 0
+	FlagR    uint16 = 1 << 6  //ROM[R14] Read (0=No, 1=Reading ROM via R14 address) ??
 	FlagAlt1 uint16 = 1 << 8  //ALT1, ALT2, ALT3 prefixes
 	FlagAlt2 uint16 = 1 << 9  //ALT1, ALT2, ALT3 prefixes
+	FlagIl   uint16 = 1 << 10 //counter for opcodes with immediate operands (low)
+	FlagIh   uint16 = 1 << 11 //counter for opcodes with immediate operands (High)
 	FlagB    uint16 = 1 << 12 //B prefix (used by MOVE/MOVES)
+	FlagIrq  uint16 = 1 << 15 //Interrupt Flag (reset on read, set on STOP) (also set if IRQ masked?)
 )
 
 const (
@@ -48,8 +52,26 @@ func (r *registers) getAltNum() byte {
 	return byte((r.SFR & (FlagAlt1 | FlagAlt2)) >> 8)
 }
 
+func (r *registers) getImmediateNum() uint16 {
+	return (r.SFR & (FlagIl | FlagIh)) >> 10
+}
+
+func (r *registers) setImmediateNum(num uint16) {
+	num = (num & 3) << 10
+	r.SFR &= ^(FlagIl | FlagIh)
+	r.SFR |= num
+}
+
 func (r *registers) hasFlag(flag uint16) bool {
 	return r.SFR&flag != 0
+}
+
+func (r *registers) setFlag(flag uint16, cond bool) {
+	if cond {
+		r.SFR |= flag
+	} else {
+		r.SFR &= ^flag
+	}
 }
 
 // set cpu register 0-15 as idx<<1 where the lsb signifies LSB or MSB
@@ -84,6 +106,12 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 		//TODO no idea what rom[r14] Read is on bit 6
 		return byte(gsu.r.SFR), nil
 	}
+	if addr == 0x3031 {
+		tmp := byte(gsu.r.SFR >> 8)
+		gsu.r.SFR &= ^FlagIrq //reading clears the irq bit??
+
+		return tmp, nil
+	}
 	if addr == 0x3039 {
 		fmt.Println("CLS: ")
 	}
@@ -116,6 +144,9 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 	if addr == 0x3030 {
 		fmt.Println("SETTING GO")
 		gsu.r.SFR = (gsu.r.SFR)&0xFF00 | (uint16(value & 0x1E))
+	}
+	if addr == 0x3031 {
+		return nil //read only
 	}
 	if addr == 0x3039 {
 		fmt.Println("CLS: ", value)
