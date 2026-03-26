@@ -15,21 +15,24 @@ func (gsu *GSU) processByte() {
 		}
 		return
 	} else {
-		switch opcode := gsu.fetchedByte; {
+		opcode := gsu.fetchedByte
+		opcodeHn := opcode & 0xF0
+		opcodeLn := opcode & 0x0F
+		switch {
 		case opcode-5 <= 0xA: //BRANCH instructions 0x05-0x0F UNTESTED
 			gsu.r.setImmediateNum(1)
 			gsu.immediateInstruction = branchFunc
 			gsu.immediateOpcode = opcode
-		case opcode&0xF0 == 0xF0: //IWT instructions
+		case opcodeHn == 0xF0: //IWT instructions
 			gsu.r.setImmediateNum(2)
 			gsu.immediateInstruction = iwtFunc
 			gsu.immediateOpcode = opcode
-		case opcode&0xF0 == 0xA0: //IBT instructions
+		case opcodeHn == 0xA0: //IBT instructions
 			gsu.r.setImmediateNum(1)
 			gsu.immediateInstruction = ibtFunc
 			gsu.immediateOpcode = opcode
-		case opcode&0xF0 == 0x50: //ADD/ADC instructions
-			reg := opcode & 0xF
+		case opcodeHn == 0x50: //ADD/ADC instructions
+			reg := opcodeLn
 			signA := uint16(gsu.r.cpuRegisters[gsu.sReg])
 			result32 := uint32(signA)
 			signA &= 0x8000
@@ -61,16 +64,16 @@ func (gsu *GSU) processByte() {
 		case opcode == 0x3F: //ALT3
 			gsu.r.SFR |= (FlagAlt1 | FlagAlt2)
 			fmt.Println("SETTING ALT3")
-		case opcode&0xF0 == 0x10: //TO
-			dReg := opcode & 0xF
+		case opcodeHn == 0x10: //TO
+			dReg := opcodeLn
 			if gsu.r.SFR&FlagB != 0 { //MOVE
 				gsu.r.cpuRegisters[dReg] = gsu.r.cpuRegisters[gsu.sReg]
 				gsu.clearPrefixes()
 			} else {
 				gsu.dReg = dReg
 			}
-		case opcode&0xF0 == 0xB0: //FROM
-			sReg := opcode & 0xF
+		case opcodeHn == 0xB0: //FROM
+			sReg := opcodeLn
 			if gsu.r.SFR&FlagB != 0 { //MOVES
 				val := gsu.r.cpuRegisters[sReg]
 				gsu.r.cpuRegisters[gsu.dReg] = val
@@ -81,10 +84,10 @@ func (gsu *GSU) processByte() {
 			} else {
 				gsu.sReg = sReg
 			}
-		case opcode&0xF0 == 0x20: //WITH
+		case opcodeHn == 0x20: //WITH
 			gsu.r.SFR |= FlagB
 
-			reg := opcode & 0xF
+			reg := opcodeLn
 			gsu.sReg, gsu.dReg = reg, reg
 			fmt.Println("(WITH)SETTING Rd & Rs to :", reg)
 		case opcode == 0x00: //STOP
