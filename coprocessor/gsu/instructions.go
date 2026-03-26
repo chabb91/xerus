@@ -14,6 +14,10 @@ func (gsu *GSU) processByte() {
 		return
 	} else {
 		switch opcode := gsu.fetchedByte; {
+		case opcode-5 <= 0xA: //BRANCH instructions 0x05-0x0F UNTESTED
+			gsu.r.setImmediateNum(1)
+			gsu.immediateInstruction = branchFunc
+			gsu.immediateOpcode = opcode
 		case opcode&0xF0 == 0xF0: //IWT instructions
 			gsu.r.setImmediateNum(2)
 			gsu.immediateInstruction = iwtFunc
@@ -68,6 +72,8 @@ func (gsu *GSU) processByte() {
 			gsu.clearPrefixes()
 		case opcode == 0x01: //NOP
 			gsu.clearPrefixes()
+		default:
+			panic(fmt.Sprintf("GSU: unknown opcode: $%02x", opcode))
 		}
 	}
 }
@@ -82,4 +88,37 @@ func iwtFunc(gsu *GSU) {
 	gsu.r.cpuRegisters[reg] = uint16(gsu.immediateBytes[0])<<8 | uint16(gsu.immediateBytes[1])
 	gsu.clearPrefixes()
 	fmt.Println("REG: ", reg, " :", gsu.r.cpuRegisters[reg])
+}
+
+func branchFunc(gsu *GSU) {
+	var shouldBranch bool
+	switch gsu.immediateOpcode {
+	case 0x05:
+		shouldBranch = true
+	case 0x06:
+		shouldBranch = min(1, gsu.r.SFR&FlagS)^min(1, gsu.r.SFR&FlagV) == 0
+	case 0x07:
+		shouldBranch = min(1, gsu.r.SFR&FlagS)^min(1, gsu.r.SFR&FlagV) == 1
+	case 0x08:
+		shouldBranch = gsu.r.SFR&FlagZ == 0
+	case 0x09:
+		shouldBranch = gsu.r.SFR&FlagZ == 1
+	case 0x0A:
+		shouldBranch = gsu.r.SFR&FlagS == 0
+	case 0x0B:
+		shouldBranch = gsu.r.SFR&FlagS == 1
+	case 0x0C:
+		shouldBranch = gsu.r.SFR&FlagC == 0
+	case 0x0D:
+		shouldBranch = gsu.r.SFR&FlagC == 1
+	case 0x0E:
+		shouldBranch = gsu.r.SFR&FlagV == 0
+	case 0x0F:
+		shouldBranch = gsu.r.SFR&FlagV == 1
+	}
+
+	if shouldBranch {
+		gsu.branchOffset = uint16(int8(gsu.immediateBytes[0]))
+	}
+	//DONT clear prefixes
 }

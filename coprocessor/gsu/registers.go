@@ -57,9 +57,8 @@ func (r *registers) getImmediateNum() uint16 {
 }
 
 func (r *registers) setImmediateNum(num uint16) {
-	num = (num & 3) << 10
 	r.SFR &= ^(FlagIl | FlagIh)
-	r.SFR |= num
+	r.SFR |= (num & 3) << 10
 }
 
 func (r *registers) hasFlag(flag uint16) bool {
@@ -84,6 +83,7 @@ func (r *registers) setCpuRegister(byteIdx, value byte) {
 		r.cpuRegisters[wordIdx] = uint16(r.cpuRegisterByteLatch) | uint16(value)<<8
 		if wordIdx == 0xF {
 			r.SFR |= FlagGo
+			r.SFR &= ^(FlagIl | FlagIh) //if it was aborted before we might be stuck in immediate mode
 			r.gsu.preFetchByte()
 		}
 	}

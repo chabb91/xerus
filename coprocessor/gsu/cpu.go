@@ -8,6 +8,8 @@ import (
 
 type immediateInstructionFunc func(gsu *GSU)
 
+const INCREMENT_BY_1 uint16 = 1
+
 type GSU struct {
 	cartridge coprocessor.CartridgeDataSource
 
@@ -19,13 +21,17 @@ type GSU struct {
 	immediateOpcode      byte
 	immediateInstruction immediateInstructionFunc
 
+	branchOffset uint16 //handles the branch prefetch quirk
+
 	sReg, dReg byte
 
 	fetchedByte byte
 }
 
 func New() coprocessor.Coprocessor {
-	gsu := &GSU{}
+	gsu := &GSU{
+		branchOffset: INCREMENT_BY_1,
+	}
 	gsu.r.gsu = gsu
 
 	return gsu
@@ -59,7 +65,8 @@ func (gsu *GSU) preFetchByte() {
 		panic(err.Error())
 	}
 	gsu.fetchedByte = val
-	gsu.r.cpuRegisters[0xF]++
+	gsu.r.cpuRegisters[0xF] += gsu.branchOffset
+	gsu.branchOffset = INCREMENT_BY_1
 	fmt.Printf("%02x\n", val)
 }
 
