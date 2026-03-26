@@ -112,7 +112,7 @@ func iwtFunc(gsu *GSU) {
 	case FlagAlt1:
 		gsu.ramWordLoad(hilo, reg, false)
 	case FlagAlt2:
-		gsu.ramWordStore(hilo, reg, false)
+		gsu.ramWordStore(hilo, reg, false, false)
 	default:
 		gsu.r.cpuRegisters[reg] = hilo
 		fmt.Println("REG: ", reg, " :", gsu.r.cpuRegisters[reg])
@@ -127,7 +127,7 @@ func ibtFunc(gsu *GSU) {
 	case FlagAlt1:
 		gsu.ramWordLoad(uint16(kk)<<1, reg, false)
 	case FlagAlt2:
-		gsu.ramWordStore(uint16(kk)<<1, reg, false)
+		gsu.ramWordStore(uint16(kk)<<1, reg, false, false)
 	default:
 		gsu.r.cpuRegisters[reg] = uint16(int8(kk))
 		fmt.Println("IBT normal mode")
@@ -149,9 +149,14 @@ func (gsu *GSU) ramWordLoad(addr uint16, register byte, isByte bool) {
 }
 
 // TODO UNTESTED HELPER FUNCTION
-func (gsu *GSU) ramWordStore(addr uint16, register byte, isByte bool) {
-	bank := SRAM_BASE_BANK + gsu.r.RAMBR
-	gsu.prevRamAddr = uint32(bank)<<16 | uint32(addr)
+func (gsu *GSU) ramWordStore(addr uint16, register byte, isByte, isWriteback bool) {
+	var bank byte
+	if isWriteback {
+		bank, addr = byte(gsu.prevRamAddr>>16), uint16(gsu.prevRamAddr)
+	} else {
+		bank = SRAM_BASE_BANK + gsu.r.RAMBR
+		gsu.prevRamAddr = uint32(bank)<<16 | uint32(addr)
+	}
 
 	gsu.Write8(bank, addr, byte(gsu.r.cpuRegisters[register]))
 	if isByte {
