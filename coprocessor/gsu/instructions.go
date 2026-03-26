@@ -22,6 +22,10 @@ func (gsu *GSU) processByte() {
 			gsu.r.setImmediateNum(2)
 			gsu.immediateInstruction = iwtFunc
 			gsu.immediateOpcode = opcode
+		case opcode&0xF0 == 0xA0: //IBT instructions
+			gsu.r.setImmediateNum(1)
+			gsu.immediateInstruction = ibtFunc
+			gsu.immediateOpcode = opcode
 		case opcode&0xF0 == 0x50: //ADD/ADC instructions
 			reg := opcode & 0xF
 			signA := uint16(gsu.r.cpuRegisters[gsu.sReg])
@@ -85,9 +89,44 @@ func (gsu *GSU) clearPrefixes() {
 
 func iwtFunc(gsu *GSU) {
 	reg := gsu.immediateOpcode & 0xF
-	gsu.r.cpuRegisters[reg] = uint16(gsu.immediateBytes[0])<<8 | uint16(gsu.immediateBytes[1])
+	hilo := uint16(gsu.immediateBytes[0])<<8 | uint16(gsu.immediateBytes[1])
+	switch gsu.r.getAltNum() {
+	//TODO:ALT1 and ALT1 UNTESTED. these modes also run 9/11 cycles so gotta model that too
+	case 1:
+		hilo &= 0xFFFE
+		lo, _ := gsu.Read8(0x70+gsu.r.RAMBR, hilo)
+		hi, _ := gsu.Read8(0x70+gsu.r.RAMBR, hilo+1)
+		gsu.r.cpuRegisters[reg] = uint16(lo) | uint16(hi)<<8
+	case 2:
+		hilo &= 0xFFFE
+		gsu.Write8(0x70+gsu.r.RAMBR, hilo, byte(gsu.r.cpuRegisters[reg]))
+		gsu.Write8(0x70+gsu.r.RAMBR, hilo+1, byte(gsu.r.cpuRegisters[reg]>>8))
+	default:
+		gsu.r.cpuRegisters[reg] = hilo
+		fmt.Println("REG: ", reg, " :", gsu.r.cpuRegisters[reg])
+	}
 	gsu.clearPrefixes()
-	fmt.Println("REG: ", reg, " :", gsu.r.cpuRegisters[reg])
+}
+
+func ibtFunc(gsu *GSU) {
+	reg := gsu.immediateOpcode & 0xF
+	kk := gsu.immediateBytes[0]
+	switch gsu.r.getAltNum() {
+	//TODO:ALT1 and ALT1 UNTESTED. these modes also run 10/8 cycles so gotta model that too
+	case 1:
+		hilo := uint16(kk) << 1
+		lo, _ := gsu.Read8(0x70+gsu.r.RAMBR, hilo)
+		hi, _ := gsu.Read8(0x70+gsu.r.RAMBR, hilo+1)
+		gsu.r.cpuRegisters[reg] = uint16(lo) | uint16(hi)<<8
+	case 2:
+		hilo := uint16(kk) << 1
+		gsu.Write8(0x70+gsu.r.RAMBR, hilo, byte(gsu.r.cpuRegisters[reg]))
+		gsu.Write8(0x70+gsu.r.RAMBR, hilo+1, byte(gsu.r.cpuRegisters[reg]>>8))
+	default:
+		gsu.r.cpuRegisters[reg] = uint16(int8(kk))
+		fmt.Println("IBT normal mode")
+	}
+	gsu.clearPrefixes()
 }
 
 func branchFunc(gsu *GSU) {
