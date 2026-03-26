@@ -60,9 +60,25 @@ func (gsu *GSU) processByte() {
 			gsu.r.SFR |= (FlagAlt1 | FlagAlt2)
 			fmt.Println("SETTING ALT3")
 		case opcode&0xF0 == 0x10: //TO
-			gsu.dReg = opcode & 0xF
+			dReg := opcode & 0xF
+			if gsu.r.SFR&FlagB != 0 { //MOVE
+				gsu.r.cpuRegisters[dReg] = gsu.r.cpuRegisters[gsu.sReg]
+				gsu.clearPrefixes()
+			} else {
+				gsu.dReg = dReg
+			}
 		case opcode&0xF0 == 0xB0: //FROM
-			gsu.sReg = opcode & 0xF
+			sReg := opcode & 0xF
+			if gsu.r.SFR&FlagB != 0 { //MOVES
+				val := gsu.r.cpuRegisters[sReg]
+				gsu.r.cpuRegisters[gsu.dReg] = val
+				gsu.r.setFlag(FlagZ, val == 0)
+				gsu.r.setFlag(FlagS, val&0x8000 != 0)
+				gsu.r.setFlag(FlagV, val&0x80 != 0)
+				gsu.clearPrefixes()
+			} else {
+				gsu.sReg = sReg
+			}
 		case opcode&0xF0 == 0x20: //WITH
 			gsu.r.SFR |= FlagB
 
