@@ -10,6 +10,8 @@ type immediateInstructionFunc func(gsu *GSU)
 
 const INCREMENT_BY_1 uint16 = 1
 
+const SRAM_BASE_BANK byte = 0x70
+
 type GSU struct {
 	cartridge coprocessor.CartridgeDataSource
 
@@ -22,6 +24,8 @@ type GSU struct {
 	immediateInstruction immediateInstructionFunc
 
 	branchOffset uint16 //handles the branch prefetch quirk
+
+	prevRamAddr uint32 //the full address expanded with the SRAM_BASE_BANK.
 
 	sReg, dReg byte
 

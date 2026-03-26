@@ -48,8 +48,9 @@ type registers struct {
 	//sreg/dreg //memorized to/from prefix selections??
 }
 
-func (r *registers) getAltNum() byte {
-	return byte((r.SFR & (FlagAlt1 | FlagAlt2)) >> 8)
+// returns values that can be directly compared to ALT flags
+func (r *registers) getAltNum() uint16 {
+	return r.SFR & (FlagAlt1 | FlagAlt2)
 }
 
 func (r *registers) getImmediateNum() uint16 {

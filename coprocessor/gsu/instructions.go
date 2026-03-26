@@ -1,6 +1,8 @@
 package gsu
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func (gsu *GSU) processByte() {
 	immediateNum := gsu.r.getImmediateNum()
@@ -107,16 +109,10 @@ func iwtFunc(gsu *GSU) {
 	reg := gsu.immediateOpcode & 0xF
 	hilo := uint16(gsu.immediateBytes[0])<<8 | uint16(gsu.immediateBytes[1])
 	switch gsu.r.getAltNum() {
-	//TODO:ALT1 and ALT1 UNTESTED. these modes also run 9/11 cycles so gotta model that too
-	case 1:
-		hilo &= 0xFFFE
-		lo, _ := gsu.Read8(0x70+gsu.r.RAMBR, hilo)
-		hi, _ := gsu.Read8(0x70+gsu.r.RAMBR, hilo+1)
-		gsu.r.cpuRegisters[reg] = uint16(lo) | uint16(hi)<<8
-	case 2:
-		hilo &= 0xFFFE
-		gsu.Write8(0x70+gsu.r.RAMBR, hilo, byte(gsu.r.cpuRegisters[reg]))
-		gsu.Write8(0x70+gsu.r.RAMBR, hilo+1, byte(gsu.r.cpuRegisters[reg]>>8))
+	case FlagAlt1:
+		gsu.ramWordLoad(hilo, reg, false)
+	case FlagAlt2:
+		gsu.ramWordStore(hilo, reg, false)
 	default:
 		gsu.r.cpuRegisters[reg] = hilo
 		fmt.Println("REG: ", reg, " :", gsu.r.cpuRegisters[reg])
@@ -128,21 +124,39 @@ func ibtFunc(gsu *GSU) {
 	reg := gsu.immediateOpcode & 0xF
 	kk := gsu.immediateBytes[0]
 	switch gsu.r.getAltNum() {
-	//TODO:ALT1 and ALT1 UNTESTED. these modes also run 10/8 cycles so gotta model that too
-	case 1:
-		hilo := uint16(kk) << 1
-		lo, _ := gsu.Read8(0x70+gsu.r.RAMBR, hilo)
-		hi, _ := gsu.Read8(0x70+gsu.r.RAMBR, hilo+1)
-		gsu.r.cpuRegisters[reg] = uint16(lo) | uint16(hi)<<8
-	case 2:
-		hilo := uint16(kk) << 1
-		gsu.Write8(0x70+gsu.r.RAMBR, hilo, byte(gsu.r.cpuRegisters[reg]))
-		gsu.Write8(0x70+gsu.r.RAMBR, hilo+1, byte(gsu.r.cpuRegisters[reg]>>8))
+	case FlagAlt1:
+		gsu.ramWordLoad(uint16(kk)<<1, reg, false)
+	case FlagAlt2:
+		gsu.ramWordStore(uint16(kk)<<1, reg, false)
 	default:
 		gsu.r.cpuRegisters[reg] = uint16(int8(kk))
 		fmt.Println("IBT normal mode")
 	}
 	gsu.clearPrefixes()
+}
+
+// TODO UNTESTED HELPER FUNCTION
+func (gsu *GSU) ramWordLoad(addr uint16, register byte, isByte bool) {
+	bank := SRAM_BASE_BANK + gsu.r.RAMBR
+	gsu.prevRamAddr = uint32(bank)<<16 | uint32(addr)
+
+	lo, _ := gsu.Read8(bank, addr)
+	hi := byte(0)
+	if !isByte {
+		hi, _ = gsu.Read8(bank, addr^1)
+	}
+	gsu.r.cpuRegisters[register] = uint16(lo) | uint16(hi)<<8
+}
+
+// TODO UNTESTED HELPER FUNCTION
+func (gsu *GSU) ramWordStore(addr uint16, register byte, isByte bool) {
+	bank := SRAM_BASE_BANK + gsu.r.RAMBR
+	gsu.prevRamAddr = uint32(bank)<<16 | uint32(addr)
+
+	gsu.Write8(bank, addr, byte(gsu.r.cpuRegisters[register]))
+	if isByte {
+		gsu.Write8(bank, addr^1, byte(gsu.r.cpuRegisters[register]>>8))
+	}
 }
 
 func branchFunc(gsu *GSU) {
