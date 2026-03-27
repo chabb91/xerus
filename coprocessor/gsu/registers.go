@@ -146,6 +146,7 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 	if addr == 0x3030 {
 		fmt.Println("SETTING GO")
 		gsu.r.SFR = (gsu.r.SFR)&0xFF00 | (uint16(value & 0x1E))
+		return nil
 	}
 	if addr == 0x3031 {
 		return nil //read only
