@@ -97,6 +97,35 @@ func (gsu *GSU) processByte() {
 			gsu.r.setFlag(FlagV, result&0x8000 != signA && signA == signB)
 			gsu.r.cpuRegisters[gsu.dReg] = result
 			gsu.clearPrefixes()
+		case opcodeHn == 0x60: //SUB/SBC//CMP instructions
+			minuend := uint16(gsu.r.cpuRegisters[gsu.sReg])
+			result32 := uint32(minuend)
+			signA := minuend & 0x8000
+
+			alt := gsu.r.getAltNum()
+
+			subtrahend := uint16(opcodeLn)
+			if alt != FlagAlt2 {
+				subtrahend = gsu.r.cpuRegisters[opcodeLn]
+			}
+			signB := subtrahend & 0x8000
+			result32 -= uint32(subtrahend)
+
+			if alt == FlagAlt1 {
+				result32 -= (uint32(min(1, gsu.r.SFR&FlagC) ^ 1))
+			}
+
+			result := uint16(result32)
+			gsu.r.setFlag(FlagC, result32 < 0xFFFF)
+			gsu.r.setFlag(FlagZ, result == 0)
+			gsu.r.setFlag(FlagS, result&0x8000 != 0)
+			gsu.r.setFlag(FlagV, result&0x8000 != signA && signA != signB)
+			//subtraction overflow = if i subtract 30000 -(-30000) its expected to be large positive
+			//if its negative -> overflow
+			if alt != FlagAlt3 {
+				gsu.r.cpuRegisters[gsu.dReg] = result
+			}
+			gsu.clearPrefixes()
 		case opcode == 0x3D: //ALT1
 			gsu.r.SFR |= FlagAlt1
 			fmt.Println("SETTING ALT1")
