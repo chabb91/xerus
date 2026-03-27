@@ -74,33 +74,29 @@ func (gsu *GSU) processByte() {
 			}
 			gsu.clearPrefixes()
 		case opcodeHn == 0x50: //ADD/ADC instructions
-			reg := opcodeLn
-			signA := uint16(gsu.r.cpuRegisters[gsu.sReg])
-			result32 := uint32(signA)
-			signA &= 0x8000
+			augend := gsu.r.cpuRegisters[gsu.sReg]
+			result32 := uint32(augend)
 
 			if gsu.r.SFR&FlagAlt1 != 0 { //adc
 				result32 += uint32(min(gsu.r.SFR&FlagC, 1))
 			}
-			signB := uint16(0)
-			if gsu.r.SFR&FlagAlt2 != 0 {
-				result32 += uint32(reg)
-			} else {
-				signB = gsu.r.cpuRegisters[reg]
-				result32 += uint32(signB)
-				signB &= 0x8000
+			addend := uint16(opcodeLn)
+			if gsu.r.SFR&FlagAlt2 == 0 {
+				addend = gsu.r.cpuRegisters[opcodeLn]
 			}
+			result32 += uint32(addend)
+
 			result := uint16(result32)
-			gsu.r.setFlag(FlagC, result32>>16 > 0)
+			gsu.r.setFlag(FlagC, result32 > 0xFFFF)
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
-			gsu.r.setFlag(FlagV, result&0x8000 != signA && signA == signB)
+			gsu.r.setFlag(FlagV, (result^augend)&(result^addend)&0x8000 != 0)
+			//gsu.r.setFlag(FlagV, result&0x8000 != signA && signA == signB)
 			gsu.r.cpuRegisters[gsu.dReg] = result
 			gsu.clearPrefixes()
 		case opcodeHn == 0x60: //SUB/SBC//CMP instructions
 			minuend := uint16(gsu.r.cpuRegisters[gsu.sReg])
 			result32 := uint32(minuend)
-			signA := minuend & 0x8000
 
 			alt := gsu.r.getAltNum()
 
@@ -108,7 +104,6 @@ func (gsu *GSU) processByte() {
 			if alt != FlagAlt2 {
 				subtrahend = gsu.r.cpuRegisters[opcodeLn]
 			}
-			signB := subtrahend & 0x8000
 			result32 -= uint32(subtrahend)
 
 			if alt == FlagAlt1 {
@@ -116,12 +111,13 @@ func (gsu *GSU) processByte() {
 			}
 
 			result := uint16(result32)
-			gsu.r.setFlag(FlagC, result32 < 0xFFFF)
+			gsu.r.setFlag(FlagC, result32 <= 0xFFFF)
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
-			gsu.r.setFlag(FlagV, result&0x8000 != signA && signA != signB)
+			gsu.r.setFlag(FlagV, (minuend^subtrahend)&(result^minuend)&0x8000 != 0)
 			//subtraction overflow = if i subtract 30000 -(-30000) its expected to be large positive
 			//if its negative -> overflow
+			//gsu.r.setFlag(FlagV, result&0x8000 != signA && signA != signB)
 			if alt != FlagAlt3 {
 				gsu.r.cpuRegisters[gsu.dReg] = result
 			}
