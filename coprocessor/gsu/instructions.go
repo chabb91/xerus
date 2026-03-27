@@ -31,6 +31,48 @@ func (gsu *GSU) processByte() {
 			gsu.r.setImmediateNum(1)
 			gsu.immediateInstruction = ibtFunc
 			gsu.immediateOpcode = opcode
+		case opcode-0x30 <= 0xB: //STW instructions
+			gsu.ramWordStore(gsu.r.cpuRegisters[opcodeLn], gsu.sReg, gsu.r.getAltNum() == FlagAlt1, false)
+			gsu.clearPrefixes()
+		case opcode-0x40 <= 0xB: //LDW instructions
+			gsu.ramWordLoad(gsu.r.cpuRegisters[opcodeLn], gsu.dReg, gsu.r.getAltNum() == FlagAlt1)
+			gsu.clearPrefixes()
+		case opcode == 0x90:
+			gsu.ramWordStore(0, gsu.sReg, false, true)
+			gsu.clearPrefixes()
+		case opcode == 0xEF: //GET(load byte from rom)
+			byte, _ := gsu.Read8(gsu.r.ROMBR, gsu.r.cpuRegisters[14])
+			val := &gsu.r.cpuRegisters[gsu.dReg]
+			switch gsu.r.getAltNum() {
+			case FlagAlt1:
+				*val &= 0x00FF
+				*val |= uint16(byte) << 8
+			case FlagAlt2:
+				*val &= 0xFF00
+				*val |= uint16(byte)
+			case FlagAlt3:
+				*val = uint16(int16(int8(byte))) //technically the inner int16 cast isnt needed, but cant test
+			default:
+				*val = uint16(byte)
+			}
+			gsu.clearPrefixes()
+		case opcode == 0xDF: //GETC pretending as RAMB/ROMB
+			switch gsu.r.getAltNum() {
+			case FlagAlt2:
+				gsu.r.RAMBR = byte(gsu.r.cpuRegisters[gsu.sReg]) & 1
+			case FlagAlt3:
+				gsu.r.ROMBR = byte(gsu.r.cpuRegisters[gsu.sReg])
+			default:
+				gsu.r.COLR, _ = gsu.Read8(gsu.r.ROMBR, gsu.r.cpuRegisters[14])
+			}
+			gsu.clearPrefixes()
+		case opcode == 0x4E: //COLOR/CMODE
+			if gsu.r.getAltNum() == FlagAlt1 {
+				gsu.r.POR = byte(gsu.r.cpuRegisters[gsu.sReg]) & 0x1F
+			} else {
+				gsu.r.COLR = byte(gsu.r.cpuRegisters[gsu.sReg])
+			}
+			gsu.clearPrefixes()
 		case opcodeHn == 0x50: //ADD/ADC instructions
 			reg := opcodeLn
 			signA := uint16(gsu.r.cpuRegisters[gsu.sReg])

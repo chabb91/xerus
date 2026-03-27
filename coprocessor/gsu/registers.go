@@ -18,6 +18,7 @@ const (
 	FlagIh   uint16 = 1 << 11 //counter for opcodes with immediate operands (High)
 	FlagB    uint16 = 1 << 12 //B prefix (used by MOVE/MOVES)
 	FlagIrq  uint16 = 1 << 15 //Interrupt Flag (reset on read, set on STOP) (also set if IRQ masked?)
+	FlagAlt3        = FlagAlt1 | FlagAlt2
 )
 
 const (
