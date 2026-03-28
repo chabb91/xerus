@@ -212,6 +212,73 @@ func (gsu *GSU) processByte() {
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
 			gsu.r.cpuRegisters[gsu.dReg] = result
 			gsu.clearPrefixes()
+		case opcode == 0x97: //ROR
+			result := gsu.r.cpuRegisters[gsu.sReg]
+			lsb := result & 1
+			result = gsu.r.cpuRegisters[gsu.sReg]>>1 | min(gsu.r.SFR&FlagC, 1)<<15
+			gsu.r.setFlag(FlagC, lsb != 0)
+			gsu.r.setFlag(FlagZ, result == 0)
+			gsu.r.setFlag(FlagS, result&0x8000 != 0)
+			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.clearPrefixes()
+		case opcode == 0x4D: //SWAP
+			result := gsu.r.cpuRegisters[gsu.sReg]
+			result = result<<8 | result>>8
+			gsu.r.setFlag(FlagZ, result == 0)
+			gsu.r.setFlag(FlagS, result&0x8000 != 0)
+			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.clearPrefixes()
+		case opcode == 0x95: //SEX
+			result := gsu.r.cpuRegisters[gsu.sReg]
+			result = uint16(int8(result & 0xFF))
+			gsu.r.setFlag(FlagZ, result == 0)
+			gsu.r.setFlag(FlagS, result&0x8000 != 0)
+			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.clearPrefixes()
+		case opcode == 0x9E: //LOB
+			result := gsu.r.cpuRegisters[gsu.sReg]
+			result &= 0xFF
+			gsu.r.setFlag(FlagZ, result == 0)
+			gsu.r.setFlag(FlagS, result&0x80 != 0)
+			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.clearPrefixes()
+		case opcode == 0x9F: //FMULT/LMULT
+			altNum := gsu.r.getAltNum()
+			result32 := uint32(int32(int16(gsu.r.cpuRegisters[gsu.sReg])) * int32(int16(gsu.r.cpuRegisters[6])))
+			if altNum == FlagAlt1 {
+				//if dreg == 4 this is obviously overwritten
+				gsu.r.cpuRegisters[4] = uint16(result32)
+			}
+			gsu.r.cpuRegisters[gsu.dReg] = uint16(result32 >> 16)
+			gsu.r.setFlag(FlagC, result32&0x8000 != 0) //TODO unsure about this one
+			gsu.r.setFlag(FlagZ, result32 == 0)
+			gsu.r.setFlag(FlagS, result32&0x8000_0000 != 0)
+			gsu.clearPrefixes()
+		case opcodeHn == 0x80: //MULT/UMULT
+			result := uint16(gsu.r.cpuRegisters[gsu.sReg] & 0x00FF)
+			multiplier := uint16(opcodeLn)
+			if gsu.r.SFR&FlagAlt2 == 0 {
+				multiplier = gsu.r.cpuRegisters[opcodeLn] & 0x00FF
+			}
+			if gsu.r.SFR&FlagAlt1 == 0 {
+				result = uint16(int16(int8(result)) * int16(int8(multiplier)))
+			} else {
+				result *= multiplier
+			}
+			gsu.r.setFlag(FlagZ, result == 0)
+			gsu.r.setFlag(FlagS, result&0x8000 != 0)
+			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.clearPrefixes()
+		case opcode-0x98 <= 5: //JMP/LJMP
+			if gsu.r.getAltNum() == FlagAlt1 {
+				gsu.r.cpuRegisters[0xF] = gsu.r.cpuRegisters[gsu.sReg]
+				gsu.r.PBR = byte(gsu.r.cpuRegisters[opcodeLn]) & 0x7F
+				gsu.r.CBR = gsu.r.cpuRegisters[gsu.sReg] & 0xFFF0
+				//TODO flush cache
+			} else {
+				gsu.r.cpuRegisters[0xF] = gsu.r.cpuRegisters[opcodeLn]
+			}
+		//case opcode-0x91 <= 3: //LINK
 		case opcode == 0x3D: //ALT1
 			gsu.r.SFR |= FlagAlt1
 			fmt.Println("SETTING ALT1")
