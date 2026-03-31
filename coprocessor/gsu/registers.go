@@ -26,11 +26,14 @@ const (
 	RON byte = 1 << 4 //Game Pak ROM bus access (0=SNES, 1=GSU) if cleared while GO=1 the GSU enters WAIT
 )
 
+const R15_NOT_BRANCHING int = -1
+
 type registers struct {
 	gsu *GSU //I dont like this
 
 	cpuRegisterByteLatch byte
 	cpuRegisters         [16]uint16
+	cpuRegister15Buffer  int //after a branch is taken, it has to be detected and pc not incremented.
 
 	SFR   uint16 //status flag register
 	PBR   byte   //program bank register
@@ -47,6 +50,14 @@ type registers struct {
 	POR   byte   //plot option register
 	//rom buffer prefetch bytes at rombr:r14??
 	//sreg/dreg //memorized to/from prefix selections??
+}
+
+func (r *registers) writeCpuRegister(idx byte, val uint16) {
+	if idx == 15 {
+		r.cpuRegister15Buffer = int(val)
+		return
+	}
+	r.cpuRegisters[idx] = val
 }
 
 // returns values that can be directly compared to ALT flags
@@ -86,6 +97,7 @@ func (r *registers) setCpuRegister(byteIdx, value byte) {
 		if wordIdx == 0xF {
 			r.SFR |= FlagGo
 			r.SFR &= ^(FlagIl | FlagIh) //if it was aborted before we might be stuck in immediate mode
+			r.cpuRegister15Buffer = R15_NOT_BRANCHING
 			r.gsu.preFetchByte()
 		}
 	}

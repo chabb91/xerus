@@ -8,8 +8,6 @@ import (
 
 type immediateInstructionFunc func(gsu *GSU)
 
-const INCREMENT_BY_1 uint16 = 1
-
 const SRAM_BASE_BANK byte = 0x70
 
 type GSU struct {
@@ -23,37 +21,26 @@ type GSU struct {
 	immediateOpcode      byte
 	immediateInstruction immediateInstructionFunc
 
-	branchOffset uint16 //handles the branch prefetch quirk
-
 	prevRamAddr uint32 //the full address expanded with the SRAM_BASE_BANK.
 
 	sReg, dReg byte
 
-	fetchedByte byte
+	currentOpcode byte
 }
 
 func New() coprocessor.Coprocessor {
-	gsu := &GSU{
-		branchOffset: INCREMENT_BY_1,
-	}
+	gsu := &GSU{}
 	gsu.r.gsu = gsu
+	gsu.r.cpuRegister15Buffer = R15_NOT_BRANCHING
 
 	return gsu
 }
-
-/*
-in a byte sequence in gsuadc.sfc: 21 3d 50:
-21 means WITH register 1 aka select r1 as rn and rs and set B=1
-3d means select ALT1
-50 is ADD but with 3d it becomes:  3D 5n         2 000vscz ADC Rn       adc Rd,Rs,Rn ;Rd=Rs+Rn+Cy
-read it together: r1 = r1 + r0 + carry
-my brain hurts
-*/
 
 func (gsu *GSU) Step() uint64 {
 	if gsu.r.SFR&FlagGo == 0 {
 		return constants.CYCLE_2
 	}
+
 	gsu.processByte()
 	gsu.preFetchByte()
 	return constants.CYCLE_2
@@ -64,13 +51,16 @@ func (gsu *GSU) Step() uint64 {
 func (gsu *GSU) preFetchByte() {
 	val, err := gsu.Read8(gsu.r.PBR, gsu.r.cpuRegisters[0xF])
 
-	//TODO this can prolly be dropped in production
 	if err != nil {
 		panic(err.Error())
 	}
-	gsu.fetchedByte = val
-	gsu.r.cpuRegisters[0xF] += gsu.branchOffset
-	gsu.branchOffset = INCREMENT_BY_1
+	gsu.currentOpcode = val
+	if pcVal := gsu.r.cpuRegister15Buffer; pcVal != R15_NOT_BRANCHING {
+		gsu.r.cpuRegisters[0xF] = uint16(pcVal)
+		gsu.r.cpuRegister15Buffer = R15_NOT_BRANCHING
+	} else {
+		gsu.r.cpuRegisters[0xF]++
+	}
 	fmt.Printf("%02x\n", val)
 }
 

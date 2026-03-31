@@ -8,14 +8,14 @@ func (gsu *GSU) processByte() {
 	immediateNum := gsu.r.getImmediateNum()
 	if immediateNum != 0 {
 		immediateNum--
-		gsu.immediateBytes[immediateNum] = gsu.fetchedByte
+		gsu.immediateBytes[immediateNum] = gsu.currentOpcode
 		gsu.r.setImmediateNum(immediateNum)
 		if immediateNum == 0 {
 			gsu.immediateInstruction(gsu)
 		}
 		return
 	} else {
-		opcode := gsu.fetchedByte
+		opcode := gsu.currentOpcode
 		opcodeHn := opcode & 0xF0
 		opcodeLn := opcode & 0x0F
 		switch {
@@ -92,7 +92,7 @@ func (gsu *GSU) processByte() {
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
 			gsu.r.setFlag(FlagV, (result^augend)&(result^addend)&0x8000 != 0)
 			//gsu.r.setFlag(FlagV, result&0x8000 != signA && signA == signB)
-			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.r.writeCpuRegister(gsu.dReg, result)
 			gsu.clearPrefixes()
 		case opcodeHn == 0x60: //SUB/SBC//CMP instructions
 			minuend := uint16(gsu.r.cpuRegisters[gsu.sReg])
@@ -119,7 +119,7 @@ func (gsu *GSU) processByte() {
 			//if its negative -> overflow
 			//gsu.r.setFlag(FlagV, result&0x8000 != signA && signA != signB)
 			if alt != FlagAlt3 {
-				gsu.r.cpuRegisters[gsu.dReg] = result
+				gsu.r.writeCpuRegister(gsu.dReg, result)
 			}
 			gsu.clearPrefixes()
 		case opcode == 0x70: //MERGE
@@ -128,7 +128,7 @@ func (gsu *GSU) processByte() {
 			gsu.r.setFlag(FlagZ, result&0xF0F0 != 0)
 			gsu.r.setFlag(FlagS, result&0x8080 != 0)
 			gsu.r.setFlag(FlagV, result&0xC0C0 != 0)
-			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.r.writeCpuRegister(gsu.dReg, result)
 			gsu.clearPrefixes()
 		case opcode-0x71 <= 0xE: //AND/BIC
 			operand := uint16(opcodeLn)
@@ -141,13 +141,13 @@ func (gsu *GSU) processByte() {
 			result := gsu.r.cpuRegisters[gsu.sReg] & operand
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
-			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.r.writeCpuRegister(gsu.dReg, result)
 			gsu.clearPrefixes()
 		case opcode == 0xC0: //HIB
 			result := gsu.r.cpuRegisters[gsu.sReg] >> 8
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x80 != 0)
-			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.r.writeCpuRegister(gsu.dReg, result)
 			gsu.clearPrefixes()
 		case opcode-0xC1 <= 0xE: //OR/XOR
 			operand := uint16(opcodeLn)
@@ -162,25 +162,25 @@ func (gsu *GSU) processByte() {
 			}
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
-			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.r.writeCpuRegister(gsu.dReg, result)
 			gsu.clearPrefixes()
 		case opcode == 0x4F: //NOT
 			result := gsu.r.cpuRegisters[gsu.sReg] ^ 0xFFFF
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
-			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.r.writeCpuRegister(gsu.dReg, result)
 			gsu.clearPrefixes()
 		case opcode-0xD0 <= 0xE: //INC
-			gsu.r.cpuRegisters[opcodeLn]++
-			result := gsu.r.cpuRegisters[opcodeLn]
+			result := gsu.r.cpuRegisters[opcodeLn] + 1
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
+			gsu.r.writeCpuRegister(opcodeLn, result)
 			gsu.clearPrefixes()
 		case opcode-0xE0 <= 0xE: //DEC
-			gsu.r.cpuRegisters[opcodeLn]--
-			result := gsu.r.cpuRegisters[opcodeLn]
+			result := gsu.r.cpuRegisters[opcodeLn] - 1
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
+			gsu.r.writeCpuRegister(opcodeLn, result)
 			gsu.clearPrefixes()
 		case opcode == 0x03: //LSR
 			result := gsu.r.cpuRegisters[gsu.sReg]
@@ -189,7 +189,7 @@ func (gsu *GSU) processByte() {
 			gsu.r.setFlag(FlagC, lsb != 0)
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, false)
-			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.r.writeCpuRegister(gsu.dReg, result)
 			gsu.clearPrefixes()
 		case opcode == 0x04: //ROL
 			result := gsu.r.cpuRegisters[gsu.sReg]
@@ -198,7 +198,7 @@ func (gsu *GSU) processByte() {
 			gsu.r.setFlag(FlagC, msb != 0)
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
-			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.r.writeCpuRegister(gsu.dReg, result)
 			gsu.clearPrefixes()
 		case opcode == 0x96: //ASR -signed shift
 			result := gsu.r.cpuRegisters[gsu.sReg]
@@ -210,7 +210,7 @@ func (gsu *GSU) processByte() {
 			gsu.r.setFlag(FlagC, lsb != 0)
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
-			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.r.writeCpuRegister(gsu.dReg, result)
 			gsu.clearPrefixes()
 		case opcode == 0x97: //ROR
 			result := gsu.r.cpuRegisters[gsu.sReg]
@@ -219,37 +219,37 @@ func (gsu *GSU) processByte() {
 			gsu.r.setFlag(FlagC, lsb != 0)
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
-			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.r.writeCpuRegister(gsu.dReg, result)
 			gsu.clearPrefixes()
 		case opcode == 0x4D: //SWAP
 			result := gsu.r.cpuRegisters[gsu.sReg]
 			result = result<<8 | result>>8
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
-			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.r.writeCpuRegister(gsu.dReg, result)
 			gsu.clearPrefixes()
 		case opcode == 0x95: //SEX
 			result := gsu.r.cpuRegisters[gsu.sReg]
 			result = uint16(int8(result & 0xFF))
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
-			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.r.writeCpuRegister(gsu.dReg, result)
 			gsu.clearPrefixes()
 		case opcode == 0x9E: //LOB
 			result := gsu.r.cpuRegisters[gsu.sReg]
 			result &= 0xFF
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x80 != 0)
-			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.r.writeCpuRegister(gsu.dReg, result)
 			gsu.clearPrefixes()
 		case opcode == 0x9F: //FMULT/LMULT
 			altNum := gsu.r.getAltNum()
 			result32 := uint32(int32(int16(gsu.r.cpuRegisters[gsu.sReg])) * int32(int16(gsu.r.cpuRegisters[6])))
 			if altNum == FlagAlt1 {
 				//if dreg == 4 this is obviously overwritten
-				gsu.r.cpuRegisters[4] = uint16(result32)
+				gsu.r.writeCpuRegister(4, uint16(result32))
 			}
-			gsu.r.cpuRegisters[gsu.dReg] = uint16(result32 >> 16)
+			gsu.r.writeCpuRegister(gsu.dReg, uint16(result32>>16))
 			gsu.r.setFlag(FlagC, result32&0x8000 != 0) //TODO unsure about this one
 			gsu.r.setFlag(FlagZ, result32 == 0)
 			gsu.r.setFlag(FlagS, result32&0x8000_0000 != 0)
@@ -267,18 +267,31 @@ func (gsu *GSU) processByte() {
 			}
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
-			gsu.r.cpuRegisters[gsu.dReg] = result
+			gsu.r.writeCpuRegister(gsu.dReg, result)
 			gsu.clearPrefixes()
 		case opcode-0x98 <= 5: //JMP/LJMP
 			if gsu.r.getAltNum() == FlagAlt1 {
-				gsu.r.cpuRegisters[0xF] = gsu.r.cpuRegisters[gsu.sReg]
+				gsu.r.writeCpuRegister(0xF, gsu.r.cpuRegisters[gsu.sReg])
 				gsu.r.PBR = byte(gsu.r.cpuRegisters[opcodeLn]) & 0x7F
 				gsu.r.CBR = gsu.r.cpuRegisters[gsu.sReg] & 0xFFF0
 				//TODO flush cache
 			} else {
-				gsu.r.cpuRegisters[0xF] = gsu.r.cpuRegisters[opcodeLn]
+				gsu.r.writeCpuRegister(0xF, gsu.r.cpuRegisters[opcodeLn])
 			}
-		//case opcode-0x91 <= 3: //LINK
+			gsu.clearPrefixes()
+		case opcode == 0x3C: //LOOP
+			result := gsu.r.cpuRegisters[12] - 1
+			isZero := result == 0
+			gsu.r.setFlag(FlagZ, isZero)
+			gsu.r.setFlag(FlagS, result&0x8000 != 0)
+			gsu.r.writeCpuRegister(12, result)
+			if isZero {
+				gsu.r.writeCpuRegister(0xF, gsu.r.cpuRegisters[13])
+			}
+			gsu.clearPrefixes()
+		case opcode-0x91 <= 3: //LINK/RETURN TO
+			gsu.r.writeCpuRegister(11, gsu.r.cpuRegisters[0xF]+uint16(opcodeLn))
+			gsu.clearPrefixes()
 		case opcode == 0x3D: //ALT1
 			gsu.r.SFR |= FlagAlt1
 			fmt.Println("SETTING ALT1")
@@ -291,7 +304,7 @@ func (gsu *GSU) processByte() {
 		case opcodeHn == 0x10: //TO
 			dReg := opcodeLn
 			if gsu.r.SFR&FlagB != 0 { //MOVE
-				gsu.r.cpuRegisters[dReg] = gsu.r.cpuRegisters[gsu.sReg]
+				gsu.r.writeCpuRegister(dReg, gsu.r.cpuRegisters[gsu.sReg])
 				gsu.clearPrefixes()
 			} else {
 				gsu.dReg = dReg
@@ -300,7 +313,7 @@ func (gsu *GSU) processByte() {
 			sReg := opcodeLn
 			if gsu.r.SFR&FlagB != 0 { //MOVES
 				val := gsu.r.cpuRegisters[sReg]
-				gsu.r.cpuRegisters[gsu.dReg] = val
+				gsu.r.writeCpuRegister(gsu.dReg, val)
 				gsu.r.setFlag(FlagZ, val == 0)
 				gsu.r.setFlag(FlagS, val&0x8000 != 0)
 				gsu.r.setFlag(FlagV, val&0x80 != 0)
@@ -341,7 +354,7 @@ func iwtFunc(gsu *GSU) {
 	case FlagAlt2:
 		gsu.ramWordStore(hilo, reg, false, false)
 	default:
-		gsu.r.cpuRegisters[reg] = hilo
+		gsu.r.writeCpuRegister(reg, hilo)
 		fmt.Println("REG: ", reg, " :", gsu.r.cpuRegisters[reg])
 	}
 	gsu.clearPrefixes()
@@ -356,7 +369,7 @@ func ibtFunc(gsu *GSU) {
 	case FlagAlt2:
 		gsu.ramWordStore(uint16(kk)<<1, reg, false, false)
 	default:
-		gsu.r.cpuRegisters[reg] = uint16(int8(kk))
+		gsu.r.writeCpuRegister(reg, uint16(int8(kk)))
 		fmt.Println("IBT normal mode")
 	}
 	gsu.clearPrefixes()
@@ -372,7 +385,7 @@ func (gsu *GSU) ramWordLoad(addr uint16, register byte, isByte bool) {
 	if !isByte {
 		hi, _ = gsu.Read8(bank, addr^1)
 	}
-	gsu.r.cpuRegisters[register] = uint16(lo) | uint16(hi)<<8
+	gsu.r.writeCpuRegister(register, uint16(lo)|uint16(hi)<<8)
 }
 
 // TODO UNTESTED HELPER FUNCTION
@@ -419,7 +432,8 @@ func branchFunc(gsu *GSU) {
 	}
 
 	if shouldBranch {
-		gsu.branchOffset = uint16(int8(gsu.immediateBytes[0]))
+		gsu.r.writeCpuRegister(0xF, gsu.r.cpuRegisters[0xF]+uint16(int8(gsu.immediateBytes[0])))
 	}
+	panic("BRANCHING")
 	//DONT clear prefixes
 }
