@@ -275,6 +275,7 @@ func (gsu *GSU) processByte() {
 				gsu.r.PBR = byte(gsu.r.cpuRegisters[opcodeLn]) & 0x7F
 				gsu.r.CBR = gsu.r.cpuRegisters[gsu.sReg] & 0xFFF0
 				//TODO flush cache
+				gsu.cacheFlags = 0
 			} else {
 				gsu.r.writeCpuRegister(0xF, gsu.r.cpuRegisters[opcodeLn])
 			}
@@ -333,6 +334,13 @@ func (gsu *GSU) processByte() {
 			gsu.r.SFR |= FlagIrq
 			gsu.clearPrefixes()
 		case opcode == 0x01: //NOP
+			gsu.clearPrefixes()
+		case opcode == 0x02: //CACHE
+			if cbr := gsu.r.cpuRegisters[0xF] & 0xFFF0; gsu.r.CBR != cbr {
+				gsu.r.CBR = cbr
+				//flush cache??
+				gsu.cacheFlags = 0
+			}
 			gsu.clearPrefixes()
 		default:
 			panic(fmt.Sprintf("GSU: unknown opcode: $%02x", opcode))
@@ -434,6 +442,5 @@ func branchFunc(gsu *GSU) {
 	if shouldBranch {
 		gsu.r.writeCpuRegister(0xF, gsu.r.cpuRegisters[0xF]+uint16(int8(gsu.immediateBytes[0])))
 	}
-	panic("BRANCHING")
 	//DONT clear prefixes
 }

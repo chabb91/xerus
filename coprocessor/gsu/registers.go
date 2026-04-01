@@ -112,11 +112,15 @@ func (r *registers) getCpuRegister(byteIdx byte) byte {
 }
 
 func (gsu *GSU) Read(addr uint16) (byte, error) {
+	if cacheIdx := addr - 0x3100; cacheIdx < 0x200 {
+		idx := (gsu.r.CBR + cacheIdx) & 0x1FF
+		return gsu.cache[idx], nil
+	}
 	if byteIdx := addr - 0x3000; byteIdx < 0x20 {
 		return gsu.r.getCpuRegister(byte(byteIdx)), nil
 	}
 	if addr == 0x3030 {
-		fmt.Println("WAITING FOR GO")
+		fmt.Println("READING GSU:SFR LO")
 		//TODO no idea what rom[r14] Read is on bit 6
 		return byte(gsu.r.SFR), nil
 	}
@@ -144,6 +148,12 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 	if addr == 0x303C {
 		return gsu.r.RAMBR, nil
 	}
+	if addr == 0x303E {
+		return byte(gsu.r.CBR), nil
+	}
+	if addr == 0x303F {
+		return byte(gsu.r.CBR >> 8), nil
+	}
 	if addr == 0x303A {
 		//return gsu.r.SCMR & 0x7F, nil
 	}
@@ -151,6 +161,15 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 }
 
 func (gsu *GSU) Write(addr uint16, value byte) error {
+	if cacheIdx := addr - 0x3100; cacheIdx < 0x200 {
+		idx := (gsu.r.CBR + cacheIdx) & 0x1FF
+		gsu.cache[idx] = value
+		if idx&0xF == 0xF {
+			gsu.cacheFlags |= uint32((1 << (idx >> 4)))
+		}
+		fmt.Printf("GSU: WRITING CACHE: %02x\n", value)
+		return nil
+	}
 	if byteIdx := addr - 0x3000; byteIdx < 0x20 {
 		gsu.r.setCpuRegister(byte(byteIdx), value)
 		return nil
@@ -158,6 +177,11 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 	if addr == 0x3030 {
 		fmt.Println("SETTING GO")
 		gsu.r.SFR = (gsu.r.SFR)&0xFF00 | (uint16(value & 0x1E))
+		if gsu.r.SFR&FlagGo == 0 {
+			gsu.r.CBR = 0
+			//flush cache
+			gsu.cacheFlags = 0
+		}
 		return nil
 	}
 	if addr == 0x3031 {
