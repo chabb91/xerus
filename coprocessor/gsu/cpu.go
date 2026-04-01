@@ -56,32 +56,22 @@ func (gsu *GSU) preFetchByte() {
 
 	if idx := pc - gsu.r.CBR; idx < 0x200 {
 		cacheMask := uint32((1 << (idx >> 4)))
-		if gsu.cacheFlags&cacheMask != 0 {
-			opcode = gsu.cache[idx]
-		} else {
-			opcode, err = gsu.Read8(gsu.r.PBR, pc)
+		if gsu.cacheFlags&cacheMask == 0 {
+			rowBaseIdx := idx & 0x1F0
+			rowBasePc := pc & 0xFFF0
+			for i := range uint16(16) {
+				//TODO this read has to add cumulative overhead
+				opcode, err = gsu.Read8(gsu.r.PBR, rowBasePc+i)
 
-			if pcVal := gsu.r.cpuRegister15Buffer; pcVal != R15_NOT_BRANCHING {
-				for i := range uint16(16) {
-					v, _ := gsu.Read8(gsu.r.PBR, (pc&0xFFF0)+i)
-					gsu.cache[(idx&0x1F0)+i] = v
+				if err != nil {
+					panic(err.Error())
 				}
-				gsu.cacheFlags |= cacheMask
-			}
 
-			if idx := uint16(gsu.r.cpuRegister15Buffer) - gsu.r.CBR; idx < 0x200 {
-				//panic("gotta fill this in")
+				gsu.cache[rowBaseIdx+i] = opcode
 			}
-
-			if err != nil {
-				panic(err.Error())
-			}
-
-			gsu.cache[idx] = opcode
-			if idx&0xF == 0xF {
-				gsu.cacheFlags |= cacheMask
-			}
+			gsu.cacheFlags |= cacheMask
 		}
+		opcode = gsu.cache[idx]
 	} else {
 		opcode, err = gsu.Read8(gsu.r.PBR, pc)
 
@@ -97,31 +87,6 @@ func (gsu *GSU) preFetchByte() {
 		gsu.r.cpuRegisters[0xF]++
 	}
 	fmt.Printf("%02x\n", opcode)
-}
-
-func (gsu *GSU) fillCacheOnBranch(idx, currentPc uint16) {
-	cacheMask := uint32((1 << (idx >> 4)))
-	lineFillCnt := min((idx&0xF)^0xF, uint16(gsu.r.cpuRegister15Buffer)-currentPc+1)
-	for i := uint16(1); i <= lineFillCnt; i++ {
-		val, _ := gsu.Read8(gsu.r.PBR, currentPc+i)
-		gsu.cache[idx+i] = val
-		if (idx+i)&0xF == 0xF {
-			gsu.cacheFlags |= cacheMask
-		}
-	}
-	if idx := uint16(gsu.r.cpuRegister15Buffer) - gsu.r.CBR; idx < 0x200 {
-		cacheMask = uint32((1 << (idx >> 4)))
-		if gsu.cacheFlags&cacheMask != 0 {
-			lineFillCnt = (idx & 0xF) ^ 0xF
-			for i := uint16(0); i < lineFillCnt; i++ {
-				val, _ := gsu.Read8(gsu.r.PBR, uint16(gsu.r.cpuRegister15Buffer)+i)
-				gsu.cache[idx+i] = val
-				if (idx+i)&0xF == 0xF {
-					gsu.cacheFlags |= cacheMask
-				}
-			}
-		}
-	}
 }
 
 func (gsu *GSU) GetRegisterMap() coprocessor.RegisterMap {
