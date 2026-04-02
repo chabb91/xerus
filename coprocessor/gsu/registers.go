@@ -44,7 +44,7 @@ type registers struct {
 	VCR   byte   // version code register 1 = MC1 4 = GSU2 the rest unknown??
 	CFGR  byte   //config register
 	CLSR  byte   //clock select register 0=10mhz, 1=21mhz
-	SCBR  byte   //screen base register
+	SCBR  uint32 //screen base register
 	SCMR  byte   //screen mode register
 	COLR  byte   //color register
 	POR   byte   //plot option register
@@ -137,6 +137,7 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 		fmt.Println("CFGR: ")
 	}
 	if addr == 0x3038 {
+		//WRITE ONLY
 		fmt.Println("SBCR: ")
 	}
 	if addr == 0x3034 {
@@ -194,7 +195,10 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 		fmt.Println("CFGR: ", value)
 	}
 	if addr == 0x3038 {
-		fmt.Println("SBCR: ", value)
+		fmt.Println("SCBR: ", value)
+
+		gsu.r.SCBR = 0x70_0000 + uint32(value)<<10
+		return nil
 	}
 	if addr == 0x3034 {
 		gsu.r.PBR = value

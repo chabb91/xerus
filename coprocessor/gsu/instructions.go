@@ -286,7 +286,7 @@ func (gsu *GSU) processByte() {
 			gsu.r.setFlag(FlagZ, isZero)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
 			gsu.r.writeCpuRegister(12, result)
-			if isZero {
+			if !isZero {
 				gsu.r.writeCpuRegister(0xF, gsu.r.cpuRegisters[13])
 			}
 			gsu.clearPrefixes()
@@ -340,6 +340,40 @@ func (gsu *GSU) processByte() {
 				gsu.r.CBR = cbr
 				//flush cache??
 				gsu.cacheFlags = 0
+			}
+			gsu.clearPrefixes()
+		case opcode == 0x4C: //PLOT??
+			x := gsu.r.cpuRegisters[1]
+			y := gsu.r.cpuRegisters[2]
+			if gsu.r.gsu.r.getAltNum() == FlagAlt1 {
+				//panic("GSU: RPIX NOT EVEN ONCE")
+				tn := ((x & 0xF8) << 1) + ((y & 0xF8) >> 3)
+				bpp := uint16(2)
+				tra := uint32(tn)*(uint32(bpp)<<3) + gsu.r.SCBR + uint32((y&7)*2)
+				x = (x & 7) ^ 7
+				var data byte
+				for i := range bpp {
+					b := ((i >> 1) << 4) + (i & 1)
+					addr2 := tra + uint32(b)
+					val, _ := gsu.Read8(byte(addr2>>16), uint16(addr2))
+					data |= ((val >> x) & 1) << i
+				}
+				gsu.r.setFlag(FlagZ, data == 0)
+				gsu.r.setFlag(FlagS, uint16(data)&0x8000 != 0)
+				gsu.r.cpuRegisters[gsu.dReg] = uint16(data)
+			} else {
+				tn := (x>>3)*0x10 + (y >> 3)
+				tra := uint32(tn)*0x10 + uint32(gsu.r.SCBR) + uint32(y&7)<<1
+				col := (x & 7) ^ 7
+				bp0, _ := gsu.Read8(byte(tra>>16), uint16(tra))
+				bp1, _ := gsu.Read8(byte(tra>>16), uint16(tra)+1)
+				bp0 &= ^(1 << col)
+				bp0 |= gsu.r.COLR & 1 << col
+				bp1 &= ^(1 << col)
+				bp1 |= (gsu.r.COLR >> 1) & 1 << col
+				gsu.Write8(byte(tra>>16), uint16(tra), bp0)
+				gsu.Write8(byte(tra>>16), uint16(tra)+1, bp1)
+				gsu.r.cpuRegisters[1]++
 			}
 			gsu.clearPrefixes()
 		default:
