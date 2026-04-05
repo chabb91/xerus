@@ -26,6 +26,14 @@ const (
 	RON byte = 1 << 4 //Game Pak ROM bus access (0=SNES, 1=GSU) if cleared while GO=1 the GSU enters WAIT
 )
 
+const ( //POR
+	FlagPlotTransparent byte = 1 << 0 //0= Do Not Plot Color 0, 1= Plot Color 0
+	FlagPlotDither      byte = 1 << 1 //0= Normal, 1= Dither (4/16 color mode only)
+	FlagColorHighNibble byte = 1 << 2 //0= Normal, 1= Replace incoming LSB by incoming MSB
+	FlagColorFreezeHigh byte = 1 << 3 //0= Normal, 1= Write-protect COLOR.MSB
+	FlagForceObjMode    byte = 1 << 4 //0= Normal, 1= Force OBJ mode; ignore SCMR.HT0/HT1
+)
+
 const R15_NOT_BRANCHING int = -1
 
 type registers struct {
@@ -84,6 +92,17 @@ func (r *registers) setFlag(flag uint16, cond bool) {
 	} else {
 		r.SFR &= ^flag
 	}
+}
+func (r *registers) setColr(value byte) {
+	if r.POR&FlagColorHighNibble != 0 {
+		r.COLR = r.COLR&0xF0 | value>>4
+		return
+	}
+	if r.POR&FlagColorFreezeHigh != 0 {
+		r.COLR = r.COLR&0xF0 | value&0xF
+		return
+	}
+	r.COLR = value
 }
 
 // set cpu register 0-15 as idx<<1 where the lsb signifies LSB or MSB
