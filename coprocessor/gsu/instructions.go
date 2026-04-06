@@ -332,10 +332,6 @@ func (gsu *GSU) processByte() {
 			gsu.r.SFR &= ^FlagGo
 			gsu.r.SFR |= FlagIrq
 			gsu.clearPrefixes()
-			gsu.StopCnt--
-			if gsu.StopCnt == 0 {
-				//panic("DONEZO")
-			}
 		case opcode == 0x01: //NOP
 			gsu.clearPrefixes()
 		case opcode == 0x02: //CACHE
