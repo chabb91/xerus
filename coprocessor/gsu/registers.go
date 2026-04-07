@@ -139,13 +139,17 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 		return gsu.r.getCpuRegister(byte(byteIdx)), nil
 	}
 	if addr == 0x3030 {
-		fmt.Println("READING GSU:SFR LO")
+		//fmt.Println("READING GSU:SFR LO")
 		//TODO no idea what rom[r14] Read is on bit 6
 		return byte(gsu.r.SFR), nil
 	}
 	if addr == 0x3031 {
 		tmp := byte(gsu.r.SFR >> 8)
 		gsu.r.SFR &= ^FlagIrq //reading clears the irq bit??
+
+		if gsu.r.CFGR&0x80 == 0 {
+			//gsu.interruptManager.AcknowledgeIrq()
+		}
 
 		return tmp, nil
 	}
@@ -195,7 +199,7 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 		return nil
 	}
 	if addr == 0x3030 {
-		fmt.Println("SETTING GO")
+		//fmt.Println("SETTING GO")
 		gsu.r.SFR = (gsu.r.SFR)&0xFF00 | (uint16(value & 0x1E))
 		if gsu.r.SFR&FlagGo == 0 {
 			gsu.r.CBR = 0
@@ -211,7 +215,12 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 		fmt.Println("CLS: ", value)
 	}
 	if addr == 0x3037 {
+		gsu.r.CFGR = value
+		if value&0x80 == 0 {
+			//panic("IRQ SHOULD BE FIRING")
+		}
 		fmt.Println("CFGR: ", value)
+		return nil
 	}
 	if addr == 0x3038 {
 		fmt.Println("SCBR: ", value)

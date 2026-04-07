@@ -331,6 +331,9 @@ func (gsu *GSU) processByte() {
 		case opcode == 0x00: //STOP
 			gsu.r.SFR &= ^FlagGo
 			gsu.r.SFR |= FlagIrq
+			if gsu.r.CFGR&0x80 == 0 {
+				//gsu.interruptManager.FireIrq()
+			}
 			gsu.clearPrefixes()
 		case opcode == 0x01: //NOP
 			gsu.clearPrefixes()
@@ -345,33 +348,27 @@ func (gsu *GSU) processByte() {
 			x := gsu.r.cpuRegisters[1]
 			y := gsu.r.cpuRegisters[2]
 			if gsu.r.gsu.r.getAltNum() == FlagAlt1 {
-				//panic("GSU: RPIX NOT EVEN ONCE")
-				tn := ((x & 0xF8) << 1) + ((y & 0xF8) >> 3)
-				bpp := uint16(2)
-				tra := uint32(tn)*(uint32(bpp)<<3) + gsu.r.SCBR + uint32((y&7)*2)
+				tra, bpp := gsu.getTileRowAddress(x, y)
 				x = (x & 7) ^ 7
 				var data byte
 				for i := range bpp {
-					b := ((i >> 1) << 4) + (i & 1)
-					addr2 := tra + uint32(b)
-					val, _ := gsu.Read8(byte(addr2>>16), uint16(addr2))
+					addr := tra + ((i >> 1) << 4) + (i & 1)
+					val, _ := gsu.Read8(byte(addr>>16), uint16(addr))
 					data |= ((val >> x) & 1) << i
 				}
 				gsu.r.setFlag(FlagZ, data == 0)
 				gsu.r.setFlag(FlagS, uint16(data)&0x8000 != 0)
 				gsu.r.writeCpuRegister(gsu.dReg, uint16(data))
 			} else {
-				tn := (x>>3)*0x10 + (y >> 3)
-				tra := uint32(tn)*0x10 + uint32(gsu.r.SCBR) + uint32(y&7)<<1
+				tra, bpp := gsu.getTileRowAddress(x, y)
 				col := (x & 7) ^ 7
-				bp0, _ := gsu.Read8(byte(tra>>16), uint16(tra))
-				bp1, _ := gsu.Read8(byte(tra>>16), uint16(tra)+1)
-				bp0 &= ^(1 << col)
-				bp0 |= gsu.r.COLR & 1 << col
-				bp1 &= ^(1 << col)
-				bp1 |= (gsu.r.COLR >> 1) & 1 << col
-				gsu.Write8(byte(tra>>16), uint16(tra), bp0)
-				gsu.Write8(byte(tra>>16), uint16(tra)+1, bp1)
+				for i := range bpp {
+					addr := tra + ((i >> 1) << 4) + (i & 1)
+					bp, _ := gsu.Read8(byte(addr>>16), uint16(addr))
+					bp &= ^(1 << col)
+					bp |= (((gsu.r.COLR >> i) & 1) << col)
+					gsu.Write8(byte(addr>>16), uint16(addr), bp)
+				}
 				gsu.r.cpuRegisters[1]++
 			}
 			gsu.clearPrefixes()
@@ -379,6 +376,36 @@ func (gsu *GSU) processByte() {
 			panic(fmt.Sprintf("GSU: unknown opcode: $%02x", opcode))
 		}
 	}
+}
+
+func (gsu *GSU) getTileRowAddress(x, y uint16) (tra, bitplanes uint32) {
+	screenHeight := (((gsu.r.SCMR & 32) >> 4) | ((gsu.r.SCMR >> 2) & 1)) |
+		(byte(int8((gsu.r.POR&16)<<3))>>7)&3
+	bitplanes = uint32(gsu.r.SCMR & 3)
+
+	switch bitplanes {
+	case 0:
+		bitplanes = 2
+	case 1, 2:
+		bitplanes = 4
+	case 3:
+		bitplanes = 8
+	}
+
+	var tn uint16
+	switch screenHeight {
+	case 0:
+		tn = ((x & 0xF8) << 1) + ((y & 0xF8) >> 3)
+	case 1:
+		tn = ((x & 0xF8) << 1) + ((x & 0xF8) >> 1) + ((y & 0xF8) >> 3)
+	case 2:
+		tn = ((x & 0xF8) << 1) + ((x & 0xF8) >> 0) + ((y & 0xF8) >> 3)
+	case 3:
+		tn = ((y & 0x80) << 2) + ((x & 0x80) << 1) + ((y & 0x78) << 1) + ((x & 0x78) >> 3)
+	default:
+		panic("GSU: getTilerowAddress: screenHeight is an unexpected value.")
+	}
+	return uint32(tn)*(bitplanes<<3) + gsu.r.SCBR + uint32((y&7)<<1), bitplanes
 }
 
 func (gsu *GSU) clearPrefixes() {
