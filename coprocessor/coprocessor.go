@@ -18,6 +18,7 @@ type Coprocessor interface {
 	Write8(bank byte, offset uint16, value byte) error
 
 	SetCartridge(CartridgeDataSource)
+	SetInterruptManager(InterruptManager)
 
 	Step() uint64
 }
@@ -27,4 +28,10 @@ type CartridgeDataSource interface {
 	ReadRam(index int) byte
 	ReadRom(index int) byte
 	WriteRam(index int, value byte)
+}
+
+// wiring up cartridge irq signal
+type InterruptManager interface {
+	FireIrq()
+	AcknowledgeIrq()
 }

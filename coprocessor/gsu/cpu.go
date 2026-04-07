@@ -12,7 +12,8 @@ const SRAM_BASE_BANK byte = 0x70
 const trace bool = false
 
 type GSU struct {
-	cartridge coprocessor.CartridgeDataSource
+	cartridge        coprocessor.CartridgeDataSource
+	interruptManager coprocessor.InterruptManager
 
 	r registers
 
@@ -104,6 +105,10 @@ func (gsu *GSU) GetRegisterMap() coprocessor.RegisterMap {
 
 func (gsu *GSU) SetCartridge(cartridge coprocessor.CartridgeDataSource) {
 	gsu.cartridge = cartridge
+}
+
+func (gsu *GSU) SetInterruptManager(manager coprocessor.InterruptManager) {
+	gsu.interruptManager = manager
 }
 
 // every coprocessor carries its own mapper

@@ -55,6 +55,11 @@ func (ic *InterruptController) FireIrq() {
 	ic.cpu.IrqSignal = true
 }
 
+// coprocessor irq support??
+func (ic *InterruptController) AcknowledgeIrq() {
+	ic.cpu.IrqSignal = false
+}
+
 func (ic *InterruptController) SetHvbjoyV(on bool) {
 	if on {
 		ic.hvbjoy |= 0x80

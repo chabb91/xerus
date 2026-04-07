@@ -55,6 +55,10 @@ func NewSoC(config ConfigResolver, framebuffer *ui.Framebuffer, controllers ...J
 	soc.Ppu.Wrio = &soc.InterruptController.WRIO
 	soc.Ppu.Init()
 
+	if soc.Cop != nil {
+		soc.Cop.SetInterruptManager(soc.InterruptController)
+	}
+
 	bus.RegisterRange(0x4200, 0x421F, soc, "internal CPU")
 	return soc
 }
