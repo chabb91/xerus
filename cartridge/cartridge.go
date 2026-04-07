@@ -4,6 +4,7 @@ import (
 	"SNES_emulator/coprocessor"
 	"SNES_emulator/coprocessor/gsu"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -170,23 +171,8 @@ func (cart *Cartridge) InitSram() {
 		panic("Cannot read the rom header, the mapper is broken.")
 	}
 
-	switch romType & 0x7 {
-	case 0x1, 0x2, 0x4, 0x5:
-		sizeVal, err := cart.ReadByte(0, 0xFFD8)
-		if err != nil {
-			panic("Cannot read the rom header, the mapper is broken.")
-		}
-		if sizeVal == 0 && cart.Coprocessor != nil {
-			log.Printf("Cartridge: Sram detected but size is 0 and a Coprocessor is found. Checking the extended header...")
-			sizeVal, err = cart.ReadByte(0, 0xFFBD) //if has ram but size 0 check expansion RAM
-			if err != nil {
-				panic("Cannot read the rom header, the mapper is broken.")
-			}
-			if sizeVal == 0 {
-				log.Printf("Cartridge: expansion header size also 0. Defaulting to a Sram size of 32kb.")
-				sizeVal = 5
-			}
-		}
+	sram := func(cart *Cartridge, sizeVal byte) {
+		log.Printf("Cartridge: Sram detected with the size of: %dkb", 1<<sizeVal)
 		size := 1 << (10 + sizeVal) //(1<<sizeVal)*1024)
 		cart.sramMask = uint32(size - 1)
 
@@ -217,6 +203,38 @@ func (cart *Cartridge) InitSram() {
 			}
 			copy(cart.sramData, sramData)
 		}
+	}
+
+	sizeVal, err := cart.sramSizeOverride()
+	if err == nil {
+		log.Printf("Cartridge: Sram override necessary. Forcing Sram size to: %dkb", 1<<sizeVal)
+		sram(cart, sizeVal)
+		return
+	}
+
+	switch romType & 0x7 {
+	case 4, 5:
+		if romType&0xF0 == byte(CpuGSU) { //for coprocessors that specify sram in the extended header.
+			if !cart.isValidExtendedHeaderPresent() {
+				panic("Cartridge: Extended header could not be located. Exiting.")
+			}
+
+			log.Printf("Cartridge: Checking the extended header for Sram size...")
+			sizeVal, err = cart.ReadByte(0, 0xFFBD)
+			if err != nil {
+				panic("Cannot read the rom header, the mapper is broken.")
+			}
+			sram(cart, sizeVal)
+			return
+		}
+		fallthrough
+	case 1, 2:
+		sizeVal, err = cart.ReadByte(0, 0xFFD8)
+		if err != nil {
+			panic("Cannot read the rom header, the mapper is broken.")
+		}
+		sram(cart, sizeVal)
+		return
 	default:
 		cart.sramData = nil
 	}
@@ -297,4 +315,19 @@ func DetectCoprocessor(baseMapper romMapper, romData []byte) (romMapper, coproce
 		}
 	}
 	return baseMapper, nil
+}
+
+// some roms contain SRAM but they dont specify it
+func (cart *Cartridge) sramSizeOverride() (sizeVal byte, err error) {
+	switch strings.TrimSpace(cart.GetHeaderTitle()) {
+	case "STAR FOX":
+		return 5, nil
+	default:
+		return 0, fmt.Errorf("NO OVERRIDE NEEDED")
+	}
+}
+
+func (cart *Cartridge) isValidExtendedHeaderPresent() bool {
+	from, err := cart.ReadByte(0, 0xFFDA)
+	return from == 0x33 && err == nil
 }
