@@ -332,7 +332,7 @@ func (gsu *GSU) processByte() {
 			gsu.r.SFR &= ^FlagGo
 			gsu.r.SFR |= FlagIrq
 			if gsu.r.CFGR&0x80 == 0 {
-				//gsu.interruptManager.FireIrq()
+				gsu.interruptManager.FireIrq()
 			}
 			gsu.clearPrefixes()
 		case opcode == 0x01: //NOP
@@ -347,7 +347,7 @@ func (gsu *GSU) processByte() {
 		case opcode == 0x4C: //PLOT??
 			x := gsu.r.cpuRegisters[1]
 			y := gsu.r.cpuRegisters[2]
-			if gsu.r.gsu.r.getAltNum() == FlagAlt1 {
+			if gsu.r.gsu.r.getAltNum() == FlagAlt1 { //RPIX
 				tra, bpp := gsu.getTileRowAddress(x, y)
 				x = (x & 7) ^ 7
 				var data byte
@@ -361,13 +361,26 @@ func (gsu *GSU) processByte() {
 				gsu.r.writeCpuRegister(gsu.dReg, uint16(data))
 			} else {
 				tra, bpp := gsu.getTileRowAddress(x, y)
-				col := (x & 7) ^ 7
-				for i := range bpp {
-					addr := tra + ((i >> 1) << 4) + (i & 1)
-					bp, _ := gsu.Read8(byte(addr>>16), uint16(addr))
-					bp &= ^(1 << col)
-					bp |= (((gsu.r.COLR >> i) & 1) << col)
-					gsu.Write8(byte(addr>>16), uint16(addr), bp)
+
+				transparentShift := bpp
+				if bpp == 8 {
+					transparentShift >>= (gsu.r.POR & FlagColorFreezeHigh) >> 3
+				}
+
+				if gsu.r.POR&FlagPlotTransparent != 0 || gsu.r.COLR&((1<<transparentShift)-1) != 0 {
+					color := gsu.r.COLR
+					if gsu.r.POR&FlagPlotDither != 0 && bpp != 8 {
+						color = color >> (((x & 1) ^ (y & 1)) << 2)
+					}
+
+					x = (x & 7) ^ 7
+					for i := range bpp {
+						addr := tra + ((i >> 1) << 4) + (i & 1)
+						bp, _ := gsu.Read8(byte(addr>>16), uint16(addr))
+						bp &= ^(1 << x)
+						bp |= (((color >> i) & 1) << x)
+						gsu.Write8(byte(addr>>16), uint16(addr), bp)
+					}
 				}
 				gsu.r.cpuRegisters[1]++
 			}
@@ -380,17 +393,8 @@ func (gsu *GSU) processByte() {
 
 func (gsu *GSU) getTileRowAddress(x, y uint16) (tra, bitplanes uint32) {
 	screenHeight := (((gsu.r.SCMR & 32) >> 4) | ((gsu.r.SCMR >> 2) & 1)) |
-		(byte(int8((gsu.r.POR&16)<<3))>>7)&3
-	bitplanes = uint32(gsu.r.SCMR & 3)
-
-	switch bitplanes {
-	case 0:
-		bitplanes = 2
-	case 1, 2:
-		bitplanes = 4
-	case 3:
-		bitplanes = 8
-	}
+		(byte(int8((gsu.r.POR&FlagForceObjMode)<<3))>>7)&3
+	bitplanes = 2 << uint32((gsu.r.SCMR&1)+((gsu.r.SCMR>>1)&1))
 
 	var tn uint16
 	switch screenHeight {
@@ -405,7 +409,9 @@ func (gsu *GSU) getTileRowAddress(x, y uint16) (tra, bitplanes uint32) {
 	default:
 		panic("GSU: getTilerowAddress: screenHeight is an unexpected value.")
 	}
-	return uint32(tn)*(bitplanes<<3) + gsu.r.SCBR + uint32((y&7)<<1), bitplanes
+
+	tra = uint32(tn)*(bitplanes<<3) + gsu.r.SCBR + uint32((y&7)<<1)
+	return
 }
 
 func (gsu *GSU) clearPrefixes() {

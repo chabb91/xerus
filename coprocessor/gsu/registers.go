@@ -148,7 +148,7 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 		gsu.r.SFR &= ^FlagIrq //reading clears the irq bit??
 
 		if gsu.r.CFGR&0x80 == 0 {
-			//gsu.interruptManager.AcknowledgeIrq()
+			gsu.interruptManager.AcknowledgeIrq()
 		}
 
 		return tmp, nil
