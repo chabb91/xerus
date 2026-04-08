@@ -37,7 +37,7 @@ const ( //POR
 const R15_NOT_BRANCHING int = -1
 
 type registers struct {
-	gsu *GSU //I dont like this
+	fetchFunc func()
 
 	cpuRegisterByteLatch byte
 	cpuRegisters         [16]uint16
@@ -117,7 +117,7 @@ func (r *registers) setCpuRegister(byteIdx, value byte) {
 			r.SFR |= FlagGo
 			r.SFR &= ^(FlagIl | FlagIh) //if it was aborted before we might be stuck in immediate mode
 			r.cpuRegister15Buffer = R15_NOT_BRANCHING
-			r.gsu.preFetchByte()
+			r.fetchFunc()
 		}
 	}
 }

@@ -38,7 +38,7 @@ func New() coprocessor.Coprocessor {
 	if trace {
 		gsu.tracer = newTracer(600_000, 25)
 	}
-	gsu.r.gsu = gsu
+	gsu.r.fetchFunc = gsu.preFetchByte
 	gsu.r.cpuRegister15Buffer = R15_NOT_BRANCHING
 
 	return gsu

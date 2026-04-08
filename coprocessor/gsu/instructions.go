@@ -347,7 +347,7 @@ func (gsu *GSU) processByte() {
 		case opcode == 0x4C: //PLOT??
 			x := gsu.r.cpuRegisters[1]
 			y := gsu.r.cpuRegisters[2]
-			if gsu.r.gsu.r.getAltNum() == FlagAlt1 { //RPIX
+			if gsu.r.getAltNum() == FlagAlt1 { //RPIX
 				tra, bpp := gsu.getTileRowAddress(x, y)
 				x = (x & 7) ^ 7
 				var data byte
