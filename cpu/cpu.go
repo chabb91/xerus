@@ -119,7 +119,7 @@ func (c *CPU) handleNMI() bool {
 		c.CyclesTaken = CPU_WAKEUP_COST
 		return true
 	}
-	c.CyclesTaken = uint64(c.bus.GetAccessClass(mapOffsetToBank(c.r.PB, c.r.PC)))
+	c.CyclesTaken = c.bus.GetAccessClass(mapOffsetToBank(c.r.PB, c.r.PC))
 	c.currentInstruction = c.hwInterrupts[nmiId]
 	c.currentInstruction.Reset(c)
 	c.NmiSignal = false
@@ -150,7 +150,7 @@ func (c *CPU) handleIRQ() bool {
 	hasFlag = c.r.hasFlag(FlagI)
 
 	if !hasFlag {
-		c.CyclesTaken = uint64(c.bus.GetAccessClass(mapOffsetToBank(c.r.PB, c.r.PC)))
+		c.CyclesTaken = c.bus.GetAccessClass(mapOffsetToBank(c.r.PB, c.r.PC))
 		c.currentInstruction = c.hwInterrupts[irqId]
 		c.currentInstruction.Reset(c)
 		c.executionState = normalState
@@ -184,14 +184,14 @@ func (c *CPU) fetchByte() byte {
 }
 
 func (c *CPU) readByte(addr uint32) byte {
-	c.CyclesTaken = uint64(c.bus.GetAccessClass(addr))
+	c.CyclesTaken = c.bus.GetAccessClass(addr)
 	ret := c.bus.ReadByte(addr)
 
 	return ret
 }
 
 func (c *CPU) writeByte(addr uint32, val byte) {
-	c.CyclesTaken = uint64(c.bus.GetAccessClass(addr))
+	c.CyclesTaken = c.bus.GetAccessClass(addr)
 	c.bus.WriteByte(addr, val)
 }
 

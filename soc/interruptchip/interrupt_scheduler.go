@@ -29,6 +29,8 @@ type InterruptController struct {
 	JOY3 uint16
 	JOY4 uint16
 
+	ppuIrq, cartridgeIrq, lightgunIrq bool
+
 	bus memory.Bus
 }
 
@@ -52,12 +54,19 @@ func (ic *InterruptController) FireNmi() {
 }
 
 func (ic *InterruptController) FireIrq() {
-	ic.cpu.IrqSignal = true
+	ic.ppuIrq = true
+	ic.forwardIrqToCpu()
 }
 
 // coprocessor irq support??
-func (ic *InterruptController) AcknowledgeIrq() {
-	ic.cpu.IrqSignal = false
+func (ic *InterruptController) CartFireIrq() {
+	ic.cartridgeIrq = true
+	ic.forwardIrqToCpu()
+}
+
+func (ic *InterruptController) CartAcknowledgeIrq() {
+	ic.cartridgeIrq = false
+	ic.forwardIrqToCpu()
 }
 
 func (ic *InterruptController) SetHvbjoyV(on bool) {
@@ -123,7 +132,8 @@ func (ic *InterruptController) SetNmitimen(value byte) {
 	case 0:
 		ic.ppu.IrqFunc = nil
 		ic.Timeup = 0
-		ic.cpu.IrqSignal = false
+		ic.ppuIrq = false
+		ic.forwardIrqToCpu()
 	case 1:
 		ic.ppu.IrqFunc = func() bool { return irqX(ic, ic.ppu) }
 	case 2:
@@ -193,7 +203,8 @@ func (ic *InterruptController) ReadTimeUp() byte {
 	ret := (ic.Timeup & 0x80) | (ic.bus.GetOpenBus() & 0x7F)
 	//if ic.ppu.IrqFunc == nil || !ic.ppu.IrqFunc() {
 	ic.Timeup = 0
-	ic.cpu.IrqSignal = false
+	ic.ppuIrq = false
+	ic.forwardIrqToCpu()
 	//}
 
 	return ret
@@ -209,4 +220,8 @@ func irqX(ic *InterruptController, ppu *ppu.PPU) bool {
 
 func irqXY(ic *InterruptController, ppu *ppu.PPU) bool {
 	return int(ic.Htime) == ppu.H && int(ic.Vtime) == ppu.V
+}
+
+func (ic *InterruptController) forwardIrqToCpu() {
+	ic.cpu.IrqSignal = ic.ppuIrq || ic.cartridgeIrq || ic.lightgunIrq
 }

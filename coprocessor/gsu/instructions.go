@@ -332,7 +332,7 @@ func (gsu *GSU) processByte() {
 			gsu.r.SFR &= ^FlagGo
 			gsu.r.SFR |= FlagIrq
 			if gsu.r.CFGR&0x80 == 0 {
-				gsu.interruptManager.FireIrq()
+				gsu.interruptManager.CartFireIrq()
 			}
 			gsu.clearPrefixes()
 		case opcode == 0x01: //NOP

@@ -131,6 +131,7 @@ func (r *registers) getCpuRegister(byteIdx byte) byte {
 }
 
 func (gsu *GSU) Read(addr uint16) (byte, error) {
+	fmt.Printf("GSU: READING ADDR $%04x\n", addr)
 	if cacheIdx := addr - 0x3100; cacheIdx < 0x200 {
 		idx := (gsu.r.CBR + cacheIdx) & 0x1FF
 		return gsu.cache[idx], nil
@@ -144,20 +145,22 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 		return byte(gsu.r.SFR), nil
 	}
 	if addr == 0x3031 {
+		//fmt.Println("READING GSU:SFR HI")
 		tmp := byte(gsu.r.SFR >> 8)
-		gsu.r.SFR &= ^FlagIrq //reading clears the irq bit??
 
-		if gsu.r.CFGR&0x80 == 0 {
-			gsu.interruptManager.AcknowledgeIrq()
+		if gsu.r.CFGR&0x80 == 0 && gsu.r.SFR&FlagIrq != 0 {
+			gsu.interruptManager.CartAcknowledgeIrq()
 		}
+
+		gsu.r.SFR &= ^FlagIrq //reading clears the irq bit??
 
 		return tmp, nil
 	}
 	if addr == 0x3039 {
-		fmt.Println("CLS: ")
+		return gsu.r.CLSR, nil
 	}
 	if addr == 0x3037 {
-		fmt.Println("CFGR: ")
+		return gsu.r.CFGR, nil
 	}
 	if addr == 0x3038 {
 		//WRITE ONLY
@@ -185,13 +188,14 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 }
 
 func (gsu *GSU) Write(addr uint16, value byte) error {
+	fmt.Printf("GSU: WRITING ADDR $%04x, %d\n", addr, value)
 	if cacheIdx := addr - 0x3100; cacheIdx < 0x200 {
 		idx := (gsu.r.CBR + cacheIdx) & 0x1FF
 		gsu.cache[idx] = value
 		if idx&0xF == 0xF {
-			gsu.cacheFlags |= uint32((1 << (idx >> 4)))
+			gsu.cacheFlags |= uint32(1 << (idx >> 4))
 		}
-		fmt.Printf("GSU: WRITING CACHE: %02x\n", value)
+		//fmt.Printf("GSU: WRITING CACHE: %02x\n", value)
 		return nil
 	}
 	if byteIdx := addr - 0x3000; byteIdx < 0x20 {
@@ -209,22 +213,18 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 		return nil
 	}
 	if addr == 0x3031 {
-		return nil //read only
+		//return nil //read only
 	}
 	if addr == 0x3039 {
 		fmt.Println("CLS: ", value)
+		gsu.r.CLSR = value
+		return nil
 	}
 	if addr == 0x3037 {
 		gsu.r.CFGR = value
-		if value&0x80 == 0 {
-			//panic("IRQ SHOULD BE FIRING")
-		}
-		fmt.Println("CFGR: ", value)
 		return nil
 	}
 	if addr == 0x3038 {
-		fmt.Println("SCBR: ", value)
-
 		gsu.r.SCBR = 0x70_0000 + uint32(value)<<10
 		return nil
 	}

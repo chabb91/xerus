@@ -32,6 +32,6 @@ type CartridgeDataSource interface {
 
 // wiring up cartridge irq signal
 type InterruptManager interface {
-	FireIrq()
-	AcknowledgeIrq()
+	CartFireIrq()
+	CartAcknowledgeIrq()
 }
