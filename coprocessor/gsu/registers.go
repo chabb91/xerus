@@ -131,7 +131,7 @@ func (r *registers) getCpuRegister(byteIdx byte) byte {
 }
 
 func (gsu *GSU) Read(addr uint16) (byte, error) {
-	fmt.Printf("GSU: READING ADDR $%04x\n", addr)
+	//fmt.Printf("GSU: READING ADDR $%04x\n", addr)
 	if cacheIdx := addr - 0x3100; cacheIdx < 0x200 {
 		idx := (gsu.r.CBR + cacheIdx) & 0x1FF
 		return gsu.cache[idx], nil
@@ -188,7 +188,7 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 }
 
 func (gsu *GSU) Write(addr uint16, value byte) error {
-	fmt.Printf("GSU: WRITING ADDR $%04x, %d\n", addr, value)
+	//fmt.Printf("GSU: WRITING ADDR $%04x, %d\n", addr, value)
 	if cacheIdx := addr - 0x3100; cacheIdx < 0x200 {
 		idx := (gsu.r.CBR + cacheIdx) & 0x1FF
 		gsu.cache[idx] = value
@@ -243,6 +243,7 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 	if addr == 0x303A {
 		//TODO theres some bus contention with this. if ran is 0 and gsu tries to access ram it enters wait state
 		gsu.r.SCMR = value & 0x7F
+		gsu.updateWait(value)
 		return nil
 	}
 	return errors.New("GSU CONNECTED UHOH")

@@ -30,6 +30,8 @@ type GSU struct {
 
 	currentOpcode byte
 
+	waitState
+
 	tracer *tracer
 }
 
@@ -40,12 +42,11 @@ func New() coprocessor.Coprocessor {
 	}
 	gsu.r.fetchFunc = gsu.preFetchByte
 	gsu.r.cpuRegister15Buffer = R15_NOT_BRANCHING
-
 	return gsu
 }
 
 func (gsu *GSU) Step() uint64 {
-	if gsu.r.SFR&FlagGo == 0 {
+	if gsu.r.SFR&FlagGo == 0 || gsu.waiting {
 		return constants.CYCLE_2
 	}
 
@@ -54,6 +55,8 @@ func (gsu *GSU) Step() uint64 {
 	}
 	gsu.processByte()
 	gsu.preFetchByte()
+	//TODO if gsu is in WAIT the proper cycle cost should be returned AFTER its not
+	//waiting anymore
 	return constants.CYCLE_2
 }
 
@@ -115,13 +118,16 @@ func (gsu *GSU) SetInterruptManager(manager coprocessor.InterruptManager) {
 // which then it can use to get data using the cartridge data source
 func (gsu *GSU) Read8(bank byte, offset uint16) (byte, error) {
 	if bank < 0x40 {
+		gsu.verifyRomOwnership(gsu.r.SCMR)
 		offset = (offset & 0x7FFF) | (uint16(bank&1) << 15)
 		return gsu.cartridge.ReadRom(int(bank>>1)<<16 | int(offset)), nil //lorom
 	}
 	if bank-0x40 < 0x20 { //0x40-0x5F
+		gsu.verifyRomOwnership(gsu.r.SCMR)
 		return gsu.cartridge.ReadRom(int(bank&0x3F)<<16 | int(offset)), nil //hirom
 	}
 	if bank-0x70 < 2 {
+		gsu.verifyRamOwnership(gsu.r.SCMR)
 		return gsu.cartridge.ReadRam(int(bank&1)<<16 | int(offset)), nil
 	}
 	return 0, fmt.Errorf("GSU: Trying to read unmapped memory"+
@@ -130,9 +136,37 @@ func (gsu *GSU) Read8(bank byte, offset uint16) (byte, error) {
 
 func (gsu *GSU) Write8(bank byte, offset uint16, value byte) error {
 	if bank-0x70 < 2 {
+		gsu.verifyRamOwnership(gsu.r.SCMR)
 		gsu.cartridge.WriteRam(int(bank&1)<<16|int(offset), value)
 		return nil
 	}
 	return fmt.Errorf("GSU: Trying to write unmapped or read only memory"+
 		" at $%02x%04x", bank, offset)
+}
+
+// tracks if an instruction accessed rom/ram when RON/RAN was disabled.
+// this causes the cpu to WAIT till it is re-enabled.
+type waitState struct {
+	waitForRom, waitForRam bool
+	waiting                bool
+}
+
+func (w *waitState) updateWait(scmr byte) {
+	if w.waitForRam {
+		w.waitForRam = scmr&RAN == 0
+	}
+	if w.waitForRom {
+		w.waitForRom = scmr&RON == 0
+	}
+	w.waiting = w.waitForRam || w.waitForRom
+}
+
+func (w *waitState) verifyRomOwnership(scmr byte) {
+	w.waitForRom = scmr&RON == 0
+	w.waiting = w.waitForRam || w.waitForRom
+}
+
+func (w *waitState) verifyRamOwnership(scmr byte) {
+	w.waitForRam = scmr&RAN == 0
+	w.waiting = w.waitForRam || w.waitForRom
 }
