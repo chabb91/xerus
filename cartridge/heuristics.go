@@ -1,7 +1,7 @@
 package cartridge
 
 import (
-	"SNES_emulator/coprocessor"
+	"SNES_emulator/internal/types"
 	"fmt"
 	"log"
 	"math/bits"
@@ -58,7 +58,7 @@ func testCandidateHeader(romType int, headerLocation int, romData []byte, checks
 }
 
 // any automated header detection in chat
-func getRomMapperAndCoprocessor(romData []byte) (romMapper, coprocessor.Coprocessor, error) {
+func getRomMapper(romData []byte) (types.RomMapper, error) {
 	checksum := computeChecksum(romData)
 
 	loRomPt := testCandidateHeader(LoROM, 0x7FC0, romData, checksum)
@@ -69,21 +69,18 @@ func getRomMapperAndCoprocessor(romData []byte) (romMapper, coprocessor.Coproces
 	if bestResult >= 4 {
 		if bestResult == loRomPt {
 			log.Printf("Cartridge: LoROM detected with a fitness of: %v", bestResult)
-			mapper, coprocessor := DetectCoprocessor(mapLoRom, romData)
-			return mapper, coprocessor, nil
+			return mapLoRom, nil
 		}
 		if bestResult == hiRomPt {
 			log.Printf("Cartridge: HiROM detected with a fitness of: %v", bestResult)
-			mapper, coprocessor := DetectCoprocessor(mapHiRom, romData)
-			return mapper, coprocessor, nil
+			return mapHiRom, nil
 		}
 		if bestResult == exHiRomPt {
 			log.Printf("Cartridge: ExHiROM detected with a fitness of: %v", bestResult)
-			mapper, coprocessor := DetectCoprocessor(mapExHiRom, romData)
-			return mapper, coprocessor, nil
+			return mapExHiRom, nil
 		}
 	}
-	return nil, nil, fmt.Errorf("Cartridge: [FATAL] The rom header could not be located.")
+	return nil, fmt.Errorf("Cartridge: [FATAL] The rom header could not be located.")
 }
 
 func padROM(data []byte) ([]byte, uint32) {

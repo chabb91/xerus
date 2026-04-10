@@ -3,6 +3,7 @@ package cartridge
 import (
 	"SNES_emulator/coprocessor"
 	"SNES_emulator/coprocessor/gsu"
+	"SNES_emulator/internal/types"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -65,18 +66,8 @@ const (
 	CpuCX4     CoprocessorCustom = 0x3
 )
 
-type romRegionType int
-
-const (
-	romAddress romRegionType = iota
-	sramAddress
-	unmappedAddress
-)
-
-type romMapper func(bank byte, offset uint16, hasSram bool) (int, romRegionType)
-
 type Cartridge struct {
-	Mapper romMapper
+	Mapper types.RomMapper
 
 	romData  []byte
 	sramData []byte
@@ -99,15 +90,19 @@ func NewCartridge(romPath string) *Cartridge {
 	}
 
 	cart.romData, cart.romMask = padROM(romData)
-	cart.Mapper, cart.Coprocessor, err = getRomMapperAndCoprocessor(cart.romData)
+	cart.Mapper, err = getRomMapper(cart.romData)
 	if err != nil {
 		panic(err)
 	}
+	cart.Coprocessor = cart.DetectCoprocessor()
 	cart.romPath = romPath
 	cart.InitSram()
 
 	if cart.Coprocessor != nil {
 		cart.Coprocessor.SetCartridge(cart)
+		if mapperOverride := cart.Coprocessor.OverrideCartridgeMapper(); mapperOverride != nil {
+			cart.Mapper = mapperOverride
+		}
 	}
 
 	return cart
@@ -118,9 +113,11 @@ func (cart *Cartridge) ReadByte(bank byte, offset uint16) (byte, error) {
 	index, addressType := cart.Mapper(bank, offset, hasSram)
 
 	switch addressType {
-	case romAddress:
+	case types.RomAddress:
 		return cart.romData[uint32(index)&cart.romMask], nil
-	case sramAddress:
+	case types.RomOwnedByCoprocessor:
+		return byte(index), nil
+	case types.SramAddress:
 		if hasSram {
 			return cart.sramData[uint32(index)&cart.sramMask], nil
 		} else {
@@ -139,7 +136,7 @@ func (cart *Cartridge) WriteByte(bank byte, offset uint16, value byte) error {
 
 	index, addressType := cart.Mapper(bank, offset, true)
 
-	if addressType == sramAddress {
+	if addressType == types.SramAddress {
 		cart.sramData[uint32(index)&cart.sramMask] = value
 		return nil
 	}
@@ -287,24 +284,24 @@ func (cart *Cartridge) IsPal() bool {
 }
 
 // TODO unfinished function
-func DetectCoprocessor(baseMapper romMapper, romData []byte) (romMapper, coprocessor.Coprocessor) {
-	chipsetAddr, _ := baseMapper(0, 0xFFD6, false)
-	chipset := romData[chipsetAddr]
+func (cart *Cartridge) DetectCoprocessor() coprocessor.Coprocessor {
+	chipsetAddr, _ := cart.Mapper(0, 0xFFD6, false)
+	chipset := cart.romData[chipsetAddr]
 
 	if chipset&0xF >= 3 {
 		switch CoprocessorId(chipset & 0xF0) {
 		case CpuDSP:
 		case CpuGSU:
 			log.Printf("Cartridge: GSU detected.")
-			return mapGsu, gsu.New()
+			return gsu.New()
 		case CpuOBC1:
 		case CpuSA1:
 		case CpuSDD1:
 		case CpuSRTC:
 		case CpuOther:
 		case CpuCustom:
-			customAddr, _ := baseMapper(0, 0xFFBF, false)
-			customCpu := romData[customAddr]
+			customAddr, _ := cart.Mapper(0, 0xFFBF, false)
+			customCpu := cart.romData[customAddr]
 
 			switch CoprocessorCustom(customCpu) {
 			case CpuSPC7110:
@@ -314,7 +311,7 @@ func DetectCoprocessor(baseMapper romMapper, romData []byte) (romMapper, coproce
 			}
 		}
 	}
-	return baseMapper, nil
+	return nil
 }
 
 // some roms contain SRAM but they dont specify it

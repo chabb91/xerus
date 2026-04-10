@@ -3,6 +3,7 @@ package gsu
 import (
 	"SNES_emulator/coprocessor"
 	"SNES_emulator/internal/constants"
+	"SNES_emulator/internal/types"
 	"fmt"
 )
 
@@ -142,6 +143,44 @@ func (gsu *GSU) Write8(bank byte, offset uint16, value byte) error {
 	}
 	return fmt.Errorf("GSU: Trying to write unmapped or read only memory"+
 		" at $%02x%04x", bank, offset)
+}
+
+func (gsu *GSU) OverrideCartridgeMapper() types.RomMapper {
+	vector := [16]int{0x00, 0x01, 0x00, 0x01, 0x04, 0x01, 0x00, 0x01,
+		0x00, 0x01, 0x08, 0x01, 0x00, 0x01, 0x0C, 0x01}
+	return func(bank byte, offset uint16, _ bool) (int, types.RomRegionType) {
+		if bank == 0x7E || bank == 0x7F {
+			return -1, types.UnmappedAddress
+		}
+		maskedBank := bank & 0x7F
+		if maskedBank < 0x40 {
+			if offset < 0x8000 {
+				if offset >= 0x6000 {
+					return int(offset - 0x6000), types.SramAddress
+				}
+				return -1, types.UnmappedAddress
+			}
+			if gsu.r.SFR&FlagGo != 0 && gsu.r.SCMR&RON != 0 {
+				return vector[offset&0xF], types.RomOwnedByCoprocessor
+			}
+			offset = (offset & 0x7FFF) | (uint16(bank&1) << 15)
+			return int(maskedBank>>1)<<16 | int(offset), types.RomAddress //lorom
+		}
+		if bank-0x40 < 0x20 || bank >= 0xC0 { //0x40-0x5F || 0xC0-0xFF
+			if gsu.r.SFR&FlagGo != 0 && gsu.r.SCMR&RON != 0 {
+				return vector[offset&0xF], types.RomOwnedByCoprocessor
+			}
+			return int(bank&0x3F)<<16 | int(offset), types.RomAddress //hirom
+		}
+		if sramBank := bank - 0x70; sramBank < 2 {
+			return int(sramBank)<<16 | int(offset), types.SramAddress
+		}
+		//Additional "Backup" RAM  (128Kbyte max, usually none)
+		if sramBank := bank - 0x78; sramBank < 2 {
+			return int(sramBank)<<16 | int(offset), types.SramAddress
+		}
+		return -1, types.UnmappedAddress
+	}
 }
 
 // tracks if an instruction accessed rom/ram when RON/RAN was disabled.
