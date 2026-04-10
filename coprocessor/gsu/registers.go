@@ -1,7 +1,6 @@
 package gsu
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -140,12 +139,9 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 		return gsu.r.getCpuRegister(byte(byteIdx)), nil
 	}
 	if addr == 0x3030 {
-		//fmt.Println("READING GSU:SFR LO")
-		//TODO no idea what rom[r14] Read is on bit 6
 		return byte(gsu.r.SFR), nil
 	}
 	if addr == 0x3031 {
-		//fmt.Println("READING GSU:SFR HI")
 		tmp := byte(gsu.r.SFR >> 8)
 
 		if gsu.r.CFGR&0x80 == 0 && gsu.r.SFR&FlagIrq != 0 {
@@ -156,21 +152,20 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 
 		return tmp, nil
 	}
+	if addr == 0x3034 {
+		return gsu.r.PBR, nil
+	}
+	if addr == 0x3036 {
+		return gsu.r.ROMBR, nil
+	}
 	if addr == 0x3039 {
 		return gsu.r.CLSR, nil
 	}
 	if addr == 0x3037 {
 		return gsu.r.CFGR, nil
 	}
-	if addr == 0x3038 {
-		//WRITE ONLY
-		fmt.Println("SBCR: ")
-	}
-	if addr == 0x3034 {
-		return gsu.r.PBR, nil
-	}
-	if addr == 0x3036 {
-		return gsu.r.ROMBR, nil
+	if addr == 0x303B {
+		return gsu.r.VCR, nil
 	}
 	if addr == 0x303C {
 		return gsu.r.RAMBR, nil
@@ -181,10 +176,7 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 	if addr == 0x303F {
 		return byte(gsu.r.CBR >> 8), nil
 	}
-	if addr == 0x303A {
-		//return gsu.r.SCMR & 0x7F, nil
-	}
-	return 0, errors.New("GSU CONNECTED UHOH")
+	return 0, fmt.Errorf("GSU: invalid register read at $%04X", addr)
 }
 
 func (gsu *GSU) Write(addr uint16, value byte) error {
@@ -195,7 +187,6 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 		if idx&0xF == 0xF {
 			gsu.cacheFlags |= uint32(1 << (idx >> 4))
 		}
-		//fmt.Printf("GSU: WRITING CACHE: %02x\n", value)
 		return nil
 	}
 	if byteIdx := addr - 0x3000; byteIdx < 0x20 {
@@ -203,21 +194,24 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 		return nil
 	}
 	if addr == 0x3030 {
-		//fmt.Println("SETTING GO")
+		prevGo := gsu.r.SFR&FlagGo != 0
 		gsu.r.SFR = (gsu.r.SFR)&0xFF00 | (uint16(value & 0x1E))
-		if gsu.r.SFR&FlagGo == 0 {
+		if gsu.r.SFR&FlagGo == 0 && prevGo {
 			gsu.r.CBR = 0
-			//flush cache
 			gsu.cacheFlags = 0
 		}
 		return nil
 	}
 	if addr == 0x3031 {
-		//return nil //read only
+		gsu.r.SFR = (gsu.r.SFR)&0x00FF | (uint16(value) << 8)
+		return nil
 	}
-	if addr == 0x3039 {
-		fmt.Println("CLS: ", value)
-		gsu.r.CLSR = value
+	if addr == 0x3033 {
+		gsu.r.BRAMR = value & 1
+		return nil
+	}
+	if addr == 0x3034 {
+		gsu.r.PBR = value & 0x7F
 		return nil
 	}
 	if addr == 0x3037 {
@@ -228,23 +222,14 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 		gsu.r.SCBR = 0x70_0000 + uint32(value)<<10
 		return nil
 	}
-	if addr == 0x3034 {
-		gsu.r.PBR = value
-		return nil
-	}
-	if addr == 0x3036 {
-		gsu.r.ROMBR = value
-		return nil
-	}
-	if addr == 0x303C {
-		gsu.r.RAMBR = value
+	if addr == 0x3039 {
+		gsu.r.CLSR = value & 1
 		return nil
 	}
 	if addr == 0x303A {
-		//TODO theres some bus contention with this. if ran is 0 and gsu tries to access ram it enters wait state
 		gsu.r.SCMR = value & 0x7F
 		gsu.updateWait(value)
 		return nil
 	}
-	return errors.New("GSU CONNECTED UHOH")
+	return fmt.Errorf("GSU: invalid register write at $%04X", addr)
 }
