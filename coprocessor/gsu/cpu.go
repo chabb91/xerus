@@ -21,6 +21,8 @@ type GSU struct {
 	cache      [0x200]byte
 	cacheFlags uint32
 
+	pixelCaches [2]pixelCache
+
 	immediateBytes       [3]byte
 	immediateOpcode      byte
 	immediateInstruction immediateInstructionFunc

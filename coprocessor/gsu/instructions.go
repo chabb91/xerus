@@ -348,40 +348,12 @@ func (gsu *GSU) processByte() {
 			x := gsu.r.cpuRegisters[1]
 			y := gsu.r.cpuRegisters[2]
 			if gsu.r.getAltNum() == FlagAlt1 { //RPIX
-				tra, bpp := gsu.getTileRowAddress(x, y)
-				x = (x & 7) ^ 7
-				var data byte
-				for i := range bpp {
-					addr := tra + ((i >> 1) << 4) + (i & 1)
-					val, _ := gsu.Read8(byte(addr>>16), uint16(addr))
-					data |= ((val >> x) & 1) << i
-				}
+				data := gsu.rpix(x, y)
 				gsu.r.setFlag(FlagZ, data == 0)
 				gsu.r.setFlag(FlagS, uint16(data)&0x8000 != 0)
 				gsu.r.writeCpuRegister(gsu.dReg, uint16(data))
 			} else {
-				tra, bpp := gsu.getTileRowAddress(x, y)
-
-				transparentShift := bpp
-				if bpp == 8 {
-					transparentShift >>= (gsu.r.POR & FlagColorFreezeHigh) >> 3
-				}
-
-				if gsu.r.POR&FlagPlotTransparent != 0 || gsu.r.COLR&((1<<transparentShift)-1) != 0 {
-					color := gsu.r.COLR
-					if gsu.r.POR&FlagPlotDither != 0 && bpp != 8 {
-						color = color >> (((x & 1) ^ (y & 1)) << 2)
-					}
-
-					x = (x & 7) ^ 7
-					for i := range bpp {
-						addr := tra + ((i >> 1) << 4) + (i & 1)
-						bp, _ := gsu.Read8(byte(addr>>16), uint16(addr))
-						bp &= ^(1 << x)
-						bp |= (((color >> i) & 1) << x)
-						gsu.Write8(byte(addr>>16), uint16(addr), bp)
-					}
-				}
+				gsu.plot(byte(x), byte(y))
 				gsu.r.cpuRegisters[1]++
 			}
 			gsu.clearPrefixes()
@@ -389,29 +361,6 @@ func (gsu *GSU) processByte() {
 			panic(fmt.Sprintf("GSU: unknown opcode: $%02x", opcode))
 		}
 	}
-}
-
-func (gsu *GSU) getTileRowAddress(x, y uint16) (tra, bitplanes uint32) {
-	screenHeight := (((gsu.r.SCMR & HT1) >> 4) | ((gsu.r.SCMR & HT0) >> 2)) |
-		(byte(int8((gsu.r.POR&FlagForceObjMode)<<3))>>7)&3
-	bitplanes = 2 << uint32((gsu.r.SCMR&MD0)+((gsu.r.SCMR&MD1)>>1))
-
-	var tn uint16
-	switch screenHeight {
-	case 0:
-		tn = ((x & 0xF8) << 1) + ((y & 0xF8) >> 3)
-	case 1:
-		tn = ((x & 0xF8) << 1) + ((x & 0xF8) >> 1) + ((y & 0xF8) >> 3)
-	case 2:
-		tn = ((x & 0xF8) << 1) + ((x & 0xF8) >> 0) + ((y & 0xF8) >> 3)
-	case 3:
-		tn = ((y & 0x80) << 2) + ((x & 0x80) << 1) + ((y & 0x78) << 1) + ((x & 0x78) >> 3)
-	default:
-		panic("GSU: getTilerowAddress: screenHeight is an unexpected value.")
-	}
-
-	tra = uint32(tn)*(bitplanes<<3) + gsu.r.SCBR + uint32((y&7)<<1)
-	return
 }
 
 func (gsu *GSU) clearPrefixes() {
