@@ -20,9 +20,13 @@ const (
 	FlagAlt3        = FlagAlt1 | FlagAlt2
 )
 
-const (
+const ( //SCMR
+	MD0 byte = 1 << 0
+	MD1 byte = 1 << 1 //Color Gradient bits (bpp) (2/4/4/8)
+	HT0 byte = 1 << 2 //Screen Height (LSB)
 	RAN byte = 1 << 3 //Game Pak RAM bus access (0=SNES, 1=GSU) if cleared while GO=1 the GSU enters WAIT
 	RON byte = 1 << 4 //Game Pak ROM bus access (0=SNES, 1=GSU) if cleared while GO=1 the GSU enters WAIT
+	HT1 byte = 1 << 5 //Screen Height (MSB)
 )
 
 const ( //POR

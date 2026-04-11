@@ -43,6 +43,7 @@ func New() coprocessor.Coprocessor {
 	}
 	gsu.r.fetchFunc = gsu.preFetchByte
 	gsu.r.cpuRegister15Buffer = R15_NOT_BRANCHING
+	gsu.r.VCR = 4 //GSU2
 	return gsu
 }
 

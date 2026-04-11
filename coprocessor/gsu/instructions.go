@@ -392,9 +392,9 @@ func (gsu *GSU) processByte() {
 }
 
 func (gsu *GSU) getTileRowAddress(x, y uint16) (tra, bitplanes uint32) {
-	screenHeight := (((gsu.r.SCMR & 32) >> 4) | ((gsu.r.SCMR >> 2) & 1)) |
+	screenHeight := (((gsu.r.SCMR & HT1) >> 4) | ((gsu.r.SCMR & HT0) >> 2)) |
 		(byte(int8((gsu.r.POR&FlagForceObjMode)<<3))>>7)&3
-	bitplanes = 2 << uint32((gsu.r.SCMR&1)+((gsu.r.SCMR>>1)&1))
+	bitplanes = 2 << uint32((gsu.r.SCMR&MD0)+((gsu.r.SCMR&MD1)>>1))
 
 	var tn uint16
 	switch screenHeight {
