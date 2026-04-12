@@ -1,5 +1,11 @@
 package gsu
 
+// heavily based on BSNES.
+// let it be known:
+// i had my own working PLOT implementation without the use of the double cache
+// but the explanation in FULLSNES had me confused about caching
+// and i wanted to increase accuracy.
+
 type pixelCache struct {
 	colorIdx   [8]byte //the color index as indexed by CGRAM for each pixel
 	flags      byte
