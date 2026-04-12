@@ -19,7 +19,7 @@ func (gsu *GSU) processByte() {
 		opcodeHn := opcode & 0xF0
 		opcodeLn := opcode & 0x0F
 		switch {
-		case opcode-5 <= 0xA: //BRANCH instructions 0x05-0x0F UNTESTED
+		case opcode-5 <= 0xA: //BRANCH instructions 0x05-0x0F 
 			gsu.r.setImmediateNum(1)
 			gsu.immediateInstruction = branchFunc
 			gsu.immediateOpcode = opcode
@@ -41,9 +41,7 @@ func (gsu *GSU) processByte() {
 			gsu.ramWordStore(0, gsu.sReg, false, true)
 			gsu.clearPrefixes()
 		case opcode == 0xEF: //GET(load byte from rom)
-			byte, _ := gsu.Read8(gsu.r.ROMBR, gsu.r.cpuRegisters[14])
-			gsu.stepCart()
-			//TODO this is WRONG
+			byte := gsu.readRomAddrPtr()
 			switch gsu.r.getAltNum() {
 			case FlagAlt1: // GETBH
 				rs := gsu.r.cpuRegisters[gsu.sReg]
@@ -65,9 +63,7 @@ func (gsu *GSU) processByte() {
 			case FlagAlt3:
 				gsu.r.ROMBR = byte(gsu.r.cpuRegisters[gsu.sReg])
 			default:
-				color, _ := gsu.Read8(gsu.r.ROMBR, gsu.r.cpuRegisters[14])
-				gsu.stepCart()
-				//TODO this is WRONG
+				color := gsu.readRomAddrPtr()
 				gsu.r.setColr(color)
 			}
 			gsu.clearPrefixes()
@@ -402,7 +398,6 @@ func ibtFunc(gsu *GSU) {
 	gsu.clearPrefixes()
 }
 
-// TODO UNTESTED HELPER FUNCTION
 func (gsu *GSU) ramWordLoad(addr uint16, register byte, isByte bool) {
 	bank := SRAM_BASE_BANK + gsu.r.RAMBR
 	gsu.prevRamAddr = uint32(bank)<<16 | uint32(addr)
@@ -417,7 +412,6 @@ func (gsu *GSU) ramWordLoad(addr uint16, register byte, isByte bool) {
 	gsu.r.writeCpuRegister(register, uint16(lo)|uint16(hi)<<8)
 }
 
-// TODO UNTESTED HELPER FUNCTION
 func (gsu *GSU) ramWordStore(addr uint16, register byte, isByte, isWriteback bool) {
 	var bank byte
 	if isWriteback {
@@ -428,10 +422,10 @@ func (gsu *GSU) ramWordStore(addr uint16, register byte, isByte, isWriteback boo
 	}
 
 	gsu.Write8(bank, addr, byte(gsu.r.cpuRegisters[register]))
-	gsu.stepCart()
+	//gsu.stepCart()
 	if !isByte {
 		gsu.Write8(bank, addr^1, byte(gsu.r.cpuRegisters[register]>>8))
-		gsu.stepCart()
+		//gsu.stepCart()
 	}
 }
 

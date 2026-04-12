@@ -48,6 +48,9 @@ type registers struct {
 	cpuRegisters         [16]uint16
 	cpuRegister15Buffer  int //after a branch is taken, it has to be detected and pc not incremented.
 
+	romAddrPtr  byte
+	r14Modified bool
+
 	SFR   uint16 //status flag register
 	PBR   byte   //program bank register
 	ROMBR byte   //game pak ROM bank register
@@ -69,6 +72,9 @@ func (r *registers) writeCpuRegister(idx byte, val uint16) {
 	if idx == 15 {
 		r.cpuRegister15Buffer = int(val)
 		return
+	}
+	if idx == 14 {
+		r.r14Modified = true
 	}
 	r.cpuRegisters[idx] = val
 }

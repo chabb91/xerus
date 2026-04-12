@@ -12,7 +12,7 @@ type clock struct {
 	cyclesTaken       uint64
 	currentAccessTime accessTime
 
-	r14Clock byte
+	r14Clock uint64
 
 	r *registers
 }
@@ -53,4 +53,32 @@ func (cl *clock) getSnesSideCycles() (cycles uint64) {
 	cycles = cl.cyclesTaken >> constants.CYCLE_SHIFT
 	cl.cyclesTaken -= cycles << constants.CYCLE_SHIFT
 	return
+}
+
+func (gsu *GSU) stepRomAddrPtr() {
+	if gsu.r.r14Modified {
+		gsu.r14Clock = gsu.currentAccessTime.cart
+		gsu.r.r14Modified = false
+		gsu.r.setFlag(FlagR, true)
+	} else {
+		if gsu.r14Clock != 0 {
+			gsu.r14Clock -= min(gsu.r14Clock, gsu.cyclesTaken)
+			if gsu.r14Clock == 0 {
+				gsu.r.setFlag(FlagR, false)
+				val, _ := gsu.Read8(gsu.r.ROMBR, gsu.r.cpuRegisters[14])
+				gsu.r.romAddrPtr = val
+			}
+		}
+	}
+}
+
+func (gsu *GSU) readRomAddrPtr() byte {
+	if gsu.r14Clock != 0 {
+		val, _ := gsu.Read8(gsu.r.ROMBR, gsu.r.cpuRegisters[14])
+		gsu.cyclesTaken += gsu.r14Clock
+		gsu.r.romAddrPtr = val
+		gsu.r.setFlag(FlagR, false)
+		gsu.r14Clock = 0
+	}
+	return gsu.r.romAddrPtr
 }

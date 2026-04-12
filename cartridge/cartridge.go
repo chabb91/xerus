@@ -319,6 +319,8 @@ func (cart *Cartridge) sramSizeOverride() (sizeVal byte, err error) {
 	switch strings.TrimSpace(cart.GetHeaderTitle()) {
 	case "STAR FOX":
 		return 5, nil
+	case "POWERSLIDE":
+		return 5, nil
 	default:
 		return 0, fmt.Errorf("NO OVERRIDE NEEDED")
 	}

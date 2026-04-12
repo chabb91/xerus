@@ -115,6 +115,7 @@ func (gsu *GSU) preFetchByte() {
 	} else {
 		gsu.r.cpuRegisters[0xF]++
 	}
+	gsu.stepRomAddrPtr()
 	//fmt.Printf("%02x\n", opcode)
 }
 
