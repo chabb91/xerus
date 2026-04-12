@@ -42,6 +42,8 @@ func (gsu *GSU) processByte() {
 			gsu.clearPrefixes()
 		case opcode == 0xEF: //GET(load byte from rom)
 			byte, _ := gsu.Read8(gsu.r.ROMBR, gsu.r.cpuRegisters[14])
+			gsu.stepCart()
+			//TODO this is WRONG
 			switch gsu.r.getAltNum() {
 			case FlagAlt1: // GETBH
 				rs := gsu.r.cpuRegisters[gsu.sReg]
@@ -64,6 +66,8 @@ func (gsu *GSU) processByte() {
 				gsu.r.ROMBR = byte(gsu.r.cpuRegisters[gsu.sReg])
 			default:
 				color, _ := gsu.Read8(gsu.r.ROMBR, gsu.r.cpuRegisters[14])
+				gsu.stepCart()
+				//TODO this is WRONG
 				gsu.r.setColr(color)
 			}
 			gsu.clearPrefixes()
@@ -254,6 +258,7 @@ func (gsu *GSU) processByte() {
 			gsu.r.setFlag(FlagC, result32&0x8000 != 0)
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result32&0x8000_0000 != 0)
+			gsu.stepMultiplication(true)
 			gsu.clearPrefixes()
 		case opcodeHn == 0x80: //MULT/UMULT
 			result := uint16(gsu.r.cpuRegisters[gsu.sReg] & 0x00FF)
@@ -269,6 +274,7 @@ func (gsu *GSU) processByte() {
 			gsu.r.setFlag(FlagZ, result == 0)
 			gsu.r.setFlag(FlagS, result&0x8000 != 0)
 			gsu.r.writeCpuRegister(gsu.dReg, result)
+			gsu.stepMultiplication(false)
 			gsu.clearPrefixes()
 		case opcode-0x98 <= 5: //JMP/LJMP
 			if gsu.r.getAltNum() == FlagAlt1 {
@@ -402,9 +408,11 @@ func (gsu *GSU) ramWordLoad(addr uint16, register byte, isByte bool) {
 	gsu.prevRamAddr = uint32(bank)<<16 | uint32(addr)
 
 	lo, _ := gsu.Read8(bank, addr)
+	gsu.stepCart()
 	hi := byte(0)
 	if !isByte {
 		hi, _ = gsu.Read8(bank, addr^1)
+		gsu.stepCart()
 	}
 	gsu.r.writeCpuRegister(register, uint16(lo)|uint16(hi)<<8)
 }
@@ -420,8 +428,10 @@ func (gsu *GSU) ramWordStore(addr uint16, register byte, isByte, isWriteback boo
 	}
 
 	gsu.Write8(bank, addr, byte(gsu.r.cpuRegisters[register]))
+	gsu.stepCart()
 	if !isByte {
 		gsu.Write8(bank, addr^1, byte(gsu.r.cpuRegisters[register]>>8))
+		gsu.stepCart()
 	}
 }
 

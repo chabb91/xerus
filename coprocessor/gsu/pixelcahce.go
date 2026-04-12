@@ -50,9 +50,11 @@ func (gsu *GSU) flushPixelCache(pc *pixelCache) {
 		if pc.flags != 0xFF {
 			data &= pc.flags
 			bp, _ := gsu.Read8(byte(addr>>16), uint16(addr))
+			gsu.stepCart()
 			data |= bp & ^pc.flags
 		}
 		gsu.Write8(byte(addr>>16), uint16(addr), data)
+		gsu.stepCart()
 	}
 }
 
@@ -65,6 +67,7 @@ func (gsu *GSU) rpix(x, y uint16) (data byte) {
 	for i := range bpp {
 		addr := tra + ((i >> 1) << 4) + (i & 1)
 		val, _ := gsu.Read8(byte(addr>>16), uint16(addr))
+		gsu.stepCart()
 		data |= ((val >> x) & 1) << i
 	}
 	return

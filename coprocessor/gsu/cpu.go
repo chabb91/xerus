@@ -34,6 +34,7 @@ type GSU struct {
 	currentOpcode byte
 
 	waitState
+	clock
 
 	tracer *tracer
 }
@@ -46,6 +47,7 @@ func New() coprocessor.Coprocessor {
 	gsu.r.fetchFunc = gsu.preFetchByte
 	gsu.r.cpuRegister15Buffer = R15_NOT_BRANCHING
 	gsu.r.VCR = 4 //GSU2
+	gsu.initClock(&gsu.r)
 	return gsu
 }
 
@@ -54,18 +56,25 @@ func (gsu *GSU) Step() uint64 {
 		return constants.CYCLE_2
 	}
 
-	if trace {
-		gsu.tracer.trace(gsu)
+	for {
+		if trace {
+			gsu.tracer.trace(gsu)
+		}
+		gsu.processByte()
+		gsu.preFetchByte()
+
+		if gsu.cyclesTaken >= constants.CYCLE_DIVISOR {
+			break
+		}
 	}
-	gsu.processByte()
-	gsu.preFetchByte()
-	//TODO if gsu is in WAIT the proper cycle cost should be returned AFTER its not
-	//waiting anymore
-	return constants.CYCLE_2
+	if gsu.waiting {
+		return constants.CYCLE_2
+	} else {
+		return gsu.getSnesSideCycles()
+	}
 }
 
 // the gsu is execute -> fetch.
-// TODO prefetch determines cycle cost
 func (gsu *GSU) preFetchByte() {
 	pc := gsu.r.cpuRegisters[0xF]
 	var opcode byte
@@ -77,8 +86,8 @@ func (gsu *GSU) preFetchByte() {
 			rowBaseIdx := idx & 0x1F0
 			rowBasePc := pc & 0xFFF0
 			for i := range uint16(16) {
-				//TODO this read has to add cumulative overhead
 				opcode, err = gsu.Read8(gsu.r.PBR, rowBasePc+i)
+				gsu.stepCart()
 
 				if err != nil {
 					panic(err.Error())
@@ -87,10 +96,13 @@ func (gsu *GSU) preFetchByte() {
 				gsu.cache[rowBaseIdx+i] = opcode
 			}
 			gsu.cacheFlags |= cacheMask
+		} else {
+			gsu.stepCache()
 		}
 		opcode = gsu.cache[idx]
 	} else {
 		opcode, err = gsu.Read8(gsu.r.PBR, pc)
+		gsu.stepCart()
 
 		if err != nil {
 			panic(err.Error())
@@ -179,7 +191,7 @@ func (gsu *GSU) OverrideCartridgeMapper() types.RomMapper {
 			return int(sramBank)<<16 | int(offset), types.SramAddress
 		}
 		//Additional "Backup" RAM  (128Kbyte max, usually none)
-		if sramBank := bank - 0x78; sramBank < 2 {
+		if sramBank := bank - 0x78; gsu.r.BRAMR != 0 && sramBank < 2 {
 			return int(sramBank)<<16 | int(offset), types.SramAddress
 		}
 		return -1, types.UnmappedAddress

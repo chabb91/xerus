@@ -1,6 +1,7 @@
 package constants
 
-const CYCLE_DIVISOR = 2
+const CYCLE_SHIFT = 1
+const CYCLE_DIVISOR = 1 << CYCLE_SHIFT
 
 const (
 	CYCLE_2  = uint64(2 / CYCLE_DIVISOR)

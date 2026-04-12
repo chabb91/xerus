@@ -29,6 +29,8 @@ const ( //SCMR
 	HT1 byte = 1 << 5 //Screen Height (MSB)
 )
 
+const CFGR_MS0 byte = 1 << 5 //Multiplier Speed Select (0=Standard, 1=High Speed Mode) (CFGR)
+
 const ( //POR
 	FlagPlotTransparent byte = 1 << 0 //0= Do Not Plot Color 0, 1= Plot Color 0
 	FlagPlotDither      byte = 1 << 1 //0= Normal, 1= Dither (4/16 color mode only)
@@ -228,6 +230,7 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 	}
 	if addr == 0x3039 {
 		gsu.r.CLSR = value & 1
+		gsu.setAccessTime(value)
 		return nil
 	}
 	if addr == 0x303A {
