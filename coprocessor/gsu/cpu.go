@@ -33,21 +33,26 @@ type GSU struct {
 
 	currentOpcode byte
 
+	currentAccessTime accessTime
+
+	//cycle counting
+	cyclesTaken        uint64
+	r14Clock           uint64
+	ramWriteCacheClock uint64
+
 	waitState
-	clock
 
 	tracer *tracer
 }
 
 func New() coprocessor.Coprocessor {
-	gsu := &GSU{}
+	gsu := &GSU{currentAccessTime: accessTimes[0]}
 	if trace {
 		gsu.tracer = newTracer(600_000, 25)
 	}
 	gsu.r.fetchFunc = gsu.preFetchByte
 	gsu.r.cpuRegister15Buffer = R15_NOT_BRANCHING
 	gsu.r.VCR = 4 //GSU2
-	gsu.initClock(&gsu.r)
 	return gsu
 }
 
@@ -56,7 +61,7 @@ func (gsu *GSU) Step() uint64 {
 		return constants.CYCLE_2
 	}
 
-	for {
+	for { //since the snes side ticks at 10mhz for me
 		if trace {
 			gsu.tracer.trace(gsu)
 		}
@@ -198,31 +203,4 @@ func (gsu *GSU) OverrideCartridgeMapper() types.RomMapper {
 		}
 		return -1, types.UnmappedAddress
 	}
-}
-
-// tracks if an instruction accessed rom/ram when RON/RAN was disabled.
-// this causes the cpu to WAIT till it is re-enabled.
-type waitState struct {
-	waitForRom, waitForRam bool
-	waiting                bool
-}
-
-func (w *waitState) updateWait(scmr byte) {
-	if w.waitForRam {
-		w.waitForRam = scmr&RAN == 0
-	}
-	if w.waitForRom {
-		w.waitForRom = scmr&RON == 0
-	}
-	w.waiting = w.waitForRam || w.waitForRom
-}
-
-func (w *waitState) verifyRomOwnership(scmr byte) {
-	w.waitForRom = scmr&RON == 0
-	w.waiting = w.waitForRam || w.waitForRom
-}
-
-func (w *waitState) verifyRamOwnership(scmr byte) {
-	w.waitForRam = scmr&RAN == 0
-	w.waiting = w.waitForRam || w.waitForRom
 }

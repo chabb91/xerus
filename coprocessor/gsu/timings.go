@@ -10,51 +10,36 @@ type accessTime struct {
 
 var accessTimes = [2]accessTime{{cart: 6, cache: 2}, {cart: 5, cache: 1}}
 
-type clock struct {
-	cyclesTaken       uint64
-	currentAccessTime accessTime
-
-	r14Clock           uint64
-	ramWriteCacheClock uint64
-
-	r *registers
+func (gsu *GSU) setAccessTime(clsr byte) {
+	gsu.currentAccessTime = accessTimes[clsr&1]
 }
 
-func (cl *clock) initClock(r *registers) {
-	cl.r = r
-	cl.currentAccessTime = accessTimes[0]
+func (gsu *GSU) stepCache() {
+	gsu.cyclesTaken += gsu.currentAccessTime.cache
 }
 
-func (cl *clock) setAccessTime(clsr byte) {
-	cl.currentAccessTime = accessTimes[clsr&1]
+func (gsu *GSU) stepCart() {
+	gsu.cyclesTaken += gsu.currentAccessTime.cart
 }
 
-func (cl *clock) stepCache() {
-	cl.cyclesTaken += cl.currentAccessTime.cache
-}
-
-func (cl *clock) stepCart() {
-	cl.cyclesTaken += cl.currentAccessTime.cart
-}
-
-func (cl *clock) stepMultiplication(isFLMult bool) {
-	isHighSpeed := cl.r.CFGR&CFGR_MS0 != 0
+func (gsu *GSU) stepMultiplication(isFLMult bool) {
+	isHighSpeed := gsu.r.CFGR&CFGR_MS0 != 0
 	if isFLMult {
 		var baseCycle = uint64(7)
 		if isHighSpeed {
 			baseCycle = 3
 		}
-		cl.cyclesTaken += baseCycle << (cl.currentAccessTime.cache - 1)
+		gsu.cyclesTaken += baseCycle << (gsu.currentAccessTime.cache - 1)
 	} else {
 		if !isHighSpeed {
-			cl.cyclesTaken += cl.currentAccessTime.cache
+			gsu.cyclesTaken += gsu.currentAccessTime.cache
 		}
 	}
 }
 
-func (cl *clock) getSnesSideCycles() (cycles uint64) {
-	cycles = cl.cyclesTaken >> constants.CYCLE_SHIFT
-	cl.cyclesTaken -= cycles << constants.CYCLE_SHIFT
+func (gsu *GSU) getSnesSideCycles() (cycles uint64) {
+	cycles = gsu.cyclesTaken >> constants.CYCLE_SHIFT
+	gsu.cyclesTaken -= cycles << constants.CYCLE_SHIFT
 	return
 }
 
@@ -101,4 +86,31 @@ func (gsu *GSU) stepRamWriteCache() {
 	if gsu.ramWriteCacheClock != 0 {
 		gsu.ramWriteCacheClock -= min(gsu.ramWriteCacheClock, gsu.cyclesTaken)
 	}
+}
+
+// tracks if an instruction accessed rom/ram when RON/RAN was disabled.
+// this causes the cpu to WAIT till it is re-enabled.
+type waitState struct {
+	waitForRom, waitForRam bool
+	waiting                bool
+}
+
+func (w *waitState) updateWait(scmr byte) {
+	if w.waitForRam {
+		w.waitForRam = scmr&RAN == 0
+	}
+	if w.waitForRom {
+		w.waitForRom = scmr&RON == 0
+	}
+	w.waiting = w.waitForRam || w.waitForRom
+}
+
+func (w *waitState) verifyRomOwnership(scmr byte) {
+	w.waitForRom = scmr&RON == 0
+	w.waiting = w.waitForRam || w.waitForRom
+}
+
+func (w *waitState) verifyRamOwnership(scmr byte) {
+	w.waitForRam = scmr&RAN == 0
+	w.waiting = w.waitForRam || w.waitForRom
 }
