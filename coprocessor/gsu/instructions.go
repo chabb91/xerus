@@ -19,7 +19,7 @@ func (gsu *GSU) processByte() {
 		opcodeHn := opcode & 0xF0
 		opcodeLn := opcode & 0x0F
 		switch {
-		case opcode-5 <= 0xA: //BRANCH instructions 0x05-0x0F 
+		case opcode-5 <= 0xA: //BRANCH instructions 0x05-0x0F
 			gsu.r.setImmediateNum(1)
 			gsu.immediateInstruction = branchFunc
 			gsu.immediateOpcode = opcode
@@ -420,12 +420,13 @@ func (gsu *GSU) ramWordStore(addr uint16, register byte, isByte, isWriteback boo
 		bank = SRAM_BASE_BANK + gsu.r.RAMBR
 		gsu.prevRamAddr = uint32(bank)<<16 | uint32(addr)
 	}
+	gsu.waitRamWriteCacheFlush()
 
 	gsu.Write8(bank, addr, byte(gsu.r.cpuRegisters[register]))
-	//gsu.stepCart()
+	gsu.incrementRamWriteCacheClock()
 	if !isByte {
 		gsu.Write8(bank, addr^1, byte(gsu.r.cpuRegisters[register]>>8))
-		//gsu.stepCart()
+		gsu.incrementRamWriteCacheClock()
 	}
 }
 

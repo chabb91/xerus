@@ -1,6 +1,8 @@
 package gsu
 
-import "SNES_emulator/internal/constants"
+import (
+	"SNES_emulator/internal/constants"
+)
 
 type accessTime struct {
 	cart, cache uint64
@@ -12,7 +14,8 @@ type clock struct {
 	cyclesTaken       uint64
 	currentAccessTime accessTime
 
-	r14Clock uint64
+	r14Clock           uint64
+	ramWriteCacheClock uint64
 
 	r *registers
 }
@@ -81,4 +84,21 @@ func (gsu *GSU) readRomAddrPtr() byte {
 		gsu.r14Clock = 0
 	}
 	return gsu.r.romAddrPtr
+}
+
+func (gsu *GSU) waitRamWriteCacheFlush() {
+	if gsu.ramWriteCacheClock != 0 {
+		gsu.cyclesTaken += gsu.ramWriteCacheClock
+		gsu.ramWriteCacheClock = 0
+	}
+}
+
+func (gsu *GSU) incrementRamWriteCacheClock() {
+	gsu.ramWriteCacheClock += gsu.currentAccessTime.cart
+}
+
+func (gsu *GSU) stepRamWriteCache() {
+	if gsu.ramWriteCacheClock != 0 {
+		gsu.ramWriteCacheClock -= min(gsu.ramWriteCacheClock, gsu.cyclesTaken)
+	}
 }
