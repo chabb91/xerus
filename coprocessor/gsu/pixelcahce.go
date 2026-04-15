@@ -18,7 +18,7 @@ func (pc *pixelCache) isNewRow(x, y byte) bool {
 
 func (gsu *GSU) getTileRowAddress(x, y uint16) (tra, bitplanes uint32) {
 	screenHeight := (((gsu.r.SCMR & HT1) >> 4) | ((gsu.r.SCMR & HT0) >> 2)) |
-		(byte(int8((gsu.r.POR&FlagForceObjMode)<<3))>>7)&3
+		(-((gsu.r.POR & FlagForceObjMode) >> 4))&3 //3 or 0
 	bitplanes = 2 << uint32((gsu.r.SCMR&MD0)+((gsu.r.SCMR&MD1)>>1))
 
 	var tn uint16
