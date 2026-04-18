@@ -69,7 +69,7 @@ func (gsu *GSU) processByte() {
 			gsu.clearPrefixes()
 		case opcode == 0x4E: //COLOR/CMODE
 			if gsu.r.getAltNum() == FlagAlt1 {
-				gsu.r.POR = byte(gsu.r.cpuRegisters[gsu.sReg]) & 0x1F
+				gsu.r.POR = por(gsu.r.cpuRegisters[gsu.sReg]) & 0x1F
 			} else {
 				gsu.r.setColr(byte(gsu.r.cpuRegisters[gsu.sReg]))
 			}
@@ -333,7 +333,7 @@ func (gsu *GSU) processByte() {
 		case opcode == 0x00: //STOP
 			gsu.r.SFR &= ^FlagGo
 			gsu.r.SFR |= FlagIrq
-			if gsu.r.CFGR&0x80 == 0 {
+			if !hasFlag(gsu.r.CFGR, MaskIrq) {
 				gsu.interruptManager.CartFireIrq()
 			}
 			gsu.clearPrefixes()

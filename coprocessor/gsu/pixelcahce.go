@@ -17,12 +17,11 @@ func (pc *pixelCache) isNewRow(x, y byte) bool {
 }
 
 func (gsu *GSU) getTileRowAddress(x, y uint16) (tra, bitplanes uint32) {
-	screenHeight := (((gsu.r.SCMR & HT1) >> 4) | ((gsu.r.SCMR & HT0) >> 2)) |
-		(-((gsu.r.POR & FlagForceObjMode) >> 4))&3 //3 or 0
-	bitplanes = 2 << uint32((gsu.r.SCMR&MD0)+((gsu.r.SCMR&MD1)>>1))
+	gradient := gsu.r.SCMR.getColorGradient()
+	bitplanes = 2 << gradient
 
 	var tn uint16
-	switch screenHeight {
+	switch gsu.r.SCMR.getScreenHeight() | gsu.r.POR.getForceObjMask() {
 	case 0:
 		tn = ((x & 0xF8) << 1) + ((y & 0xF8) >> 3)
 	case 1:
@@ -35,7 +34,7 @@ func (gsu *GSU) getTileRowAddress(x, y uint16) (tra, bitplanes uint32) {
 		panic("GSU: getTilerowAddress: screenHeight is an unexpected value.")
 	}
 
-	tra = uint32(tn)*(bitplanes<<3) + gsu.r.SCBR + uint32((y&7)<<1)
+	tra = uint32(tn)<<(gradient+4) + gsu.r.SCBR + uint32((y&7)<<1)
 	return
 }
 
@@ -74,18 +73,18 @@ func (gsu *GSU) rpix(x, y uint16) (data byte) {
 }
 
 func (gsu *GSU) plot(x, y byte) {
-	bitplanes := 2 << uint32((gsu.r.SCMR&MD0)+((gsu.r.SCMR&MD1)>>1))
-	if gsu.r.POR&FlagPlotTransparent == 0 {
+	bitplanes := gsu.r.SCMR.getBitplanes()
+	if gsu.r.POR&PlotTransparent == 0 {
 		transparentShift := bitplanes
 		if transparentShift == 8 {
-			transparentShift >>= (gsu.r.POR & FlagColorFreezeHigh) >> 3
+			transparentShift >>= (gsu.r.POR & ColorFreezeHigh) >> 3
 		}
 		if gsu.r.COLR&((1<<transparentShift)-1) == 0 {
 			return
 		}
 	}
 	color := gsu.r.COLR
-	if gsu.r.POR&FlagPlotDither != 0 && bitplanes != 8 {
+	if gsu.r.POR&PlotDither != 0 && bitplanes != 8 {
 		color >>= (((x & 1) ^ (y & 1)) << 2)
 		color &= 0xF
 	}

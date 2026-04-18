@@ -23,7 +23,7 @@ func (gsu *GSU) stepCart() {
 }
 
 func (gsu *GSU) stepMultiplication(isFLMult bool) {
-	isHighSpeed := gsu.r.CFGR&CFGR_MS0 != 0
+	isHighSpeed := hasFlag(gsu.r.CFGR, MS0)
 	if isFLMult {
 		var baseCycle = uint64(7)
 		if isHighSpeed {
@@ -95,7 +95,7 @@ type waitState struct {
 	waiting                bool
 }
 
-func (w *waitState) updateWait(scmr byte) {
+func (w *waitState) updateWait(scmr scmr) {
 	if w.waitForRam {
 		w.waitForRam = scmr&RAN == 0
 	}
@@ -105,12 +105,12 @@ func (w *waitState) updateWait(scmr byte) {
 	w.waiting = w.waitForRam || w.waitForRom
 }
 
-func (w *waitState) verifyRomOwnership(scmr byte) {
+func (w *waitState) verifyRomOwnership(scmr scmr) {
 	w.waitForRom = scmr&RON == 0
 	w.waiting = w.waitForRam || w.waitForRom
 }
 
-func (w *waitState) verifyRamOwnership(scmr byte) {
+func (w *waitState) verifyRamOwnership(scmr scmr) {
 	w.waitForRam = scmr&RAN == 0
 	w.waiting = w.waitForRam || w.waitForRom
 }

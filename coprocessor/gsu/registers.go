@@ -20,26 +20,70 @@ const (
 	FlagAlt3        = FlagAlt1 | FlagAlt2
 )
 
-const ( //SCMR
-	MD0 byte = 1 << 0
-	MD1 byte = 1 << 1 //Color Gradient bits (bpp) (2/4/4/8)
-	HT0 byte = 1 << 2 //Screen Height (LSB)
-	RAN byte = 1 << 3 //Game Pak RAM bus access (0=SNES, 1=GSU) if cleared while GO=1 the GSU enters WAIT
-	RON byte = 1 << 4 //Game Pak ROM bus access (0=SNES, 1=GSU) if cleared while GO=1 the GSU enters WAIT
-	HT1 byte = 1 << 5 //Screen Height (MSB)
+type scmr byte
+
+const (
+	MD0 scmr = 1 << 0
+	MD1 scmr = 1 << 1 //Color Gradient bits (bpp) (2/4/4/8)
+	HT0 scmr = 1 << 2 //Screen Height (LSB)
+	RAN scmr = 1 << 3 //Game Pak RAM bus access (0=SNES, 1=GSU) if cleared while GO=1 the GSU enters WAIT
+	RON scmr = 1 << 4 //Game Pak ROM bus access (0=SNES, 1=GSU) if cleared while GO=1 the GSU enters WAIT
+	HT1 scmr = 1 << 5 //Screen Height (MSB)
 )
 
-const CFGR_MS0 byte = 1 << 5 //Multiplier Speed Select (0=Standard, 1=High Speed Mode) (CFGR)
+// returns 0, 1, or 2 depending on the current number of bitplanes
+// 2 << this number == bitplanes
+// this number + 4 == tile address shift value
+func (scmr scmr) getColorGradient() uint32 {
+	return uint32((scmr & MD0) + ((scmr & MD1) >> 1))
+}
 
-const ( //POR
-	FlagPlotTransparent byte = 1 << 0 //0= Do Not Plot Color 0, 1= Plot Color 0
-	FlagPlotDither      byte = 1 << 1 //0= Normal, 1= Dither (4/16 color mode only)
-	FlagColorHighNibble byte = 1 << 2 //0= Normal, 1= Replace incoming LSB by incoming MSB
-	FlagColorFreezeHigh byte = 1 << 3 //0= Normal, 1= Write-protect COLOR.MSB
-	FlagForceObjMode    byte = 1 << 4 //0= Normal, 1= Force OBJ mode; ignore SCMR.HT0/HT1
+func (scmr scmr) getBitplanes() uint32 {
+	return 2 << scmr.getColorGradient()
+}
+
+func (scmr scmr) getScreenHeight() byte {
+	return byte(((scmr & HT1) >> 4) | ((scmr & HT0) >> 2))
+}
+
+type cfgr byte
+
+const (
+	MS0     cfgr = 1 << 5 //Multiplier Speed Select (0=Standard, 1=High Speed Mode) (CFGR)
+	MaskIrq cfgr = 1 << 7 //is irq masked (0 = not masked, 1 = masked)
+)
+
+type por byte
+
+func (por por) getForceObjMask() byte {
+	return byte((-((por & ForceObjMode) >> 4)) & 3) //3 or 0
+}
+
+const (
+	PlotTransparent por = 1 << 0 //0= Do Not Plot Color 0, 1= Plot Color 0
+	PlotDither      por = 1 << 1 //0= Normal, 1= Dither (4/16 color mode only)
+	ColorHighNibble por = 1 << 2 //0= Normal, 1= Replace incoming LSB by incoming MSB
+	ColorFreezeHigh por = 1 << 3 //0= Normal, 1= Write-protect COLOR.MSB
+	ForceObjMode    por = 1 << 4 //0= Normal, 1= Force OBJ mode; ignore SCMR.HT0/HT1
 )
 
 const R15_NOT_BRANCHING int = -1
+
+type register interface {
+	~uint16 | ~byte
+}
+
+func hasFlag[T register](register, flag T) bool {
+	return register&flag != 0
+}
+
+func setFlag[T register](register *T, flag T, cond bool) {
+	if cond {
+		*register |= flag
+	} else {
+		*register &= ^flag
+	}
+}
 
 type registers struct {
 	fetchFunc func()
@@ -58,14 +102,12 @@ type registers struct {
 	CBR   uint16 // cache base register. 12 bit, lower 4 bits unused
 	BRAMR byte   //back up RAM register. 1 bit
 	VCR   byte   // version code register 1 = MC1 4 = GSU2 the rest unknown??
-	CFGR  byte   //config register
+	CFGR  cfgr   //config register
 	CLSR  byte   //clock select register 0=10mhz, 1=21mhz
 	SCBR  uint32 //screen base register
-	SCMR  byte   //screen mode register
+	SCMR  scmr   //screen mode register
 	COLR  byte   //color register
-	POR   byte   //plot option register
-	//rom buffer prefetch bytes at rombr:r14??
-	//sreg/dreg //memorized to/from prefix selections??
+	POR   por    //plot option register
 }
 
 func (r *registers) writeCpuRegister(idx byte, val uint16) {
@@ -93,10 +135,6 @@ func (r *registers) setImmediateNum(num uint16) {
 	r.SFR |= (num & 3) << 10
 }
 
-func (r *registers) hasFlag(flag uint16) bool {
-	return r.SFR&flag != 0
-}
-
 func (r *registers) setFlag(flag uint16, cond bool) {
 	if cond {
 		r.SFR |= flag
@@ -104,12 +142,13 @@ func (r *registers) setFlag(flag uint16, cond bool) {
 		r.SFR &= ^flag
 	}
 }
+
 func (r *registers) setColr(value byte) {
-	if r.POR&FlagColorHighNibble != 0 {
+	if r.POR&ColorHighNibble != 0 {
 		r.COLR = r.COLR&0xF0 | value>>4
 		return
 	}
-	if r.POR&FlagColorFreezeHigh != 0 {
+	if r.POR&ColorFreezeHigh != 0 {
 		r.COLR = r.COLR&0xF0 | value&0xF
 		return
 	}
@@ -156,7 +195,7 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 	if addr == 0x3031 {
 		tmp := byte(gsu.r.SFR >> 8)
 
-		if gsu.r.CFGR&0x80 == 0 && gsu.r.SFR&FlagIrq != 0 {
+		if !hasFlag(gsu.r.CFGR, MaskIrq) && gsu.r.SFR&FlagIrq != 0 {
 			gsu.interruptManager.CartAcknowledgeIrq()
 		}
 
@@ -174,7 +213,7 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 		return gsu.r.CLSR, nil
 	}
 	if addr == 0x3037 {
-		return gsu.r.CFGR, nil
+		return byte(gsu.r.CFGR), nil
 	}
 	if addr == 0x303B {
 		return gsu.r.VCR, nil
@@ -227,7 +266,7 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 		return nil
 	}
 	if addr == 0x3037 {
-		gsu.r.CFGR = value
+		gsu.r.CFGR = cfgr(value)
 		return nil
 	}
 	if addr == 0x3038 {
@@ -240,6 +279,7 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 		return nil
 	}
 	if addr == 0x303A {
+		value := scmr(value)
 		gsu.r.SCMR = value & 0x7F
 		gsu.updateWait(value)
 		return nil
