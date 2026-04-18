@@ -74,7 +74,7 @@ func (gsu *GSU) rpix(x, y uint16) (data byte) {
 
 func (gsu *GSU) plot(x, y byte) {
 	bitplanes := gsu.r.SCMR.getBitplanes()
-	if gsu.r.POR&PlotTransparent == 0 {
+	if !hasFlag(gsu.r.POR, PlotTransparent) {
 		transparentShift := bitplanes
 		if transparentShift == 8 {
 			transparentShift >>= (gsu.r.POR & ColorFreezeHigh) >> 3
@@ -84,7 +84,7 @@ func (gsu *GSU) plot(x, y byte) {
 		}
 	}
 	color := gsu.r.COLR
-	if gsu.r.POR&PlotDither != 0 && bitplanes != 8 {
+	if hasFlag(gsu.r.POR, PlotTransparent) && bitplanes != 8 {
 		color >>= (((x & 1) ^ (y & 1)) << 2)
 		color &= 0xF
 	}

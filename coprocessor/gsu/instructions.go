@@ -5,11 +5,11 @@ import (
 )
 
 func (gsu *GSU) processByte() {
-	immediateNum := gsu.r.getImmediateNum()
+	immediateNum := gsu.r.SFR.getImmediateNum()
 	if immediateNum != 0 {
 		immediateNum--
 		gsu.immediateBytes[immediateNum] = gsu.currentOpcode
-		gsu.r.setImmediateNum(immediateNum)
+		gsu.r.SFR.setImmediateNum(immediateNum)
 		if immediateNum == 0 {
 			gsu.immediateInstruction(gsu)
 		}
@@ -20,29 +20,29 @@ func (gsu *GSU) processByte() {
 		opcodeLn := opcode & 0x0F
 		switch {
 		case opcode-5 <= 0xA: //BRANCH instructions 0x05-0x0F
-			gsu.r.setImmediateNum(1)
+			gsu.r.SFR.setImmediateNum(1)
 			gsu.immediateInstruction = branchFunc
 			gsu.immediateOpcode = opcode
 		case opcodeHn == 0xF0: //IWT instructions
-			gsu.r.setImmediateNum(2)
+			gsu.r.SFR.setImmediateNum(2)
 			gsu.immediateInstruction = iwtFunc
 			gsu.immediateOpcode = opcode
 		case opcodeHn == 0xA0: //IBT instructions
-			gsu.r.setImmediateNum(1)
+			gsu.r.SFR.setImmediateNum(1)
 			gsu.immediateInstruction = ibtFunc
 			gsu.immediateOpcode = opcode
 		case opcode-0x30 <= 0xB: //STW instructions
-			gsu.ramWordStore(gsu.r.cpuRegisters[opcodeLn], gsu.sReg, gsu.r.getAltNum() == FlagAlt1, false)
+			gsu.ramWordStore(gsu.r.cpuRegisters[opcodeLn], gsu.sReg, gsu.r.SFR.getAltNum() == FlagAlt1, false)
 			gsu.clearPrefixes()
 		case opcode-0x40 <= 0xB: //LDW instructions
-			gsu.ramWordLoad(gsu.r.cpuRegisters[opcodeLn], gsu.dReg, gsu.r.getAltNum() == FlagAlt1)
+			gsu.ramWordLoad(gsu.r.cpuRegisters[opcodeLn], gsu.dReg, gsu.r.SFR.getAltNum() == FlagAlt1)
 			gsu.clearPrefixes()
 		case opcode == 0x90:
 			gsu.ramWordStore(0, gsu.sReg, false, true)
 			gsu.clearPrefixes()
 		case opcode == 0xEF: //GET(load byte from rom)
 			byte := gsu.readRomAddrPtr()
-			switch gsu.r.getAltNum() {
+			switch gsu.r.SFR.getAltNum() {
 			case FlagAlt1: // GETBH
 				rs := gsu.r.cpuRegisters[gsu.sReg]
 				gsu.r.writeCpuRegister(gsu.dReg, (uint16(byte)<<8)|(rs&0x00FF))
@@ -57,7 +57,7 @@ func (gsu *GSU) processByte() {
 			}
 			gsu.clearPrefixes()
 		case opcode == 0xDF: //GETC pretending as RAMB/ROMB
-			switch gsu.r.getAltNum() {
+			switch gsu.r.SFR.getAltNum() {
 			case FlagAlt2:
 				gsu.r.RAMBR = byte(gsu.r.cpuRegisters[gsu.sReg]) & 1
 			case FlagAlt3:
@@ -68,7 +68,7 @@ func (gsu *GSU) processByte() {
 			}
 			gsu.clearPrefixes()
 		case opcode == 0x4E: //COLOR/CMODE
-			if gsu.r.getAltNum() == FlagAlt1 {
+			if gsu.r.SFR.getAltNum() == FlagAlt1 {
 				gsu.r.POR = por(gsu.r.cpuRegisters[gsu.sReg]) & 0x1F
 			} else {
 				gsu.r.setColr(byte(gsu.r.cpuRegisters[gsu.sReg]))
@@ -99,7 +99,7 @@ func (gsu *GSU) processByte() {
 			minuend := uint16(gsu.r.cpuRegisters[gsu.sReg])
 			result32 := uint32(minuend)
 
-			alt := gsu.r.getAltNum()
+			alt := gsu.r.SFR.getAltNum()
 
 			subtrahend := uint16(opcodeLn)
 			if alt != FlagAlt2 {
@@ -195,7 +195,7 @@ func (gsu *GSU) processByte() {
 		case opcode == 0x04: //ROL
 			result := gsu.r.cpuRegisters[gsu.sReg]
 			msb := result & 0x8000
-			result = gsu.r.cpuRegisters[gsu.sReg]<<1 | min(gsu.r.SFR&FlagC, 1)
+			result = gsu.r.cpuRegisters[gsu.sReg]<<1 | uint16(min(gsu.r.SFR&FlagC, 1))
 			setFlag(&gsu.r.SFR, FlagC, msb != 0)
 			setFlag(&gsu.r.SFR, FlagZ, result == 0)
 			setFlag(&gsu.r.SFR, FlagS, result&0x8000 != 0)
@@ -204,7 +204,7 @@ func (gsu *GSU) processByte() {
 		case opcode == 0x96: //ASR -signed shift
 			result := gsu.r.cpuRegisters[gsu.sReg]
 			lsb := result & 1
-			if gsu.r.getAltNum() == FlagAlt1 && result == 0xFFFF {
+			if gsu.r.SFR.getAltNum() == FlagAlt1 && result == 0xFFFF {
 				result = 0 //DIV 2: -1>>1 == -1. needs a little push
 			}
 			result = uint16(int16(result) >> 1)
@@ -216,7 +216,7 @@ func (gsu *GSU) processByte() {
 		case opcode == 0x97: //ROR
 			result := gsu.r.cpuRegisters[gsu.sReg]
 			lsb := result & 1
-			result = gsu.r.cpuRegisters[gsu.sReg]>>1 | min(gsu.r.SFR&FlagC, 1)<<15
+			result = gsu.r.cpuRegisters[gsu.sReg]>>1 | uint16(min(gsu.r.SFR&FlagC, 1)<<15)
 			setFlag(&gsu.r.SFR, FlagC, lsb != 0)
 			setFlag(&gsu.r.SFR, FlagZ, result == 0)
 			setFlag(&gsu.r.SFR, FlagS, result&0x8000 != 0)
@@ -243,7 +243,7 @@ func (gsu *GSU) processByte() {
 			gsu.r.writeCpuRegister(gsu.dReg, result)
 			gsu.clearPrefixes()
 		case opcode == 0x9F: //FMULT/LMULT
-			altNum := gsu.r.getAltNum()
+			altNum := gsu.r.SFR.getAltNum()
 			result32 := uint32(int32(int16(gsu.r.cpuRegisters[gsu.sReg])) * int32(int16(gsu.r.cpuRegisters[6])))
 			if altNum == FlagAlt1 {
 				//if dreg == 4 this is obviously overwritten
@@ -273,11 +273,10 @@ func (gsu *GSU) processByte() {
 			gsu.stepMultiplication(false)
 			gsu.clearPrefixes()
 		case opcode-0x98 <= 5: //JMP/LJMP
-			if gsu.r.getAltNum() == FlagAlt1 {
+			if gsu.r.SFR.getAltNum() == FlagAlt1 {
 				gsu.r.PBR = byte(gsu.r.cpuRegisters[opcodeLn]) & 0x7F
 				gsu.r.writeCpuRegister(0xF, gsu.r.cpuRegisters[gsu.sReg])
 				gsu.r.CBR = gsu.r.cpuRegisters[gsu.sReg] & 0xFFF0
-				//TODO flush cache
 				gsu.cacheFlags = 0
 			} else {
 				gsu.r.writeCpuRegister(0xF, gsu.r.cpuRegisters[opcodeLn])
@@ -349,7 +348,7 @@ func (gsu *GSU) processByte() {
 		case opcode == 0x4C: //PLOT??
 			x := gsu.r.cpuRegisters[1]
 			y := gsu.r.cpuRegisters[2]
-			if gsu.r.getAltNum() == FlagAlt1 { //RPIX
+			if gsu.r.SFR.getAltNum() == FlagAlt1 { //RPIX
 				data := gsu.rpix(x, y)
 				setFlag(&gsu.r.SFR, FlagZ, data == 0)
 				setFlag(&gsu.r.SFR, FlagS, uint16(data)&0x8000 != 0)
@@ -373,7 +372,7 @@ func (gsu *GSU) clearPrefixes() {
 func iwtFunc(gsu *GSU) {
 	reg := gsu.immediateOpcode & 0xF
 	hilo := uint16(gsu.immediateBytes[0])<<8 | uint16(gsu.immediateBytes[1])
-	switch gsu.r.getAltNum() {
+	switch gsu.r.SFR.getAltNum() {
 	case FlagAlt1:
 		gsu.ramWordLoad(hilo, reg, false)
 	case FlagAlt2:
@@ -387,7 +386,7 @@ func iwtFunc(gsu *GSU) {
 func ibtFunc(gsu *GSU) {
 	reg := gsu.immediateOpcode & 0xF
 	kk := gsu.immediateBytes[0]
-	switch gsu.r.getAltNum() {
+	switch gsu.r.SFR.getAltNum() {
 	case FlagAlt1:
 		gsu.ramWordLoad(uint16(kk)<<1, reg, false)
 	case FlagAlt2:
@@ -440,21 +439,21 @@ func branchFunc(gsu *GSU) {
 	case 0x07:
 		shouldBranch = min(1, gsu.r.SFR&FlagS)^min(1, gsu.r.SFR&FlagV) == 1
 	case 0x08:
-		shouldBranch = gsu.r.SFR&FlagZ == 0
+		shouldBranch = !hasFlag(gsu.r.SFR, FlagZ)
 	case 0x09:
-		shouldBranch = gsu.r.SFR&FlagZ != 0
+		shouldBranch = hasFlag(gsu.r.SFR, FlagZ)
 	case 0x0A:
-		shouldBranch = gsu.r.SFR&FlagS == 0
+		shouldBranch = !hasFlag(gsu.r.SFR, FlagS)
 	case 0x0B:
-		shouldBranch = gsu.r.SFR&FlagS != 0
+		shouldBranch = hasFlag(gsu.r.SFR, FlagS)
 	case 0x0C:
-		shouldBranch = gsu.r.SFR&FlagC == 0
+		shouldBranch = !hasFlag(gsu.r.SFR, FlagC)
 	case 0x0D:
-		shouldBranch = gsu.r.SFR&FlagC != 0
+		shouldBranch = hasFlag(gsu.r.SFR, FlagC)
 	case 0x0E:
-		shouldBranch = gsu.r.SFR&FlagV == 0
+		shouldBranch = !hasFlag(gsu.r.SFR, FlagV)
 	case 0x0F:
-		shouldBranch = gsu.r.SFR&FlagV != 0
+		shouldBranch = hasFlag(gsu.r.SFR, FlagV)
 	}
 
 	if shouldBranch {

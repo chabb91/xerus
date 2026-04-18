@@ -30,8 +30,8 @@ func newTracer(maxLines, stopCnt int) *tracer {
 func (t *tracer) trace(gsu *GSU) {
 	if t.stopCnt <= 0 {
 		var instructionCode string
-		if gsu.r.getImmediateNum() == 0 {
-			instructionCode = parseOpcode(gsu.currentOpcode, gsu.r.getAltNum()>>8)
+		if gsu.r.SFR.getImmediateNum() == 0 {
+			instructionCode = parseOpcode(gsu.currentOpcode, gsu.r.SFR.getAltNum()>>8)
 		} else {
 			instructionCode = "imm"
 		}
@@ -51,17 +51,17 @@ func (t *tracer) trace(gsu *GSU) {
 			panic("GSU: trace collected. exiting.")
 		}
 	} else {
-		if gsu.currentOpcode == 0x00 && gsu.r.getImmediateNum() == 0 {
+		if gsu.currentOpcode == 0x00 && gsu.r.SFR.getImmediateNum() == 0 {
 			t.stopCnt--
 		}
 	}
 }
 
-func sfrToString(sfr uint16) string {
+func sfrToString(sfrReg sfr) string {
 	var sb strings.Builder
 
-	format := func(bit uint16, char string) {
-		if sfr&bit != 0 {
+	format := func(bit sfr, char string) {
+		if sfrReg&bit != 0 {
 			sb.WriteString(strings.ToUpper(char))
 		} else {
 			sb.WriteString(strings.ToLower(char))
@@ -88,7 +88,7 @@ func sfrToString(sfr uint16) string {
 	return sb.String()
 }
 
-func parseOpcode(opcode byte, altnum uint16) string {
+func parseOpcode(opcode byte, altnum sfr) string {
 	opcodeHn := opcode & 0xF0
 	switch {
 	case opcode-5 <= 0xA: //BRANCH instructions 0x05-0x0F UNTESTED

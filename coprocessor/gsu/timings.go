@@ -8,17 +8,26 @@ type accessTime struct {
 	cart, cache uint64
 }
 
-var accessTimes = [2]accessTime{{cart: 6, cache: 2}, {cart: 5, cache: 1}}
+// the Bsnes values are commented out. there is something I dont understand about timings
+// so the supposedly correct values end up being way too slow
+// all timings are represented as 21mhz, so 1 cycle = 1/21_000_000
+
+// var accessTimes = [2]accessTime{{cart: 6, cache: 2}, {cart: 5, cache: 1}}
+var accessTimes = [2]accessTime{{cart: 4, cache: 2}, {cart: 3, cache: 1}}
 
 func (gsu *GSU) setAccessTime(clsr byte) {
 	gsu.currentAccessTime = accessTimes[clsr&1]
 }
 
 func (gsu *GSU) stepCache() {
+	gsu.stepRomAddrPtr()
+	gsu.stepRamWriteCache()
 	gsu.cyclesTaken += gsu.currentAccessTime.cache
 }
 
 func (gsu *GSU) stepCart() {
+	gsu.stepRomAddrPtr()
+	gsu.stepRamWriteCache()
 	gsu.cyclesTaken += gsu.currentAccessTime.cart
 }
 

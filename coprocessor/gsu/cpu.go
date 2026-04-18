@@ -120,8 +120,6 @@ func (gsu *GSU) preFetchByte() {
 	} else {
 		gsu.r.cpuRegisters[0xF]++
 	}
-	gsu.stepRomAddrPtr()
-	gsu.stepRamWriteCache()
 	//fmt.Printf("%02x\n", opcode)
 }
 
@@ -182,14 +180,14 @@ func (gsu *GSU) OverrideCartridgeMapper() types.RomMapper {
 				}
 				return -1, types.UnmappedAddress
 			}
-			if gsu.r.SFR&FlagGo != 0 && gsu.r.SCMR&RON != 0 {
+			if hasFlag(gsu.r.SFR, FlagGo) && hasFlag(gsu.r.SCMR, RON) {
 				return vector[offset&0xF], types.RomOwnedByCoprocessor
 			}
 			offset = (offset & 0x7FFF) | (uint16(bank&1) << 15)
 			return int(maskedBank>>1)<<16 | int(offset), types.RomAddress //lorom
 		}
 		if bank-0x40 < 0x20 || bank >= 0xC0 { //0x40-0x5F || 0xC0-0xFF
-			if gsu.r.SFR&FlagGo != 0 && gsu.r.SCMR&RON != 0 {
+			if hasFlag(gsu.r.SFR, FlagGo) && hasFlag(gsu.r.SCMR, RON) {
 				return vector[offset&0xF], types.RomOwnedByCoprocessor
 			}
 			return int(bank&0x3F)<<16 | int(offset), types.RomAddress //hirom
