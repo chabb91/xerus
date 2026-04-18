@@ -12,7 +12,7 @@ const (
 	FlagS    sfr = 1 << 3  //Sign			(0=Positive, 1=Negative)
 	FlagV    sfr = 1 << 4  //OverFlow		(0=NoOverFlow, 1=OverFlow)
 	FlagGo   sfr = 1 << 5  //GSU is running on 1, stopped on 0
-	FlagR    sfr = 1 << 6  //ROM[R14] Read (0=No, 1=Reading ROM via R14 address)
+	FlagR    sfr = 1 << 6  //ROM[R14] Read  (0=No, 1=Reading ROM via R14 address)
 	FlagAlt1 sfr = 1 << 8  //ALT1, ALT2, ALT3 prefixes
 	FlagAlt2 sfr = 1 << 9  //ALT1, ALT2, ALT3 prefixes
 	FlagIl   sfr = 1 << 10 //counter for opcodes with immediate operands (low)
@@ -182,10 +182,10 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 	if byteIdx := addr - 0x3000; byteIdx < 0x20 {
 		return gsu.r.getCpuRegister(byte(byteIdx)), nil
 	}
-	if addr == 0x3030 {
+	switch addr {
+	case 0x3030:
 		return byte(gsu.r.SFR), nil
-	}
-	if addr == 0x3031 {
+	case 0x3031:
 		tmp := byte(gsu.r.SFR >> 8)
 
 		if !hasFlag(gsu.r.CFGR, MaskIrq) && hasFlag(gsu.r.SFR, FlagIrq) {
@@ -194,29 +194,21 @@ func (gsu *GSU) Read(addr uint16) (byte, error) {
 		setFlag(&gsu.r.SFR, FlagIrq, false) //reading clears the irq bit??
 
 		return tmp, nil
-	}
-	if addr == 0x3034 {
+	case 0x3034:
 		return gsu.r.PBR, nil
-	}
-	if addr == 0x3036 {
+	case 0x3036:
 		return gsu.r.ROMBR, nil
-	}
-	if addr == 0x3039 {
-		return gsu.r.CLSR, nil
-	}
-	if addr == 0x3037 {
+	case 0x3037:
 		return byte(gsu.r.CFGR), nil
-	}
-	if addr == 0x303B {
+	case 0x3039:
+		return gsu.r.CLSR, nil
+	case 0x303B:
 		return gsu.r.VCR, nil
-	}
-	if addr == 0x303C {
+	case 0x303C:
 		return gsu.r.RAMBR, nil
-	}
-	if addr == 0x303E {
+	case 0x303E:
 		return byte(gsu.r.CBR), nil
-	}
-	if addr == 0x303F {
+	case 0x303F:
 		return byte(gsu.r.CBR >> 8), nil
 	}
 	return 0, fmt.Errorf("GSU: invalid register read at $%04X", addr)
@@ -236,7 +228,8 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 		gsu.r.setCpuRegister(byte(byteIdx), value)
 		return nil
 	}
-	if addr == 0x3030 {
+	switch addr {
+	case 0x3030:
 		prevGo := hasFlag(gsu.r.SFR, FlagGo)
 		gsu.r.SFR = (gsu.r.SFR)&0xFF00 | (sfr(value & 0x1E))
 		if !hasFlag(gsu.r.SFR, FlagGo) && prevGo {
@@ -244,33 +237,26 @@ func (gsu *GSU) Write(addr uint16, value byte) error {
 			gsu.cacheFlags = 0
 		}
 		return nil
-	}
-	if addr == 0x3031 {
+	case 0x3031:
 		gsu.r.SFR = (gsu.r.SFR)&0x00FF | (sfr(value) << 8)
 		return nil
-	}
-	if addr == 0x3033 {
+	case 0x3033:
 		gsu.r.BRAMR = value & 1
 		return nil
-	}
-	if addr == 0x3034 {
+	case 0x3034:
 		gsu.r.PBR = value & 0x7F
 		return nil
-	}
-	if addr == 0x3037 {
+	case 0x3037:
 		gsu.r.CFGR = cfgr(value)
 		return nil
-	}
-	if addr == 0x3038 {
+	case 0x3038:
 		gsu.r.SCBR = 0x70_0000 + uint32(value)<<10
 		return nil
-	}
-	if addr == 0x3039 {
+	case 0x3039:
 		gsu.r.CLSR = value & 1
 		gsu.setAccessTime(value)
 		return nil
-	}
-	if addr == 0x303A {
+	case 0x303A:
 		value := scmr(value)
 		gsu.r.SCMR = value & 0x7F
 		gsu.updateWait(value)
