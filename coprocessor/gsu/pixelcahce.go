@@ -84,7 +84,7 @@ func (gsu *GSU) plot(x, y byte) {
 		}
 	}
 	color := gsu.r.COLR
-	if hasFlag(gsu.r.POR, PlotTransparent) && bitplanes != 8 {
+	if hasFlag(gsu.r.POR, PlotDither) && bitplanes != 8 {
 		color >>= (((x & 1) ^ (y & 1)) << 2)
 		color &= 0xF
 	}

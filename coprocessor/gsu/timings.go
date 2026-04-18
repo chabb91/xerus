@@ -20,30 +20,36 @@ func (gsu *GSU) setAccessTime(clsr byte) {
 }
 
 func (gsu *GSU) stepCache() {
-	gsu.stepRomAddrPtr()
-	gsu.stepRamWriteCache()
-	gsu.cyclesTaken += gsu.currentAccessTime.cache
+	step := gsu.currentAccessTime.cache
+	gsu.stepRomAddrPtr(step)
+	gsu.stepRamWriteCache(step)
+	gsu.cyclesTaken += step
 }
 
 func (gsu *GSU) stepCart() {
-	gsu.stepRomAddrPtr()
-	gsu.stepRamWriteCache()
-	gsu.cyclesTaken += gsu.currentAccessTime.cart
+	step := gsu.currentAccessTime.cart
+	gsu.stepRomAddrPtr(step)
+	gsu.stepRamWriteCache(step)
+	gsu.cyclesTaken += step
 }
 
 func (gsu *GSU) stepMultiplication(isFLMult bool) {
+	step := uint64(0)
 	isHighSpeed := hasFlag(gsu.r.CFGR, MS0)
 	if isFLMult {
-		var baseCycle = uint64(7)
+		baseCycle := uint64(7)
 		if isHighSpeed {
 			baseCycle = 3
 		}
-		gsu.cyclesTaken += baseCycle << (gsu.currentAccessTime.cache - 1)
+		step = baseCycle << (gsu.currentAccessTime.cache - 1)
 	} else {
 		if !isHighSpeed {
-			gsu.cyclesTaken += gsu.currentAccessTime.cache
+			step = gsu.currentAccessTime.cache
 		}
 	}
+	gsu.stepRomAddrPtr(step)
+	gsu.stepRamWriteCache(step)
+	gsu.cyclesTaken += step
 }
 
 func (gsu *GSU) getSnesSideCycles() (cycles uint64) {
@@ -52,14 +58,14 @@ func (gsu *GSU) getSnesSideCycles() (cycles uint64) {
 	return
 }
 
-func (gsu *GSU) stepRomAddrPtr() {
+func (gsu *GSU) stepRomAddrPtr(step uint64) {
 	if gsu.r.r14Modified {
 		gsu.r14Clock = gsu.currentAccessTime.cart
 		gsu.r.r14Modified = false
 		setFlag(&gsu.r.SFR, FlagR, true)
 	} else {
 		if gsu.r14Clock != 0 {
-			gsu.r14Clock -= min(gsu.r14Clock, gsu.cyclesTaken)
+			gsu.r14Clock -= min(gsu.r14Clock, step)
 			if gsu.r14Clock == 0 {
 				setFlag(&gsu.r.SFR, FlagR, false)
 				val, _ := gsu.Read8(gsu.r.ROMBR, gsu.r.cpuRegisters[14])
@@ -91,9 +97,9 @@ func (gsu *GSU) incrementRamWriteCacheClock() {
 	gsu.ramWriteCacheClock += gsu.currentAccessTime.cart
 }
 
-func (gsu *GSU) stepRamWriteCache() {
+func (gsu *GSU) stepRamWriteCache(step uint64) {
 	if gsu.ramWriteCacheClock != 0 {
-		gsu.ramWriteCacheClock -= min(gsu.ramWriteCacheClock, gsu.cyclesTaken)
+		gsu.ramWriteCacheClock -= min(gsu.ramWriteCacheClock, step)
 	}
 }
 
