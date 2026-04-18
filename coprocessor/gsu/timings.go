@@ -47,12 +47,12 @@ func (gsu *GSU) stepRomAddrPtr() {
 	if gsu.r.r14Modified {
 		gsu.r14Clock = gsu.currentAccessTime.cart
 		gsu.r.r14Modified = false
-		gsu.r.setFlag(FlagR, true)
+		setFlag(&gsu.r.SFR, FlagR, true)
 	} else {
 		if gsu.r14Clock != 0 {
 			gsu.r14Clock -= min(gsu.r14Clock, gsu.cyclesTaken)
 			if gsu.r14Clock == 0 {
-				gsu.r.setFlag(FlagR, false)
+				setFlag(&gsu.r.SFR, FlagR, false)
 				val, _ := gsu.Read8(gsu.r.ROMBR, gsu.r.cpuRegisters[14])
 				gsu.r.romAddrPtr = val
 			}
@@ -65,7 +65,7 @@ func (gsu *GSU) readRomAddrPtr() byte {
 		val, _ := gsu.Read8(gsu.r.ROMBR, gsu.r.cpuRegisters[14])
 		gsu.cyclesTaken += gsu.r14Clock
 		gsu.r.romAddrPtr = val
-		gsu.r.setFlag(FlagR, false)
+		setFlag(&gsu.r.SFR, FlagR, false)
 		gsu.r14Clock = 0
 	}
 	return gsu.r.romAddrPtr

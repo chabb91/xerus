@@ -55,10 +55,6 @@ const (
 
 type por byte
 
-func (por por) getForceObjMask() byte {
-	return byte((-((por & ForceObjMode) >> 4)) & 3) //3 or 0
-}
-
 const (
 	PlotTransparent por = 1 << 0 //0= Do Not Plot Color 0, 1= Plot Color 0
 	PlotDither      por = 1 << 1 //0= Normal, 1= Dither (4/16 color mode only)
@@ -67,7 +63,9 @@ const (
 	ForceObjMode    por = 1 << 4 //0= Normal, 1= Force OBJ mode; ignore SCMR.HT0/HT1
 )
 
-const R15_NOT_BRANCHING int = -1
+func (por por) getForceObjMask() byte {
+	return byte((-((por & ForceObjMode) >> 4)) & 3) //3 or 0
+}
 
 type register interface {
 	~uint16 | ~byte
@@ -84,6 +82,8 @@ func setFlag[T register](register *T, flag T, cond bool) {
 		*register &= ^flag
 	}
 }
+
+const R15_NOT_BRANCHING int = -1
 
 type registers struct {
 	fetchFunc func()
@@ -133,14 +133,6 @@ func (r *registers) getImmediateNum() uint16 {
 func (r *registers) setImmediateNum(num uint16) {
 	r.SFR &= ^(FlagIl | FlagIh)
 	r.SFR |= (num & 3) << 10
-}
-
-func (r *registers) setFlag(flag uint16, cond bool) {
-	if cond {
-		r.SFR |= flag
-	} else {
-		r.SFR &= ^flag
-	}
 }
 
 func (r *registers) setColr(value byte) {
