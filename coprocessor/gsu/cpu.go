@@ -68,7 +68,7 @@ func (gsu *GSU) Step() uint64 {
 		gsu.processByte()
 		gsu.preFetchByte()
 
-		if gsu.cyclesTaken >= constants.CYCLE_DIVISOR {
+		if gsu.cyclesTaken >= constants.CYCLE_DIVISOR || gsu.r.SFR&FlagGo == 0 {
 			break
 		}
 	}
