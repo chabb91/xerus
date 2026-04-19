@@ -25,6 +25,8 @@ Or built like:
 go build -o SNES-emulator
 ```
 
+_Note_: Building it with the tag `GOAMD64=v3` or `GOAMD64=v4` for AVX2 or AVX512 machines respectively may improve performance.
+
 ## Running
 
 Running the project from the terminal without arguments will display a detailed usage information.
@@ -37,7 +39,7 @@ Sram is automatically detected, created/loaded and saved on exiting. The resulti
 
 ## Compatibility
 
-Despite my best efforts trying to get the timings right by following Anomie's docs, and getting the overall execution pace very close to **BSNES**, it is not even close to being cycle accurate on the micro scale. This results in some games locking up or exhibiting various visual glitches. Many games do boot and run mostly fine however. For some reason the HDMA execution speed seems way too fast and this breaks timing sensitive games like MK3. My sample size is quite limited but I assume there are a good amount of games able to be completed from start to finish.
+Despite my best efforts trying to get the timings right by following Anomie's docs, and getting the overall execution pace very close to **BSNES**, it is not even close to being cycle accurate on the micro scale. This results in some games locking up or exhibiting various visual glitches. Many games do boot and run mostly fine however. For some reason the HDMA execution speed seems way too fast (or there is some unimplemented quirk) and this breaks timing sensitive games like MK3. My sample size is quite limited but I assume there are a good amount of games able to be completed from start to finish.
 
 ## Progress
 
@@ -51,13 +53,9 @@ The PPU is completely implemented respecting all rendering modes and visual effe
 
 ### APU
 
-#### SPC700
+- SPC700: The SPC700 audio chip is fully implemented with its own memory controller, timers and cycle accurate instructions. It passes blargg's `spc_smp.sfc` test.
 
-The SPC700 audio chip is fully implemented with its own memory controller, timers and cycle accurate instructions. It passes blargg's `spc_smp.sfc` test.
-
-#### DSP
-
-The dsp chip is currently work in progress. The current implementation is just a proof of concept. Audio playback is mostly fine but all voices are calculated in one batch. There is a rewrite coming up however in which I will attempt to mimic the 32 step sound sample generation pipeline that can be found on hardware.
+- DSP: The dsp chip is currently work in progress. The current implementation is just a proof of concept. Audio playback is mostly fine but all voices are calculated in one batch. There is a rewrite coming up however in which I will attempt to mimic the 32 step sound sample generation pipeline that can be found on hardware.
 
 ### Scheduler
 
@@ -65,13 +63,15 @@ As mentioned before, the scheduler tries its best to respect Anomie's `timing.tx
 
 ### Coprocessors
 
-Haven't started working on them yet.
+- [x] GSU: Passes all instruction tests by PeterLemon, and 8 out of the 10 existing games boot and run (albeit some of them exhibit glitches). Winter Gold plays the intro and hangs on menu and Dirt Trax FX shows no sign of life.
+- [ ] Other ones TBD
 
 ## Future Goals
 
-- Implement coprocessors
+- Keep implementing coprocessors
 - Improve timings
 - Improve the S-DSP
+- Improve compatibility
 - Create config files
 
 ## References
