@@ -317,10 +317,10 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 			*pitch = (*pitch & 0xFF) | uint16(val&0x3F)<<8
 		}
 		if reg == PMOn {
-			fmt.Println("PMON: ", val)
+			//fmt.Println("PMON: ", val)
 		}
 		if reg == FLG {
-			fmt.Println("FLG: ", val)
+			//fmt.Println("FLG: ", val)
 			if val >= 0x80 {
 				for i := range 8 {
 					//TODO voices are supposed to stay this state till the bit is reset

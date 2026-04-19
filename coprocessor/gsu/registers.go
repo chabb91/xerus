@@ -82,6 +82,7 @@ func (por por) getForceObjMask() byte {
 	return byte((-((por & ForceObjMode) >> 4)) & 3) //3 or 0
 }
 
+// TODO move this to a helper package and use it with all the coprocessors that need it
 type register interface {
 	~uint16 | ~byte
 }
