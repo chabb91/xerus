@@ -2,8 +2,6 @@ package ui
 
 import (
 	"github.com/hajimehoshi/ebiten/v2"
-
-	_ "embed"
 )
 
 const BufferHeight = 478
