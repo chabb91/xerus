@@ -1,17 +1,18 @@
 package soc
 
 import (
-	"SNES_emulator/apu"
-	"SNES_emulator/cartridge"
-	"SNES_emulator/coprocessor"
-	"SNES_emulator/cpu"
-	"SNES_emulator/dma"
-	"SNES_emulator/memory"
-	"SNES_emulator/ppu"
-	"SNES_emulator/soc/interruptchip"
-	"SNES_emulator/soc/muldivchip"
-	"SNES_emulator/ui"
 	"fmt"
+
+	"github.com/chabb91/xerus/apu"
+	"github.com/chabb91/xerus/cartridge"
+	"github.com/chabb91/xerus/coprocessor"
+	"github.com/chabb91/xerus/cpu"
+	"github.com/chabb91/xerus/dma"
+	"github.com/chabb91/xerus/memory"
+	"github.com/chabb91/xerus/ppu"
+	"github.com/chabb91/xerus/soc/interruptchip"
+	"github.com/chabb91/xerus/soc/muldivchip"
+	"github.com/chabb91/xerus/ui"
 )
 
 type SoC struct {

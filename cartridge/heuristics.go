@@ -1,10 +1,11 @@
 package cartridge
 
 import (
-	"SNES_emulator/internal/types"
 	"fmt"
 	"log"
 	"math/bits"
+
+	"github.com/chabb91/xerus/internal/types"
 )
 
 func computeChecksum(romData []byte) (checksum uint16) {

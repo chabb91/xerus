@@ -1,7 +1,6 @@
 package config
 
 import (
-	"SNES_emulator/ui"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/chabb91/xerus/ui"
 )
 
 type EmulatorConfig struct {

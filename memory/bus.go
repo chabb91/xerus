@@ -1,9 +1,10 @@
 package memory
 
 import (
-	"SNES_emulator/cartridge"
-	"SNES_emulator/internal/constants"
 	"log"
+
+	"github.com/chabb91/xerus/cartridge"
+	"github.com/chabb91/xerus/internal/constants"
 )
 
 const WRAM_SIZE = 0x20000 // 128 KB

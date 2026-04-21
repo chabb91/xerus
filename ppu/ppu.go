@@ -1,9 +1,10 @@
 package ppu
 
 import (
-	"SNES_emulator/memory"
-	"SNES_emulator/ui"
 	"fmt"
+
+	"github.com/chabb91/xerus/memory"
+	"github.com/chabb91/xerus/ui"
 )
 
 const CHIP_5C77_VERSION = byte(1)

@@ -1,6 +1,6 @@
 package ppu
 
-import "SNES_emulator/internal/constants"
+import "github.com/chabb91/xerus/internal/constants"
 
 func (ppu *PPU) Step() uint64 {
 	draw := currentTimingRow[min(ppu.H, H_TOTAL-1)] //pal long line smh

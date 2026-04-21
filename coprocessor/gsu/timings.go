@@ -1,7 +1,7 @@
 package gsu
 
 import (
-	"SNES_emulator/internal/constants"
+	"github.com/chabb91/xerus/internal/constants"
 )
 
 type accessTime struct {

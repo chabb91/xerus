@@ -1,8 +1,8 @@
 package apu
 
 import (
-	"SNES_emulator/apu/spc700"
-	"SNES_emulator/memory"
+	"github.com/chabb91/xerus/apu/spc700"
+	"github.com/chabb91/xerus/memory"
 )
 
 type APU struct {

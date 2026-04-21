@@ -4,7 +4,7 @@
 // there are never two ppu instances anyway.
 package ppu
 
-import "SNES_emulator/ui"
+import "github.com/chabb91/xerus/ui"
 
 // used in renderMainScreen and renderSubScreen for extremely fast access
 var colorCache [5]int

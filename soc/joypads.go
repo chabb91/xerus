@@ -1,8 +1,9 @@
 package soc
 
 import (
-	"SNES_emulator/memory"
 	"fmt"
+
+	"github.com/chabb91/xerus/memory"
 )
 
 const (

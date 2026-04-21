@@ -1,10 +1,11 @@
 package dma
 
 import (
-	"SNES_emulator/internal/constants"
-	"SNES_emulator/memory"
 	"fmt"
 	"log"
+
+	"github.com/chabb91/xerus/internal/constants"
+	"github.com/chabb91/xerus/memory"
 )
 
 const (

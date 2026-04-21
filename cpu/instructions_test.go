@@ -1,11 +1,12 @@
 package cpu
 
 import (
-	"SNES_emulator/debugger"
-	"SNES_emulator/memory"
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/chabb91/xerus/debugger"
+	"github.com/chabb91/xerus/memory"
 )
 
 var cause string

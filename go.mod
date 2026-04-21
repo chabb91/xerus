@@ -1,4 +1,4 @@
-module SNES_emulator
+module github.com/chabb91/xerus
 
 go 1.24.5
 

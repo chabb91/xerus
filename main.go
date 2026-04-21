@@ -1,12 +1,13 @@
 package main
 
 import (
-	"SNES_emulator/internal/config"
-	"SNES_emulator/soc"
-	"SNES_emulator/ui"
 	"log"
 	"os"
 	"runtime/pprof"
+
+	"github.com/chabb91/xerus/internal/config"
+	"github.com/chabb91/xerus/soc"
+	"github.com/chabb91/xerus/ui"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )

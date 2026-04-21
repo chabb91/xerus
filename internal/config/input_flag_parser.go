@@ -1,10 +1,11 @@
 package config
 
 import (
-	"SNES_emulator/ui"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/chabb91/xerus/ui"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )

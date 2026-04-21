@@ -1,6 +1,6 @@
 package cartridge
 
-import "SNES_emulator/internal/types"
+import "github.com/chabb91/xerus/internal/types"
 
 func mapLoRom(bank byte, offset uint16, hasSram bool) (int, types.RomRegionType) {
 	maskedBank := bank & 0x7F
@@ -49,4 +49,3 @@ func mapExHiRom(bank byte, offset uint16, hasSram bool) (int, types.RomRegionTyp
 	mask := ((bank ^ 0x80) | 0x7F) >> 1
 	return int(bank&mask)<<16 | int(offset), types.RomAddress
 }
-

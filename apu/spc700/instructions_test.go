@@ -1,11 +1,12 @@
 package spc700
 
 import (
-	"SNES_emulator/debugger"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/chabb91/xerus/debugger"
 )
 
 var cause string

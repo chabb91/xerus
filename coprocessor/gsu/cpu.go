@@ -1,10 +1,11 @@
 package gsu
 
 import (
-	"SNES_emulator/coprocessor"
-	"SNES_emulator/internal/constants"
-	"SNES_emulator/internal/types"
 	"fmt"
+
+	"github.com/chabb91/xerus/coprocessor"
+	"github.com/chabb91/xerus/internal/constants"
+	"github.com/chabb91/xerus/internal/types"
 )
 
 type immediateInstructionFunc func(gsu *GSU)

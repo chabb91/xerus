@@ -1,6 +1,6 @@
 package coprocessor
 
-import "SNES_emulator/internal/types"
+import "github.com/chabb91/xerus/internal/types"
 
 type RegisterMap struct {
 	Start, End uint16

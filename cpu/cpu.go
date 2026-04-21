@@ -1,8 +1,8 @@
 package cpu
 
 import (
-	"SNES_emulator/internal/constants"
-	"SNES_emulator/memory"
+	"github.com/chabb91/xerus/internal/constants"
+	"github.com/chabb91/xerus/memory"
 )
 
 const (

@@ -1,9 +1,9 @@
 package interruptchip
 
 import (
-	"SNES_emulator/cpu"
-	"SNES_emulator/memory"
-	"SNES_emulator/ppu"
+	"github.com/chabb91/xerus/cpu"
+	"github.com/chabb91/xerus/memory"
+	"github.com/chabb91/xerus/ppu"
 )
 
 const CHIP_5A22_VERSION = byte(2)

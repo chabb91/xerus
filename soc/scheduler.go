@@ -1,8 +1,9 @@
 package soc
 
 import (
-	"SNES_emulator/internal/constants"
 	"time"
+
+	"github.com/chabb91/xerus/internal/constants"
 )
 
 const DMA_OVERHEAD = constants.CYCLE_8

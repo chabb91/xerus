@@ -1,9 +1,6 @@
 package cartridge
 
 import (
-	"SNES_emulator/coprocessor"
-	"SNES_emulator/coprocessor/gsu"
-	"SNES_emulator/internal/types"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -11,6 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/chabb91/xerus/coprocessor"
+	"github.com/chabb91/xerus/coprocessor/gsu"
+	"github.com/chabb91/xerus/internal/types"
 )
 
 var ErrUnmappedSramRead = errors.New("Trying to read SRAM but the cartridge doesnt have one")
