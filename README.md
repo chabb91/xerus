@@ -1,6 +1,7 @@
-# SNES-emulator (better name pending)
+# Xerus
 
-This is a SNES emulator written in GO.
+A SNES emulator written in go.
+The xerus (aka. african ground squirrel) is a rodent known for its burrowing behavior that is similar to a gopher.
 
 ## Reason for creation
 
@@ -10,7 +11,7 @@ Why not use the C/C++? GO is the language I'm trying to learn and most source co
 
 ## Building
 
-**SNES-emulator** only has one dependency at this moment i.e. [Ebitengine](https://ebitengine.org/) which is used to handle displaying the image, reading controller input and audio playback.
+**Xerus** only has one dependency at this moment i.e. [Ebitengine](https://ebitengine.org/) which is used to handle displaying the image, reading controller input and audio playback.
 In order to build the project **Ebitengine** and all of its dependencies need to be [installed](https://ebitengine.org/en/documents/install.html).
 
 Then the project can be ran like:
@@ -22,15 +23,15 @@ go run . [options] <rom-path>
 Or built like:
 
 ```bash
-go build -o SNES-emulator
+go build -o xerus
 ```
 
 _Note_: Building it with the tag `GOAMD64=v3` or `GOAMD64=v4` for AVX2 or AVX512 machines respectively may improve performance.
 
 ## Running
 
-Running the project from the terminal without arguments will display a detailed usage information.
-Currently flags are just there to force PAL/NTSC mode or to enable performance profiling.
+Running the project from the terminal without arguments will display detailed usage information.
+Currently flags are just there to force PAL/NTSC mode or to enable performance profiling etc.
 
 A config file is planned for the future for controller configuration because for now the base setup is set in stone.
 
