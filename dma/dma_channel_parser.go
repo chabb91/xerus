@@ -5,13 +5,19 @@ import (
 	"github.com/chabb91/xerus/memory"
 )
 
-const (
-	fixed     = 0
-	decrement = -1
-	increment = 1
+type dmaStep int
 
-	direct   = 2
-	indirect = 3
+const (
+	fixed     dmaStep = 0
+	decrement dmaStep = -1
+	increment dmaStep = 1
+)
+
+type hdmaAddressingMode int
+
+const (
+	direct hdmaAddressingMode = iota
+	indirect
 )
 
 type direction func(busA uint32, busB byte, validB bool, bus memory.Bus)
@@ -82,7 +88,7 @@ type DmaOperation struct {
 	transferIndex    byte
 	transferUnitSize byte
 	direction        direction
-	step             int
+	step             dmaStep
 }
 
 func (op *DmaOperation) setup(channel *DmaChannel) *DmaOperation {
@@ -119,7 +125,8 @@ func (op *DmaOperation) setup(channel *DmaChannel) *DmaOperation {
 func (op *DmaOperation) stepCycle() bool {
 	channel := op.channel
 
-	transfer(op.transferMode, op.transferIndex, channel.a1b|uint32(channel.a1w), channel.bbad, op.direction, op.bus)
+	transfer(op.transferMode, op.transferIndex, channel.a1b|uint32(channel.a1w),
+		channel.bbad, op.direction, op.bus)
 	op.transferIndex++
 	if op.transferIndex == op.transferUnitSize {
 		op.transferIndex = 0
@@ -145,7 +152,7 @@ type HdmaOperation struct {
 	transferIndex    byte
 	transferUnitSize byte
 	direction        direction
-	addressingMode   int
+	addressingMode   hdmaAddressingMode
 
 	currentAddressPointer *uint16
 	currentBankPointer    *uint32
@@ -206,7 +213,12 @@ func (op *HdmaOperation) setup() {
 
 func (op *HdmaOperation) stepCycle() bool {
 	if op.transferIndex < op.transferUnitSize {
-		transfer(op.transferMode, op.transferIndex, *op.currentBankPointer|uint32(*op.currentAddressPointer), op.channel.bbad, op.direction, op.bus)
+		transfer(op.transferMode,
+			op.transferIndex,
+			*op.currentBankPointer|uint32(*op.currentAddressPointer),
+			op.channel.bbad,
+			op.direction,
+			op.bus)
 		op.transferIndex++
 		*op.currentAddressPointer++
 	}

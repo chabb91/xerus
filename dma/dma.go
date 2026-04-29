@@ -8,8 +8,10 @@ import (
 	"github.com/chabb91/xerus/memory"
 )
 
+type dmaState int
+
 const (
-	HDMA_INACTIVE = iota
+	HDMA_INACTIVE dmaState = iota
 	HDMA_RELOAD_INIT
 	HDMA_RELOAD
 	HDMA_TRANSFER_INIT
@@ -46,7 +48,7 @@ type Dma struct {
 	hdmaOp        [8]*HdmaOperation
 	currentHdmaOp *HdmaOperation
 
-	DmaState int
+	DmaState dmaState
 
 	Channels [8]DmaChannel
 }
