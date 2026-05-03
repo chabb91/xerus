@@ -404,35 +404,22 @@ func (i *Absolute) Step(cpu *CPU, u *Umbrella) bool {
 		i.state = FETCH_OP_2
 	case FETCH_OP_2:
 		u.highByte = cpu.fetchByte()
-		if i.isXY {
-			//in read mode if X == 1 the register read can be done without consuming a cycle,
-			//but only if the page isnt crossed.
-			if i.checkP && cpu.r.hasFlag(FlagX) {
-				switch i.mode {
-				case BASE_MODE_Y:
-					i.register = cpu.r.GetY()
-				case BASE_MODE_X:
-					i.register = cpu.r.GetX()
-				}
-				u.result = createWord(u.highByte, u.lowByte)
-				if isPageBoundaryCrossed(u.result, u.result+i.register) {
-					i.state = EXTRA_CYCLE_P
-				} else {
-					i.state = READ_LO
-				}
-			} else {
-				i.state = REGISTER_READ
-			}
-		} else {
-			i.state = READ_LO
-		}
-	case REGISTER_READ:
+
 		switch i.mode {
 		case BASE_MODE_Y:
 			i.register = cpu.r.GetY()
 		case BASE_MODE_X:
 			i.register = cpu.r.GetX()
 		}
+		//in read mode if X == 1 the register read can be done without consuming a cycle,
+		//but only if the page isnt crossed.
+		if addr := createWord(u.highByte, u.lowByte); !i.isXY || (i.checkP &&
+			cpu.r.hasFlag(FlagX) && !isPageBoundaryCrossed(addr, addr+i.register)) {
+			i.state = READ_LO
+		} else {
+			i.state = REGISTER_READ
+		}
+	case REGISTER_READ:
 		i.state = READ_LO
 	case READ_LO:
 		u.addressLo, u.addressHi = absolute(cpu.r.DB, u.highByte, u.lowByte, i.register)
@@ -452,8 +439,6 @@ func (i *Absolute) Step(cpu *CPU, u *Umbrella) bool {
 	case READ_HI:
 		u.highByte = cpu.readByte(u.addressHi)
 		return true
-	case EXTRA_CYCLE_P:
-		i.state = READ_LO
 	}
 	return false
 }
