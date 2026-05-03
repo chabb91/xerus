@@ -60,7 +60,7 @@ func (c *registers) hasFlag(flag byte) bool {
 func (r *registers) GetStack() uint16 {
 	if r.E {
 		// Emulation mode: $01SS
-		return 0x0100 | maskHighByte(r.S)
+		return 0x0100 | (r.S & 0xFF)
 	}
 	// Native mode: $SSSS
 	return r.S
@@ -68,7 +68,7 @@ func (r *registers) GetStack() uint16 {
 
 func (r *registers) SetStack(val uint16) {
 	if r.E {
-		r.S = 0x0100 | maskHighByte(val)
+		r.S = 0x0100 | (val & 0xFF)
 	} else {
 		r.S = val
 	}
@@ -78,14 +78,14 @@ func (r *registers) EmulationON() {
 	if !r.E {
 		r.E = true
 		r.setP(r.P | 0x30)
-		r.S = 0x0100 | maskHighByte(r.S)
+		r.S = 0x0100 | (r.S & 0xFF)
 	}
 }
 
 // tests pass with just return r.X but i leave this in for peace of mind
 func (r *registers) GetX() uint16 {
 	if r.E || r.hasFlag(FlagX) {
-		return maskHighByte(r.X)
+		return r.X & 0xFF
 	} else {
 		return r.X
 	}
@@ -93,7 +93,7 @@ func (r *registers) GetX() uint16 {
 
 func (r *registers) SetX(val uint16) uint16 {
 	if r.E || r.hasFlag(FlagX) {
-		r.X = maskHighByte(val)
+		r.X = val & 0xFF
 	} else {
 		r.X = val
 	}
@@ -101,7 +101,7 @@ func (r *registers) SetX(val uint16) uint16 {
 }
 func (r *registers) GetA() uint16 {
 	if r.E || r.hasFlag(FlagM) {
-		return maskHighByte(r.A)
+		return r.A & 0xFF
 	} else {
 		return r.A
 	}
@@ -117,7 +117,7 @@ func (r *registers) SetA(val uint16) uint16 {
 }
 func (r *registers) GetY() uint16 {
 	if r.E || r.hasFlag(FlagX) {
-		return maskHighByte(r.Y)
+		return r.Y & 0xFF
 	} else {
 		return r.Y
 	}
@@ -125,7 +125,7 @@ func (r *registers) GetY() uint16 {
 
 func (r *registers) SetY(val uint16) uint16 {
 	if r.E || r.hasFlag(FlagX) {
-		r.Y = maskHighByte(val)
+		r.Y = val & 0xFF
 	} else {
 		r.Y = val
 	}

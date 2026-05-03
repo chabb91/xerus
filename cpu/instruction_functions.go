@@ -415,8 +415,8 @@ func xce(cpu *CPU) {
 
 	if cpu.r.E {
 		cpu.r.P |= 0x30
-		cpu.r.X = maskHighByte(cpu.r.X)
-		cpu.r.Y = maskHighByte(cpu.r.Y)
-		cpu.r.S = 0x0100 | maskHighByte(cpu.r.S)
+		cpu.r.X &= 0xFF
+		cpu.r.Y &= 0xFF
+		cpu.r.S = 0x0100 | (cpu.r.S & 0xFF)
 	}
 }
