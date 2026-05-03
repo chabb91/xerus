@@ -1,17 +1,45 @@
 package cpu
 
-// SetLowByte takes a 16-bit value and an 8-bit value,
-// and returns a new 16-bit value with the low byte updated.
-// The high byte of the original value is preserved.
-func SetLowByte(original *uint16, newLowByte byte) {
-	*original = *original&0xFF00 | uint16(newLowByte)
+// prevents the 24 bit memory from overflow
+func mask24(v uint32) uint32 { return v & 0x00FF_FFFF }
+
+// merges a 16 bit offset with a page bank returning a full 24 bit memory address
+func mapOffsetToBank(bank byte, addr uint16) uint32 {
+	return (uint32(bank) << 16) | uint32(addr)
 }
 
-// SetHighByte takes a 16-bit value and an 8-bit value,
-// and returns a new 16-bit value with the high byte updated.
-// The low byte of the original value is preserved.
-func SetHighByte(original *uint16, newHighByte byte) {
-	*original = *original&0x00FF | (uint16(newHighByte) << 8)
+// Relative 8-bit: target PC = (PC + int8(op1))
+// rel8 is tied to is PB and can never cross it. however it can cross pages
+func rel8(cpu *CPU, disp byte) {
+	cpu.r.PC += uint16(int8(disp))
+}
+
+// Relative 16-bit (BRL): 16-bit signed displacement
+// wraps at bank boundary so it jumps anywhere in the current PB
+func rel16(val uint16) uint16 {
+	return uint16(int16(val))
+}
+
+// Most likely the proper addressing logic for the Direct Page mode.
+// One main functions and 2 wrappers for convenience
+func directPageLogic(cpu *CPU, op byte, register uint16, isPEI bool) (addressLo, addressHi uint32) {
+	if cpu.isW() && cpu.r.E && !isPEI {
+		low := getLowByte(uint16(op) + register)
+		addressLo = mapOffsetToBank(0x00, createWord(getHighByte(cpu.r.D), low))
+		addressHi = mapOffsetToBank(0x00, createWord(getHighByte(cpu.r.D), low+1))
+	} else {
+		offset := cpu.r.D + uint16(op) + register
+		addressLo = mapOffsetToBank(0x00, offset)
+		addressHi = mapOffsetToBank(0x00, offset+1)
+	}
+
+	return addressLo, addressHi
+}
+
+func absolute(bank, high, low byte, register uint16) (addressLo, addressHi uint32) {
+	addressLo = mask24(mapOffsetToBank(bank, createWord(high, low)) + uint32(register))
+	addressHi = mask24(addressLo + 1)
+	return addressLo, addressHi
 }
 
 // high byte=AB of ABCD
@@ -24,21 +52,12 @@ func getLowByte(fullValue uint16) byte {
 	return byte(0x00FF & fullValue)
 }
 
-// masks CD of ABCD returning AB00
-func maskLowByte(fullValue uint16) uint16 {
-	return 0xFF00 & fullValue
-}
-
 // masks AB of ABCD returning 00CD
 func maskHighByte(fullValue uint16) uint16 {
 	return 0x00FF & fullValue
 }
 
 func isPageBoundaryCrossed(addr1, addr2 uint16) bool {
-	return (addr1 & 0xFF00) != (addr2 & 0xFF00)
-}
-
-func isPageBoundaryCrossed24(addr1, addr2 uint32) bool {
 	return (addr1 & 0xFF00) != (addr2 & 0xFF00)
 }
 
@@ -63,12 +82,6 @@ func splitWord(word uint16) (high, low byte) {
 	return high, low
 }
 
-func addByteToWordWithWrap(word uint16, b byte) uint16 {
-	b += getLowByte(word)
-	SetLowByte(&word, b)
-	return word
-}
-
 // check if the low byte of the D register is 0
 // needed for cycle calculations and for a legacy edge case in direct page addressing
 func (cpu *CPU) isW() bool {
@@ -81,21 +94,5 @@ func boolToBitCount(c bool) int {
 		return 8
 	} else {
 		return 16
-	}
-}
-
-func boolToFlag(b bool) byte {
-	if b {
-		return 1
-	} else {
-		return 0
-	}
-}
-
-func flagToBool(b byte) bool {
-	if b == 1 {
-		return true
-	} else {
-		return false
 	}
 }

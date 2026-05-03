@@ -241,7 +241,7 @@ func adc(val uint16, width int, cpu *CPU) (result uint16) {
 	mask1 := uint16((1 << width) - 1)
 	mask2 := uint16(1 << (width - 1))
 	a := cpu.r.GetA()
-	c := boolToFlag(cpu.r.hasFlag(FlagC))
+	c := min(cpu.r.P&FlagC, 1)
 
 	if cpu.r.hasFlag(FlagD) {
 		for i := 0; i < width; i += 4 {
@@ -282,7 +282,7 @@ func sbc(val uint16, width int, cpu *CPU) (result uint16) {
 	mask1 := uint16((1 << width) - 1)
 	mask2 := uint16(1 << (width - 1))
 	a := cpu.r.GetA()
-	c := boolToFlag(cpu.r.hasFlag(FlagC))
+	c := min(cpu.r.P&FlagC, 1)
 
 	if cpu.r.hasFlag(FlagD) {
 		for i := 0; i < width; i += 4 {

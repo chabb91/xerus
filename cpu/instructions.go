@@ -87,231 +87,230 @@ func NewInstructionMap() []Instruction {
 	ret[0x6A] = &Accumulator{instructionFunc: ror}
 	ret[0x2A] = &Accumulator{instructionFunc: rol}
 
-	ret[0x46] = &Umbrella{instructionFunc: lsr, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0x26] = &Umbrella{instructionFunc: rol, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0x06] = &Umbrella{instructionFunc: asl, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0x66] = &Umbrella{instructionFunc: ror, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
+	ret[0x46] = NewUmbrellaWrite(lsr, &Direct{mode: BASE_MODE}, false, false, false, false, is8BitM)
+	ret[0x26] = NewUmbrellaWrite(rol, &Direct{mode: BASE_MODE}, false, false, false, false, is8BitM)
+	ret[0x06] = NewUmbrellaWrite(asl, &Direct{mode: BASE_MODE}, false, false, false, false, is8BitM)
+	ret[0x66] = NewUmbrellaWrite(ror, &Direct{mode: BASE_MODE}, false, false, false, false, is8BitM)
 
-	ret[0x56] = &Umbrella{instructionFunc: lsr, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0x36] = &Umbrella{instructionFunc: rol, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0x16] = &Umbrella{instructionFunc: asl, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0x76] = &Umbrella{instructionFunc: ror, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
+	ret[0x56] = NewUmbrellaWrite(lsr, &Direct{mode: BASE_MODE_X}, false, false, false, false, is8BitM)
+	ret[0x36] = NewUmbrellaWrite(rol, &Direct{mode: BASE_MODE_X}, false, false, false, false, is8BitM)
+	ret[0x16] = NewUmbrellaWrite(asl, &Direct{mode: BASE_MODE_X}, false, false, false, false, is8BitM)
+	ret[0x76] = NewUmbrellaWrite(ror, &Direct{mode: BASE_MODE_X}, false, false, false, false, is8BitM)
 
-	ret[0x4E] = &Umbrella{instructionFunc: lsr, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0x2E] = &Umbrella{instructionFunc: rol, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0x0E] = &Umbrella{instructionFunc: asl, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0x6E] = &Umbrella{instructionFunc: ror, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0x4E] = NewUmbrellaWrite(lsr, &Absolute{mode: BASE_MODE}, false, false, false, false, is8BitM)
+	ret[0x2E] = NewUmbrellaWrite(rol, &Absolute{mode: BASE_MODE}, false, false, false, false, is8BitM)
+	ret[0x0E] = NewUmbrellaWrite(asl, &Absolute{mode: BASE_MODE}, false, false, false, false, is8BitM)
+	ret[0x6E] = NewUmbrellaWrite(ror, &Absolute{mode: BASE_MODE}, false, false, false, false, is8BitM)
 
-	ret[0x5E] = &Umbrella{instructionFunc: lsr, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X}}
-	ret[0x3E] = &Umbrella{instructionFunc: rol, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X}}
-	ret[0x1E] = &Umbrella{instructionFunc: asl, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X}}
-	ret[0x7E] = &Umbrella{instructionFunc: ror, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X}}
+	ret[0x5E] = NewUmbrellaWrite(lsr, &Absolute{mode: BASE_MODE_X}, false, false, false, false, is8BitM)
+	ret[0x3E] = NewUmbrellaWrite(rol, &Absolute{mode: BASE_MODE_X}, false, false, false, false, is8BitM)
+	ret[0x1E] = NewUmbrellaWrite(asl, &Absolute{mode: BASE_MODE_X}, false, false, false, false, is8BitM)
+	ret[0x7E] = NewUmbrellaWrite(ror, &Absolute{mode: BASE_MODE_X}, false, false, false, false, is8BitM)
 
 	//Test and Set/Test and Reset bits
-	ret[0x1C] = &Umbrella{instructionFunc: trb, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0x0C] = &Umbrella{instructionFunc: tsb, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0x14] = &Umbrella{instructionFunc: trb, mode: WRITE_RAM, checkM: true, addressMode: &Direct{isPEI: false, mode: BASE_MODE}}
-	ret[0x04] = &Umbrella{instructionFunc: tsb, mode: WRITE_RAM, checkM: true, addressMode: &Direct{isPEI: false, mode: BASE_MODE}}
+	ret[0x1C] = NewUmbrellaWrite(trb, &Absolute{mode: BASE_MODE}, false, false, false, false, is8BitM)
+	ret[0x0C] = NewUmbrellaWrite(tsb, &Absolute{mode: BASE_MODE}, false, false, false, false, is8BitM)
+	ret[0x14] = NewUmbrellaWrite(trb, &Direct{mode: BASE_MODE}, false, false, false, false, is8BitM)
+	ret[0x04] = NewUmbrellaWrite(tsb, &Direct{mode: BASE_MODE}, false, false, false, false, is8BitM)
 
 	//all 14 sta instructions
-	ret[0x81] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, reverseWrites: true, combineExecuteAndWrite: true, addressMode: &Direct{mode: INDEXED_INDIRECT}}
-	ret[0x83] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &StackS{mode: BASE_MODE}}
-	ret[0x85] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0x87] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, reverseWrites: true, checkM: true, combineExecuteAndWrite: true, addressMode: &Direct{mode: INDIRECT_LONG}}
-	ret[0x8D] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0x8F] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Long{mode: BASE_MODE}}
-	ret[0x91] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, reverseWrites: true, checkM: true, addressMode: &Direct{mode: INDIRECT_INDEXED}}
-	ret[0x92] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, reverseWrites: true, checkM: true, combineExecuteAndWrite: true, addressMode: &Direct{mode: INDIRECT}}
-	ret[0x93] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &StackS{mode: INDIRECT_INDEXED}}
-	ret[0x95] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0x97] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, reverseWrites: true, checkM: true, combineExecuteAndWrite: true, addressMode: &Direct{mode: INDIRECT_LONG_INDEXED}}
-	ret[0x99] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Absolute{mode: BASE_MODE_Y}}
-	ret[0x9D] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Absolute{mode: BASE_MODE_X}}
-	ret[0x9F] = &Umbrella{instructionFunc: sta, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Long{mode: BASE_MODE_X}}
+	ret[0x81] = NewUmbrellaWrite(sta, &Direct{mode: INDEXED_INDIRECT}, true, true, false, false, is8BitM)
+	ret[0x83] = NewUmbrellaWrite(sta, &StackS{mode: BASE_MODE}, true, true, true, false, is8BitM)
+	ret[0x85] = NewUmbrellaWrite(sta, &Direct{mode: BASE_MODE}, true, true, true, false, is8BitM)
+	ret[0x87] = NewUmbrellaWrite(sta, &Direct{mode: INDIRECT_LONG}, true, true, true, false, is8BitM)
+	ret[0x8D] = NewUmbrellaWrite(sta, &Absolute{mode: BASE_MODE}, true, true, true, false, is8BitM)
+	ret[0x8F] = NewUmbrellaWrite(sta, &Long{mode: BASE_MODE}, true, true, true, false, is8BitM)
+	ret[0x91] = NewUmbrellaWrite(sta, &Direct{mode: INDIRECT_INDEXED}, true, false, false, false, is8BitM)
+	ret[0x92] = NewUmbrellaWrite(sta, &Direct{mode: INDIRECT}, true, true, false, false, is8BitM)
+	ret[0x93] = NewUmbrellaWrite(sta, &StackS{mode: INDIRECT_INDEXED}, true, true, true, false, is8BitM)
+	ret[0x95] = NewUmbrellaWrite(sta, &Direct{mode: BASE_MODE_X}, true, true, true, false, is8BitM)
+	ret[0x97] = NewUmbrellaWrite(sta, &Direct{mode: INDIRECT_LONG_INDEXED}, true, true, false, false, is8BitM)
+	ret[0x99] = NewUmbrellaWrite(sta, &Absolute{mode: BASE_MODE_Y}, true, true, true, false, is8BitM)
+	ret[0x9D] = NewUmbrellaWrite(sta, &Absolute{mode: BASE_MODE_X}, true, true, true, false, is8BitM)
+	ret[0x9F] = NewUmbrellaWrite(sta, &Long{mode: BASE_MODE_X}, true, true, true, false, is8BitM)
 
 	//all 3 stx instructions
-	ret[0x86] = &Umbrella{instructionFunc: stx, mode: WRITE_RAM, checkX: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0x8E] = &Umbrella{instructionFunc: stx, mode: WRITE_RAM, checkX: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0x96] = &Umbrella{instructionFunc: stx, mode: WRITE_RAM, checkX: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE_Y}}
-
+	ret[0x86] = NewUmbrellaWrite(stx, &Direct{mode: BASE_MODE}, true, true, true, false, is8BitX)
+	ret[0x8E] = NewUmbrellaWrite(stx, &Absolute{mode: BASE_MODE}, true, true, true, false, is8BitX)
+	ret[0x96] = NewUmbrellaWrite(stx, &Direct{mode: BASE_MODE_Y}, true, true, true, false, is8BitX)
 	//all 3 sty instructions
-	ret[0x84] = &Umbrella{instructionFunc: sty, mode: WRITE_RAM, checkX: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0x8C] = &Umbrella{instructionFunc: sty, mode: WRITE_RAM, checkX: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0x94] = &Umbrella{instructionFunc: sty, mode: WRITE_RAM, checkX: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE_X}}
+	ret[0x84] = NewUmbrellaWrite(sty, &Direct{mode: BASE_MODE}, true, true, true, false, is8BitX)
+	ret[0x8C] = NewUmbrellaWrite(sty, &Absolute{mode: BASE_MODE}, true, true, true, false, is8BitX)
+	ret[0x94] = NewUmbrellaWrite(sty, &Direct{mode: BASE_MODE_X}, true, true, true, false, is8BitX)
 
 	//all 4 stz instructions
-	ret[0x64] = &Umbrella{instructionFunc: stz, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0x74] = &Umbrella{instructionFunc: stz, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0x9C] = &Umbrella{instructionFunc: stz, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0x9E] = &Umbrella{instructionFunc: stz, mode: WRITE_RAM, checkM: true, executeInFetch: true, combineExecuteAndWrite: true, reverseWrites: true, addressMode: &Absolute{mode: BASE_MODE_X}}
+	ret[0x64] = NewUmbrellaWrite(stz, &Direct{mode: BASE_MODE}, true, true, true, false, is8BitM)
+	ret[0x74] = NewUmbrellaWrite(stz, &Direct{mode: BASE_MODE_X}, true, true, true, false, is8BitM)
+	ret[0x9C] = NewUmbrellaWrite(stz, &Absolute{mode: BASE_MODE}, true, true, true, false, is8BitM)
+	ret[0x9E] = NewUmbrellaWrite(stz, &Absolute{mode: BASE_MODE_X}, true, true, true, false, is8BitM)
 
 	//all 15 LDA instructions
-	ret[0xA1] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDEXED_INDIRECT}}
-	ret[0xA3] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: BASE_MODE}}
-	ret[0xA5] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0xA7] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG}}
-	ret[0xA9] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Immediate{mode: CHECK_PARENT}}
-	ret[0xAD] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0xAF] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE}}
-	ret[0xB1] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_INDEXED, checkP: true}}
-	ret[0xB2] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT}}
-	ret[0xB3] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: INDIRECT_INDEXED}}
-	ret[0xB5] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0xB7] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG_INDEXED}}
-	ret[0xB9] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_Y, checkP: true}}
-	ret[0xBD] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
-	ret[0xBF] = &Umbrella{instructionFunc: lda, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE_X}}
+	ret[0xA1] = NewUmbrellaRead(lda, &Direct{mode: INDEXED_INDIRECT}, is8BitM)
+	ret[0xA3] = NewUmbrellaRead(lda, &StackS{mode: BASE_MODE}, is8BitM)
+	ret[0xA5] = NewUmbrellaRead(lda, &Direct{mode: BASE_MODE}, is8BitM)
+	ret[0xA7] = NewUmbrellaRead(lda, &Direct{mode: INDIRECT_LONG}, is8BitM)
+	ret[0xA9] = NewUmbrellaRead(lda, &Immediate{mode: CHECK_PARENT}, is8BitM)
+	ret[0xAD] = NewUmbrellaRead(lda, &Absolute{mode: BASE_MODE}, is8BitM)
+	ret[0xAF] = NewUmbrellaRead(lda, &Long{mode: BASE_MODE}, is8BitM)
+	ret[0xB1] = NewUmbrellaRead(lda, &Direct{mode: INDIRECT_INDEXED}, is8BitM)
+	ret[0xB2] = NewUmbrellaRead(lda, &Direct{mode: INDIRECT}, is8BitM)
+	ret[0xB3] = NewUmbrellaRead(lda, &StackS{mode: INDIRECT_INDEXED}, is8BitM)
+	ret[0xB5] = NewUmbrellaRead(lda, &Direct{mode: BASE_MODE_X}, is8BitM)
+	ret[0xB7] = NewUmbrellaRead(lda, &Direct{mode: INDIRECT_LONG_INDEXED}, is8BitM)
+	ret[0xB9] = NewUmbrellaRead(lda, &Absolute{mode: BASE_MODE_Y}, is8BitM)
+	ret[0xBD] = NewUmbrellaRead(lda, &Absolute{mode: BASE_MODE_X}, is8BitM)
+	ret[0xBF] = NewUmbrellaRead(lda, &Long{mode: BASE_MODE_X}, is8BitM)
 
 	//all 5 LDX instructions
-	ret[0xA2] = &Umbrella{instructionFunc: ldx, mode: READ_RAM, checkX: true, addressMode: &Immediate{mode: CHECK_PARENT}}
-	ret[0xA6] = &Umbrella{instructionFunc: ldx, mode: READ_RAM, checkX: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0xAE] = &Umbrella{instructionFunc: ldx, mode: READ_RAM, checkX: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0xB6] = &Umbrella{instructionFunc: ldx, mode: READ_RAM, checkX: true, addressMode: &Direct{mode: BASE_MODE_Y}}
-	ret[0xBE] = &Umbrella{instructionFunc: ldx, mode: READ_RAM, checkX: true, addressMode: &Absolute{mode: BASE_MODE_Y, checkP: true}}
+	ret[0xA2] = NewUmbrellaRead(ldx, &Immediate{mode: CHECK_PARENT}, is8BitX)
+	ret[0xA6] = NewUmbrellaRead(ldx, &Direct{mode: BASE_MODE}, is8BitX)
+	ret[0xAE] = NewUmbrellaRead(ldx, &Absolute{mode: BASE_MODE}, is8BitX)
+	ret[0xB6] = NewUmbrellaRead(ldx, &Direct{mode: BASE_MODE_Y}, is8BitX)
+	ret[0xBE] = NewUmbrellaRead(ldx, &Absolute{mode: BASE_MODE_Y}, is8BitX)
 
 	//all 5 LDY instructions
-	ret[0xA0] = &Umbrella{instructionFunc: ldy, mode: READ_RAM, checkX: true, addressMode: &Immediate{mode: CHECK_PARENT}}
-	ret[0xA4] = &Umbrella{instructionFunc: ldy, mode: READ_RAM, checkX: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0xAC] = &Umbrella{instructionFunc: ldy, mode: READ_RAM, checkX: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0xB4] = &Umbrella{instructionFunc: ldy, mode: READ_RAM, checkX: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0xBC] = &Umbrella{instructionFunc: ldy, mode: READ_RAM, checkX: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
+	ret[0xA0] = NewUmbrellaRead(ldy, &Immediate{mode: CHECK_PARENT}, is8BitX)
+	ret[0xA4] = NewUmbrellaRead(ldy, &Direct{mode: BASE_MODE}, is8BitX)
+	ret[0xAC] = NewUmbrellaRead(ldy, &Absolute{mode: BASE_MODE}, is8BitX)
+	ret[0xB4] = NewUmbrellaRead(ldy, &Direct{mode: BASE_MODE_X}, is8BitX)
+	ret[0xBC] = NewUmbrellaRead(ldy, &Absolute{mode: BASE_MODE_X}, is8BitX)
 
 	//test BITs
-	ret[0x89] = &Umbrella{instructionFunc: bit_imm, mode: READ_RAM, checkM: true, addressMode: &Immediate{mode: CHECK_PARENT}}
-	ret[0x24] = &Umbrella{instructionFunc: bit, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0x2C] = &Umbrella{instructionFunc: bit, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0x34] = &Umbrella{instructionFunc: bit, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0x3C] = &Umbrella{instructionFunc: bit, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
+	ret[0x89] = NewUmbrellaRead(bit_imm, &Immediate{mode: CHECK_PARENT}, is8BitM)
+	ret[0x24] = NewUmbrellaRead(bit, &Direct{mode: BASE_MODE}, is8BitM)
+	ret[0x2C] = NewUmbrellaRead(bit, &Absolute{mode: BASE_MODE}, is8BitM)
+	ret[0x34] = NewUmbrellaRead(bit, &Direct{mode: BASE_MODE_X}, is8BitM)
+	ret[0x3C] = NewUmbrellaRead(bit, &Absolute{mode: BASE_MODE_X}, is8BitM)
 
 	//bitwise AND all 15
-	ret[0x21] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDEXED_INDIRECT}}
-	ret[0x23] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: BASE_MODE}}
-	ret[0x25] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0x27] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG}}
-	ret[0x29] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Immediate{mode: CHECK_PARENT}}
-	ret[0x2D] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0x2F] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE}}
-	ret[0x31] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_INDEXED, checkP: true}}
-	ret[0x32] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT}}
-	ret[0x33] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: INDIRECT_INDEXED}}
-	ret[0x35] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0x37] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG_INDEXED}}
-	ret[0x39] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_Y, checkP: true}}
-	ret[0x3D] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
-	ret[0x3F] = &Umbrella{instructionFunc: and, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE_X}}
+	ret[0x21] = NewUmbrellaRead(and, &Direct{mode: INDEXED_INDIRECT}, is8BitM)
+	ret[0x23] = NewUmbrellaRead(and, &StackS{mode: BASE_MODE}, is8BitM)
+	ret[0x25] = NewUmbrellaRead(and, &Direct{mode: BASE_MODE}, is8BitM)
+	ret[0x27] = NewUmbrellaRead(and, &Direct{mode: INDIRECT_LONG}, is8BitM)
+	ret[0x29] = NewUmbrellaRead(and, &Immediate{mode: CHECK_PARENT}, is8BitM)
+	ret[0x2D] = NewUmbrellaRead(and, &Absolute{mode: BASE_MODE}, is8BitM)
+	ret[0x2F] = NewUmbrellaRead(and, &Long{mode: BASE_MODE}, is8BitM)
+	ret[0x31] = NewUmbrellaRead(and, &Direct{mode: INDIRECT_INDEXED}, is8BitM)
+	ret[0x32] = NewUmbrellaRead(and, &Direct{mode: INDIRECT}, is8BitM)
+	ret[0x33] = NewUmbrellaRead(and, &StackS{mode: INDIRECT_INDEXED}, is8BitM)
+	ret[0x35] = NewUmbrellaRead(and, &Direct{mode: BASE_MODE_X}, is8BitM)
+	ret[0x37] = NewUmbrellaRead(and, &Direct{mode: INDIRECT_LONG_INDEXED}, is8BitM)
+	ret[0x39] = NewUmbrellaRead(and, &Absolute{mode: BASE_MODE_Y}, is8BitM)
+	ret[0x3D] = NewUmbrellaRead(and, &Absolute{mode: BASE_MODE_X}, is8BitM)
+	ret[0x3F] = NewUmbrellaRead(and, &Long{mode: BASE_MODE_X}, is8BitM)
 
 	//bitwise EOR all 15
-	ret[0x41] = &Umbrella{instructionFunc: eor, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDEXED_INDIRECT}}
-	ret[0x43] = &Umbrella{instructionFunc: eor, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: BASE_MODE}}
-	ret[0x45] = &Umbrella{instructionFunc: eor, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0x47] = &Umbrella{instructionFunc: eor, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG}}
-	ret[0x49] = &Umbrella{instructionFunc: eor, mode: READ_RAM, checkM: true, addressMode: &Immediate{mode: CHECK_PARENT}}
-	ret[0x4D] = &Umbrella{instructionFunc: eor, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0x4F] = &Umbrella{instructionFunc: eor, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE}}
-	ret[0x51] = &Umbrella{instructionFunc: eor, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_INDEXED, checkP: true}}
-	ret[0x52] = &Umbrella{instructionFunc: eor, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT}}
-	ret[0x53] = &Umbrella{instructionFunc: eor, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: INDIRECT_INDEXED}}
-	ret[0x55] = &Umbrella{instructionFunc: eor, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0x57] = &Umbrella{instructionFunc: eor, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG_INDEXED}}
-	ret[0x59] = &Umbrella{instructionFunc: eor, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_Y, checkP: true}}
-	ret[0x5D] = &Umbrella{instructionFunc: eor, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
-	ret[0x5F] = &Umbrella{instructionFunc: eor, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE_X}}
+	ret[0x41] = NewUmbrellaRead(eor, &Direct{mode: INDEXED_INDIRECT}, is8BitM)
+	ret[0x43] = NewUmbrellaRead(eor, &StackS{mode: BASE_MODE}, is8BitM)
+	ret[0x45] = NewUmbrellaRead(eor, &Direct{mode: BASE_MODE}, is8BitM)
+	ret[0x47] = NewUmbrellaRead(eor, &Direct{mode: INDIRECT_LONG}, is8BitM)
+	ret[0x49] = NewUmbrellaRead(eor, &Immediate{mode: CHECK_PARENT}, is8BitM)
+	ret[0x4D] = NewUmbrellaRead(eor, &Absolute{mode: BASE_MODE}, is8BitM)
+	ret[0x4F] = NewUmbrellaRead(eor, &Long{mode: BASE_MODE}, is8BitM)
+	ret[0x51] = NewUmbrellaRead(eor, &Direct{mode: INDIRECT_INDEXED}, is8BitM)
+	ret[0x52] = NewUmbrellaRead(eor, &Direct{mode: INDIRECT}, is8BitM)
+	ret[0x53] = NewUmbrellaRead(eor, &StackS{mode: INDIRECT_INDEXED}, is8BitM)
+	ret[0x55] = NewUmbrellaRead(eor, &Direct{mode: BASE_MODE_X}, is8BitM)
+	ret[0x57] = NewUmbrellaRead(eor, &Direct{mode: INDIRECT_LONG_INDEXED}, is8BitM)
+	ret[0x59] = NewUmbrellaRead(eor, &Absolute{mode: BASE_MODE_Y}, is8BitM)
+	ret[0x5D] = NewUmbrellaRead(eor, &Absolute{mode: BASE_MODE_X}, is8BitM)
+	ret[0x5F] = NewUmbrellaRead(eor, &Long{mode: BASE_MODE_X}, is8BitM)
 
 	//bitwise ORA all 15
-	ret[0x01] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDEXED_INDIRECT}}
-	ret[0x03] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: BASE_MODE}}
-	ret[0x05] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0x07] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG}}
-	ret[0x09] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &Immediate{mode: CHECK_PARENT}}
-	ret[0x0D] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0x0F] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE}}
-	ret[0x11] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_INDEXED, checkP: true}}
-	ret[0x12] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT}}
-	ret[0x13] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: INDIRECT_INDEXED}}
-	ret[0x15] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0x17] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG_INDEXED}}
-	ret[0x19] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_Y, checkP: true}}
-	ret[0x1D] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
-	ret[0x1F] = &Umbrella{instructionFunc: ora, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE_X}}
+	ret[0x01] = NewUmbrellaRead(ora, &Direct{mode: INDEXED_INDIRECT}, is8BitM)
+	ret[0x03] = NewUmbrellaRead(ora, &StackS{mode: BASE_MODE}, is8BitM)
+	ret[0x05] = NewUmbrellaRead(ora, &Direct{mode: BASE_MODE}, is8BitM)
+	ret[0x07] = NewUmbrellaRead(ora, &Direct{mode: INDIRECT_LONG}, is8BitM)
+	ret[0x09] = NewUmbrellaRead(ora, &Immediate{mode: CHECK_PARENT}, is8BitM)
+	ret[0x0D] = NewUmbrellaRead(ora, &Absolute{mode: BASE_MODE}, is8BitM)
+	ret[0x0F] = NewUmbrellaRead(ora, &Long{mode: BASE_MODE}, is8BitM)
+	ret[0x11] = NewUmbrellaRead(ora, &Direct{mode: INDIRECT_INDEXED}, is8BitM)
+	ret[0x12] = NewUmbrellaRead(ora, &Direct{mode: INDIRECT}, is8BitM)
+	ret[0x13] = NewUmbrellaRead(ora, &StackS{mode: INDIRECT_INDEXED}, is8BitM)
+	ret[0x15] = NewUmbrellaRead(ora, &Direct{mode: BASE_MODE_X}, is8BitM)
+	ret[0x17] = NewUmbrellaRead(ora, &Direct{mode: INDIRECT_LONG_INDEXED}, is8BitM)
+	ret[0x19] = NewUmbrellaRead(ora, &Absolute{mode: BASE_MODE_Y}, is8BitM)
+	ret[0x1D] = NewUmbrellaRead(ora, &Absolute{mode: BASE_MODE_X}, is8BitM)
+	ret[0x1F] = NewUmbrellaRead(ora, &Long{mode: BASE_MODE_X}, is8BitM)
 
 	//DECrement
 	ret[0x3A] = &Accumulator{instructionFunc: dec}
-	ret[0xC6] = &Umbrella{instructionFunc: dec, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0xCE] = &Umbrella{instructionFunc: dec, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0xD6] = &Umbrella{instructionFunc: dec, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0xDE] = &Umbrella{instructionFunc: dec, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X}}
+	ret[0xC6] = NewUmbrellaWrite(dec, &Direct{mode: BASE_MODE}, false, false, false, false, is8BitM)
+	ret[0xCE] = NewUmbrellaWrite(dec, &Absolute{mode: BASE_MODE}, false, false, false, false, is8BitM)
+	ret[0xD6] = NewUmbrellaWrite(dec, &Direct{mode: BASE_MODE_X}, false, false, false, false, is8BitM)
+	ret[0xDE] = NewUmbrellaWrite(dec, &Absolute{mode: BASE_MODE_X}, false, false, false, false, is8BitM)
 	ret[0xCA] = &TwoCycleImplied{instructionFunc: decX}
 	ret[0x88] = &TwoCycleImplied{instructionFunc: decY}
 
 	//INCrement
 	ret[0x1A] = &Accumulator{instructionFunc: inc}
-	ret[0xE6] = &Umbrella{instructionFunc: inc, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0xEE] = &Umbrella{instructionFunc: inc, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0xF6] = &Umbrella{instructionFunc: inc, mode: WRITE_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0xFE] = &Umbrella{instructionFunc: inc, mode: WRITE_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X}}
+	ret[0xE6] = NewUmbrellaWrite(inc, &Direct{mode: BASE_MODE}, false, false, false, false, is8BitM)
+	ret[0xEE] = NewUmbrellaWrite(inc, &Absolute{mode: BASE_MODE}, false, false, false, false, is8BitM)
+	ret[0xF6] = NewUmbrellaWrite(inc, &Direct{mode: BASE_MODE_X}, false, false, false, false, is8BitM)
+	ret[0xFE] = NewUmbrellaWrite(inc, &Absolute{mode: BASE_MODE_X}, false, false, false, false, is8BitM)
 	ret[0xE8] = &TwoCycleImplied{instructionFunc: incX}
 	ret[0xC8] = &TwoCycleImplied{instructionFunc: incY}
 
 	//CoMPare all 15
-	ret[0xC1] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDEXED_INDIRECT}}
-	ret[0xC3] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: BASE_MODE}}
-	ret[0xC5] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0xC7] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG}}
-	ret[0xC9] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &Immediate{mode: CHECK_PARENT}}
-	ret[0xCD] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0xCF] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE}}
-	ret[0xD1] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_INDEXED, checkP: true}}
-	ret[0xD2] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT}}
-	ret[0xD3] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: INDIRECT_INDEXED}}
-	ret[0xD5] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0xD7] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG_INDEXED}}
-	ret[0xD9] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_Y, checkP: true}}
-	ret[0xDD] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
-	ret[0xDF] = &Umbrella{instructionFunc: cmp, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE_X}}
+	ret[0xC1] = NewUmbrellaRead(cmp, &Direct{mode: INDEXED_INDIRECT}, is8BitM)
+	ret[0xC3] = NewUmbrellaRead(cmp, &StackS{mode: BASE_MODE}, is8BitM)
+	ret[0xC5] = NewUmbrellaRead(cmp, &Direct{mode: BASE_MODE}, is8BitM)
+	ret[0xC7] = NewUmbrellaRead(cmp, &Direct{mode: INDIRECT_LONG}, is8BitM)
+	ret[0xC9] = NewUmbrellaRead(cmp, &Immediate{mode: CHECK_PARENT}, is8BitM)
+	ret[0xCD] = NewUmbrellaRead(cmp, &Absolute{mode: BASE_MODE}, is8BitM)
+	ret[0xCF] = NewUmbrellaRead(cmp, &Long{mode: BASE_MODE}, is8BitM)
+	ret[0xD1] = NewUmbrellaRead(cmp, &Direct{mode: INDIRECT_INDEXED}, is8BitM)
+	ret[0xD2] = NewUmbrellaRead(cmp, &Direct{mode: INDIRECT}, is8BitM)
+	ret[0xD3] = NewUmbrellaRead(cmp, &StackS{mode: INDIRECT_INDEXED}, is8BitM)
+	ret[0xD5] = NewUmbrellaRead(cmp, &Direct{mode: BASE_MODE_X}, is8BitM)
+	ret[0xD7] = NewUmbrellaRead(cmp, &Direct{mode: INDIRECT_LONG_INDEXED}, is8BitM)
+	ret[0xD9] = NewUmbrellaRead(cmp, &Absolute{mode: BASE_MODE_Y}, is8BitM)
+	ret[0xDD] = NewUmbrellaRead(cmp, &Absolute{mode: BASE_MODE_X}, is8BitM)
+	ret[0xDF] = NewUmbrellaRead(cmp, &Long{mode: BASE_MODE_X}, is8BitM)
 
 	//all 3 cpX
-	ret[0xE0] = &Umbrella{instructionFunc: cpX, mode: READ_RAM, checkX: true, addressMode: &Immediate{mode: CHECK_PARENT}}
-	ret[0xE4] = &Umbrella{instructionFunc: cpX, mode: READ_RAM, checkX: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0xEC] = &Umbrella{instructionFunc: cpX, mode: READ_RAM, checkX: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0xE0] = NewUmbrellaRead(cpX, &Immediate{mode: CHECK_PARENT}, is8BitX)
+	ret[0xE4] = NewUmbrellaRead(cpX, &Direct{mode: BASE_MODE}, is8BitX)
+	ret[0xEC] = NewUmbrellaRead(cpX, &Absolute{mode: BASE_MODE}, is8BitX)
 
 	//all 3 cpY
-	ret[0xC0] = &Umbrella{instructionFunc: cpY, mode: READ_RAM, checkX: true, addressMode: &Immediate{mode: CHECK_PARENT}}
-	ret[0xC4] = &Umbrella{instructionFunc: cpY, mode: READ_RAM, checkX: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0xCC] = &Umbrella{instructionFunc: cpY, mode: READ_RAM, checkX: true, addressMode: &Absolute{mode: BASE_MODE}}
+	ret[0xC0] = NewUmbrellaRead(cpY, &Immediate{mode: CHECK_PARENT}, is8BitX)
+	ret[0xC4] = NewUmbrellaRead(cpY, &Direct{mode: BASE_MODE}, is8BitX)
+	ret[0xCC] = NewUmbrellaRead(cpY, &Absolute{mode: BASE_MODE}, is8BitX)
 
 	//ADC x15
-	ret[0x61] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDEXED_INDIRECT}}
-	ret[0x63] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: BASE_MODE}}
-	ret[0x65] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0x67] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG}}
-	ret[0x69] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Immediate{mode: CHECK_PARENT}}
-	ret[0x6D] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0x6F] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE}}
-	ret[0x71] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_INDEXED, checkP: true}}
-	ret[0x72] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT}}
-	ret[0x73] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: INDIRECT_INDEXED}}
-	ret[0x75] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0x77] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG_INDEXED}}
-	ret[0x79] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_Y, checkP: true}}
-	ret[0x7D] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
-	ret[0x7F] = &Umbrella{instructionFunc: adc, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE_X}}
+	ret[0x61] = NewUmbrellaRead(adc, &Direct{mode: INDEXED_INDIRECT}, is8BitM)
+	ret[0x63] = NewUmbrellaRead(adc, &StackS{mode: BASE_MODE}, is8BitM)
+	ret[0x65] = NewUmbrellaRead(adc, &Direct{mode: BASE_MODE}, is8BitM)
+	ret[0x67] = NewUmbrellaRead(adc, &Direct{mode: INDIRECT_LONG}, is8BitM)
+	ret[0x69] = NewUmbrellaRead(adc, &Immediate{mode: CHECK_PARENT}, is8BitM)
+	ret[0x6D] = NewUmbrellaRead(adc, &Absolute{mode: BASE_MODE}, is8BitM)
+	ret[0x6F] = NewUmbrellaRead(adc, &Long{mode: BASE_MODE}, is8BitM)
+	ret[0x71] = NewUmbrellaRead(adc, &Direct{mode: INDIRECT_INDEXED}, is8BitM)
+	ret[0x72] = NewUmbrellaRead(adc, &Direct{mode: INDIRECT}, is8BitM)
+	ret[0x73] = NewUmbrellaRead(adc, &StackS{mode: INDIRECT_INDEXED}, is8BitM)
+	ret[0x75] = NewUmbrellaRead(adc, &Direct{mode: BASE_MODE_X}, is8BitM)
+	ret[0x77] = NewUmbrellaRead(adc, &Direct{mode: INDIRECT_LONG_INDEXED}, is8BitM)
+	ret[0x79] = NewUmbrellaRead(adc, &Absolute{mode: BASE_MODE_Y}, is8BitM)
+	ret[0x7D] = NewUmbrellaRead(adc, &Absolute{mode: BASE_MODE_X}, is8BitM)
+	ret[0x7F] = NewUmbrellaRead(adc, &Long{mode: BASE_MODE_X}, is8BitM)
 
-	//ADC x15
-	ret[0xE1] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDEXED_INDIRECT}}
-	ret[0xE3] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: BASE_MODE}}
-	ret[0xE5] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE}}
-	ret[0xE7] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG}}
-	ret[0xE9] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Immediate{mode: CHECK_PARENT}}
-	ret[0xED] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE}}
-	ret[0xEF] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE}}
-	ret[0xF1] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_INDEXED, checkP: true}}
-	ret[0xF2] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT}}
-	ret[0xF3] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &StackS{mode: INDIRECT_INDEXED}}
-	ret[0xF5] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: BASE_MODE_X}}
-	ret[0xF7] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Direct{mode: INDIRECT_LONG_INDEXED}}
-	ret[0xF9] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_Y, checkP: true}}
-	ret[0xFD] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Absolute{mode: BASE_MODE_X, checkP: true}}
-	ret[0xFF] = &Umbrella{instructionFunc: sbc, mode: READ_RAM, checkM: true, addressMode: &Long{mode: BASE_MODE_X}}
+	//SBC x15
+	ret[0xE1] = NewUmbrellaRead(sbc, &Direct{mode: INDEXED_INDIRECT}, is8BitM)
+	ret[0xE3] = NewUmbrellaRead(sbc, &StackS{mode: BASE_MODE}, is8BitM)
+	ret[0xE5] = NewUmbrellaRead(sbc, &Direct{mode: BASE_MODE}, is8BitM)
+	ret[0xE7] = NewUmbrellaRead(sbc, &Direct{mode: INDIRECT_LONG}, is8BitM)
+	ret[0xE9] = NewUmbrellaRead(sbc, &Immediate{mode: CHECK_PARENT}, is8BitM)
+	ret[0xED] = NewUmbrellaRead(sbc, &Absolute{mode: BASE_MODE}, is8BitM)
+	ret[0xEF] = NewUmbrellaRead(sbc, &Long{mode: BASE_MODE}, is8BitM)
+	ret[0xF1] = NewUmbrellaRead(sbc, &Direct{mode: INDIRECT_INDEXED}, is8BitM)
+	ret[0xF2] = NewUmbrellaRead(sbc, &Direct{mode: INDIRECT}, is8BitM)
+	ret[0xF3] = NewUmbrellaRead(sbc, &StackS{mode: INDIRECT_INDEXED}, is8BitM)
+	ret[0xF5] = NewUmbrellaRead(sbc, &Direct{mode: BASE_MODE_X}, is8BitM)
+	ret[0xF7] = NewUmbrellaRead(sbc, &Direct{mode: INDIRECT_LONG_INDEXED}, is8BitM)
+	ret[0xF9] = NewUmbrellaRead(sbc, &Absolute{mode: BASE_MODE_Y}, is8BitM)
+	ret[0xFD] = NewUmbrellaRead(sbc, &Absolute{mode: BASE_MODE_X}, is8BitM)
+	ret[0xFF] = NewUmbrellaRead(sbc, &Long{mode: BASE_MODE_X}, is8BitM)
 
 	//transfer to and from direct register/ accumulator
 	ret[0xAA] = &TwoCycleImplied{instructionFunc: tax}
@@ -349,9 +348,9 @@ func NewInstructionMap() []Instruction {
 	ret[0x7A] = &PullAXY{flag: FlagX, register: func(val uint16, cpu *CPU) uint16 { return cpu.r.SetY(val) }}
 
 	//PEA/PEI/PER
-	ret[0xF4] = &Umbrella{instructionFunc: peAI, mode: WRITE_RAM, combineExecuteAndWrite: true, stackWrite: true, addressMode: &Immediate{mode: LOCKED_16}}
-	ret[0xD4] = &Umbrella{instructionFunc: peAI, mode: WRITE_RAM, combineExecuteAndWrite: true, stackWrite: true, addressMode: &Direct{mode: BASE_MODE, isPEI: true}}
-	ret[0x62] = &Umbrella{instructionFunc: per, mode: WRITE_RAM, stackWrite: true, addressMode: &Immediate{mode: LOCKED_16}}
+	ret[0xF4] = NewUmbrellaWrite(peAI, &Immediate{mode: LOCKED_16}, false, true, false, true, isNot8Bit)
+	ret[0xD4] = NewUmbrellaWrite(peAI, &Direct{mode: BASE_MODE, isPEI: true}, false, true, false, true, isNot8Bit)
+	ret[0x62] = NewUmbrellaWrite(per, &Immediate{mode: LOCKED_16}, false, false, false, true, isNot8Bit)
 
 	//MVN/MVP
 	ret[0x44] = &SrcDest{isPositive: true}

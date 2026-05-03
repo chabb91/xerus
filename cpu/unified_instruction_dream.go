@@ -53,6 +53,7 @@ const (
 // and resolves the write addresses and fetches the data so the outer state doesn't have to be aware
 // of how the data is being obtained
 type AccessMicroInstruction interface {
+	Setup(*Umbrella)
 	Step(cpu *CPU, u *Umbrella) bool
 	Reset(cpu *CPU)
 }
@@ -62,10 +63,9 @@ type Umbrella struct {
 	mode   IOType
 	result uint16
 
-	checkM        bool
-	checkX        bool
-	reverseWrites bool
+	is8Bit func(*CPU) bool
 
+	reverseWrites          bool
 	combineExecuteAndWrite bool
 	executeInFetch         bool
 	stackWrite             bool
@@ -76,6 +76,43 @@ type Umbrella struct {
 	addressMode AccessMicroInstruction
 
 	instructionFunc instructionFuncWith16BitReturn
+}
+
+func NewUmbrellaWrite(ifunc instructionFuncWith16BitReturn, am AccessMicroInstruction,
+	reverseWrites, combineExecuteAndWrite, executeInFetch, stackWrite bool,
+	is8Bit func(*CPU) bool) *Umbrella {
+
+	ret := &Umbrella{
+		mode:                   WRITE_RAM,
+		instructionFunc:        ifunc,
+		addressMode:            am,
+		reverseWrites:          reverseWrites,
+		combineExecuteAndWrite: combineExecuteAndWrite,
+		executeInFetch:         executeInFetch,
+		stackWrite:             stackWrite,
+		is8Bit:                 is8Bit,
+	}
+	ret.addressMode.Setup(ret)
+	return ret
+
+}
+
+func NewUmbrellaRead(ifunc instructionFuncWith16BitReturn, am AccessMicroInstruction,
+	is8Bit func(*CPU) bool) *Umbrella {
+
+	ret := &Umbrella{
+		mode:                   READ_RAM,
+		instructionFunc:        ifunc,
+		addressMode:            am,
+		reverseWrites:          false,
+		combineExecuteAndWrite: false,
+		executeInFetch:         false,
+		stackWrite:             false,
+		is8Bit:                 is8Bit,
+	}
+	ret.addressMode.Setup(ret)
+	return ret
+
 }
 
 func (i *Umbrella) Step(cpu *CPU) bool {
@@ -110,10 +147,6 @@ func (i *Umbrella) Step(cpu *CPU) bool {
 func (i *Umbrella) Reset(cpu *CPU) {
 	i.state = FETCH
 	i.addressMode.Reset(cpu)
-}
-
-func (i *Umbrella) is8Bit(cpu *CPU) bool {
-	return (i.checkM && cpu.r.hasFlag(FlagM)) || (i.checkX && cpu.r.hasFlag(FlagX))
 }
 
 func (i *Umbrella) WriteHi(cpu *CPU) {
@@ -171,19 +204,51 @@ func (i *Umbrella) Execute(cpu *CPU) bool {
 		} else {
 			return true
 		}
-
 	}
+	return false
+}
+
+func is8BitM(cpu *CPU) bool {
+	return cpu.r.hasFlag(FlagM)
+}
+
+func is8BitX(cpu *CPU) bool {
+	return cpu.r.hasFlag(FlagX)
+}
+
+func isNot8Bit(cpu *CPU) bool {
 	return false
 }
 
 // the micro instruction for direct/direct, X/ diecct, Y
 type Direct struct {
-	state  InstructionState
-	mode   AddressingMode
-	isPEI  bool
-	checkP bool
+	state InstructionState
+	mode  AddressingMode
+	isPEI bool
 
 	register uint16
+
+	addressResolver func(cpu *CPU, op byte) (addressLo, addressHi, addressBank uint32)
+	isXY            bool
+	isPointer       bool
+	checkP          bool
+	isIndirectLong  bool
+}
+
+func (i *Direct) Setup(u *Umbrella) {
+	i.isXY = i.mode == BASE_MODE_X || i.mode == BASE_MODE_Y || i.mode == INDEXED_INDIRECT
+	i.checkP = i.mode == INDIRECT_INDEXED && u.mode == READ_RAM
+	i.isPointer = !(i.mode == BASE_MODE_X || i.mode == BASE_MODE_Y || i.mode == BASE_MODE)
+	i.isIndirectLong = i.mode == INDIRECT_LONG_INDEXED || i.mode == INDIRECT_LONG
+
+	switch i.mode {
+	case BASE_MODE_X, BASE_MODE_Y, INDEXED_INDIRECT:
+		i.addressResolver = i.directPageXY
+	case BASE_MODE, INDIRECT, INDIRECT_INDEXED:
+		i.addressResolver = i.directPage
+	case INDIRECT_LONG, INDIRECT_LONG_INDEXED:
+		i.addressResolver = i.directPageLong
+	}
 }
 
 func (i *Direct) Step(cpu *CPU, u *Umbrella) bool {
@@ -191,7 +256,7 @@ func (i *Direct) Step(cpu *CPU, u *Umbrella) bool {
 	case FETCH_OP_1:
 		u.lowByte = cpu.fetchByte()
 		if cpu.isW() {
-			if i.isXY() {
+			if i.isXY {
 				i.state = REGISTER_READ
 			} else {
 				i.state = READ_LO
@@ -200,47 +265,36 @@ func (i *Direct) Step(cpu *CPU, u *Umbrella) bool {
 			i.state = EXTRA_CYCLE_W
 		}
 	case EXTRA_CYCLE_W:
-		if i.isXY() {
+		if i.isXY {
 			i.state = REGISTER_READ
 		} else {
 			i.state = READ_LO
 		}
 	case REGISTER_READ:
-		if i.mode == BASE_MODE_Y {
-			i.register = cpu.r.GetY()
-			i.state = READ_LO
-			break
-		}
-		if i.mode == BASE_MODE_X || i.mode == INDEXED_INDIRECT {
+		switch i.mode {
+		case BASE_MODE_X, INDEXED_INDIRECT:
 			i.register = cpu.r.GetX()
-			i.state = READ_LO
-			break
+		case BASE_MODE_Y:
+			i.register = cpu.r.GetY()
 		}
+		i.state = READ_LO
 	case READ_LO:
-		if i.isXY() {
-			u.addressLo, u.addressHi = directPageXY(cpu, u.lowByte, i.register, i.mode)
-		}
-		if i.mode == BASE_MODE || i.mode == INDIRECT || i.mode == INDIRECT_INDEXED {
-			u.addressLo, u.addressHi = directPage(cpu, u.lowByte, i.isPEI)
-		}
-		if i.mode == INDIRECT_LONG || i.mode == INDIRECT_LONG_INDEXED {
-			u.addressLo, u.addressHi, u.addressBank = directPageLong(cpu, u.lowByte)
-		}
+		u.addressLo, u.addressHi, u.addressBank = i.addressResolver(cpu, u.lowByte)
 
-		if u.executeInFetch && u.mode == WRITE_RAM && !i.isPointer() {
+		//executeinFetch can only be true in write mode if using the constructor
+		if u.executeInFetch && !i.isPointer {
 			return true
 		}
 
 		u.lowByte = cpu.readByte(u.addressLo)
-		//TODO unsure how this will pan out. check later
-		if u.is8Bit(cpu) && !i.isPointer() {
+		if u.is8Bit(cpu) && !i.isPointer {
 			return true
 		} else {
 			i.state = READ_HI
 		}
 	case READ_HI:
 		u.highByte = cpu.readByte(u.addressHi)
-		if !i.isPointer() {
+		if !i.isPointer {
 			return true
 		}
 		if i.mode == INDIRECT_INDEXED || i.mode == INDIRECT_LONG_INDEXED {
@@ -248,33 +302,28 @@ func (i *Direct) Step(cpu *CPU, u *Umbrella) bool {
 		} else {
 			i.register = 0
 		}
-		if i.isIndirectLong() {
+		if i.isIndirectLong {
 			i.state = READ_BANK
 		} else {
 			u.addressLo = mask24(createAddress(u.lowByte, u.highByte, cpu.r.DB) + uint32(i.register))
 			u.addressHi = mask24(u.addressLo + 1)
 
+			if u.mode == WRITE_RAM {
+				return true
+			}
+
 			//this is slightly incorrect.
-			//the real hardware tries to read the Y regisger this cycle but it can only do it if X flag is 1 and
+			//the real hardware tries to read the Y regisger this cycle
+			//but it can only do it if X flag is 1 and
 			//the page isnt crossed. what i do instead is just get Y and stall a cycle if needed.
-			//this MIGHT be inaccurate i dont have the brainpower to know for sure but if it only affects internal state
-			//so no memory reads then its completely fine
 			if i.checkP {
-				if cpu.r.hasFlag(FlagX) {
-					if isPageBoundaryCrossed(i.register, i.register+uint16(u.lowByte)) {
-						i.state = EXTRA_CYCLE_P
-						break
-					}
-				} else {
+				if !cpu.r.hasFlag(FlagX) ||
+					isPageBoundaryCrossed(i.register, i.register+uint16(u.lowByte)) {
 					i.state = EXTRA_CYCLE_P
 					break
 				}
 			}
-			if u.mode != READ_RAM {
-				return true
-			} else {
-				i.state = RESOLVE_POINTER_LO
-			}
+			i.state = RESOLVE_POINTER_LO
 		}
 	case RESOLVE_POINTER_LO:
 		u.lowByte = cpu.readByte(u.addressLo)
@@ -296,45 +345,72 @@ func (i *Direct) Step(cpu *CPU, u *Umbrella) bool {
 			i.state = RESOLVE_POINTER_LO
 		}
 	case EXTRA_CYCLE_P:
-		if u.mode != READ_RAM {
-			return true
-		} else {
-			i.state = RESOLVE_POINTER_LO
-		}
+		//only happens in read mode, checked it before
+		i.state = RESOLVE_POINTER_LO
 	}
 	return false
+}
+
+func (i *Direct) directPage(cpu *CPU, op byte) (addressLo, addressHi, _ uint32) {
+	addressLo, addressHi = directPageLogic(cpu, op, 0, i.isPEI)
+	return
+}
+
+func (i *Direct) directPageXY(cpu *CPU, op byte) (addressLo, addressHi, _ uint32) {
+	addressLo, addressHi = directPageLogic(cpu, op, i.register, false)
+	//little hardware quirk
+	//the last part is just the !isW function
+	if i.mode == INDEXED_INDIRECT && cpu.r.E && (cpu.r.D&0xFF != 0) {
+		addressHi = (addressLo+1)&0xFF | addressLo&0xFFFF00
+	}
+	return
+}
+
+func (i *Direct) directPageLong(cpu *CPU, op byte) (addressLo, addressHi, addressBank uint32) {
+	/*
+		if cpu.isW() && cpu.r.E {
+			low := op
+			addressLo = mapOffsetToBank(0x00, createWord(getHighByte(cpu.r.D), low))
+			addressHi = mapOffsetToBank(0x00, createWord(getHighByte(cpu.r.D), low+1))
+			addressBank = mapOffsetToBank(0x00, createWord(getHighByte(cpu.r.D), low+2))
+		} else {
+			offset := cpu.r.D + uint16(op)
+			addressLo = mapOffsetToBank(0x00, offset)
+			addressHi = mapOffsetToBank(0x00, offset+1)
+			addressBank = mapOffsetToBank(0x00, offset+2)
+		}
+	*/
+	// TODO: Test data shows inconsistent direct page wrapping behavior:
+	// [dir],Y wraps when DL==0, [dir] doesn't wrap
+	// Need to verify with full program tests before implementing
+	offset := cpu.r.D + uint16(op)
+	addressLo = mapOffsetToBank(0x00, offset)
+	addressHi = mapOffsetToBank(0x00, offset+1)
+	addressBank = mapOffsetToBank(0x00, offset+2)
+
+	return
 }
 
 func (i *Direct) Reset(cpu *CPU) {
 	i.state = FETCH_OP_1
 }
 
-func (i *Direct) isXY() bool {
-	return i.mode == BASE_MODE_X || i.mode == BASE_MODE_Y || i.mode == INDEXED_INDIRECT
-}
-
-func (i *Direct) isPointer() bool {
-	return !(i.mode == BASE_MODE_X || i.mode == BASE_MODE_Y || i.mode == BASE_MODE)
-}
-
-func (i *Direct) isIndirectLong() bool {
-	return i.mode == INDIRECT_LONG_INDEXED || i.mode == INDIRECT_LONG
-}
-
-// the micro instruction ABSOLUTE and I do mean ALL OF ABSOLUTE
-// I mean every single instruction that has abs in its access mode this will service it.
-// no kap on a stack
-// the jumps are UNTESTED
+// the micro instruction for the non jmp ABSOLUTE. (base(X/Y))
 type Absolute struct {
-	state  InstructionState
-	mode   AddressingMode
-	checkP bool
+	state InstructionState
+	mode  AddressingMode
 
-	//this is intended to differentiate between the normal abs and normal abs JMP
-	//there are other jump abs instructions but they are all jump only so its implied
-	isJMP bool
+	register             uint16
+	checkP               bool
+	isXY, isIndirectLong bool
+}
 
-	register uint16
+func (i *Absolute) Setup(u *Umbrella) {
+	i.isXY = i.mode == BASE_MODE_X || i.mode == BASE_MODE_Y
+	i.isIndirectLong = i.mode == INDIRECT_LONG_INDEXED || i.mode == INDIRECT_LONG
+
+	i.checkP = u.mode == READ_RAM && i.isXY
+	i.register = 0
 }
 
 func (i *Absolute) Step(cpu *CPU, u *Umbrella) bool {
@@ -344,14 +420,14 @@ func (i *Absolute) Step(cpu *CPU, u *Umbrella) bool {
 		i.state = FETCH_OP_2
 	case FETCH_OP_2:
 		u.highByte = cpu.fetchByte()
-		if i.isXY() || i.mode == INDEXED_INDIRECT {
+		if i.isXY {
+			//in read mode if X == 1 the register read can be done without consuming a cycle,
+			//but only if the page isnt crossed.
 			if i.checkP && cpu.r.hasFlag(FlagX) {
-				//in some instructions if X/Y is 8 bit the register read can be done without consuming a cycle,
-				//but only if the page isnt crossed.
-				if i.mode == BASE_MODE_Y {
+				switch i.mode {
+				case BASE_MODE_Y:
 					i.register = cpu.r.GetY()
-				}
-				if i.mode == BASE_MODE_X {
+				case BASE_MODE_X:
 					i.register = cpu.r.GetX()
 				}
 				u.result = createWord(u.highByte, u.lowByte)
@@ -367,74 +443,31 @@ func (i *Absolute) Step(cpu *CPU, u *Umbrella) bool {
 			i.state = READ_LO
 		}
 	case REGISTER_READ:
-		if i.mode == BASE_MODE_Y {
+		switch i.mode {
+		case BASE_MODE_Y:
 			i.register = cpu.r.GetY()
-			i.state = READ_LO
-			break
-		}
-		if i.mode == BASE_MODE_X || i.mode == INDEXED_INDIRECT {
+		case BASE_MODE_X:
 			i.register = cpu.r.GetX()
-			i.state = READ_LO
-			break
 		}
+		i.state = READ_LO
 	case READ_LO:
-		if i.isXY() {
-			u.addressLo, u.addressHi = absoluteXY(cpu.r.DB, u.highByte, u.lowByte, i.register)
-		}
-		if i.mode == BASE_MODE {
-			if i.isJMP {
-				u.addressLo = createAddress(u.lowByte, u.highByte, cpu.r.PB)
-			} else {
-				u.addressLo, u.addressHi = absolute(cpu.r.DB, u.highByte, u.lowByte)
-			}
-		}
-		if i.mode == INDEXED_INDIRECT {
-			u.result = createWord(u.highByte, u.lowByte) + i.register
-			u.addressLo = mapOffsetToBank(cpu.r.PB, u.result)
-			u.addressHi = mapOffsetToBank(cpu.r.PB, u.result+1)
-		}
-		if i.mode == INDIRECT || i.mode == INDIRECT_LONG {
-			u.result = createWord(u.highByte, u.lowByte)
-			u.addressLo = mapOffsetToBank(0x00, u.result)
-			u.addressHi = mapOffsetToBank(0x00, u.result+1)
-			u.addressBank = mapOffsetToBank(0x00, u.result+2)
-		}
+		u.addressLo, u.addressHi = absolute(cpu.r.DB, u.highByte, u.lowByte, i.register)
 
 		//abs executes the instruction here if its not a pointer and we are in write mode
-		if (u.executeInFetch && u.mode == WRITE_RAM && !i.isPointer()) || i.isJMP {
+		if u.executeInFetch {
 			return true
 		}
 
 		u.lowByte = cpu.readByte(u.addressLo)
 
-		if u.is8Bit(cpu) && !i.isPointer() {
+		if u.is8Bit(cpu) {
 			return true
 		} else {
 			i.state = READ_HI
 		}
 	case READ_HI:
 		u.highByte = cpu.readByte(u.addressHi)
-		if !i.isPointer() {
-			return true
-		}
-		if i.isIndirectLong() {
-			i.state = READ_BANK
-		} else {
-			i.state = RESOLVE_POINTER_LO
-			//return true
-		}
-	case RESOLVE_POINTER_LO:
-		switch i.mode {
-		case INDIRECT, INDEXED_INDIRECT:
-			u.addressLo = createAddress(u.lowByte, u.highByte, cpu.r.PB)
-		case INDIRECT_LONG:
-			u.addressLo = createAddress(u.lowByte, u.highByte, u.bankByte)
-		}
 		return true
-	case READ_BANK:
-		u.bankByte = cpu.readByte(u.addressBank)
-		i.state = RESOLVE_POINTER_LO
-		//return true
 	case EXTRA_CYCLE_P:
 		i.state = READ_LO
 	}
@@ -445,18 +478,6 @@ func (i *Absolute) Reset(cpu *CPU) {
 	i.state = FETCH_OP_1
 }
 
-func (i *Absolute) isXY() bool {
-	return i.mode == BASE_MODE_X || i.mode == BASE_MODE_Y
-}
-
-func (i *Absolute) isPointer() bool {
-	return !(i.mode == BASE_MODE_X || i.mode == BASE_MODE_Y || i.mode == BASE_MODE)
-}
-
-func (i *Absolute) isIndirectLong() bool {
-	return i.mode == INDIRECT_LONG_INDEXED || i.mode == INDIRECT_LONG
-}
-
 // the micro instruction for Long, just the normal one not the one for jump
 // no point in including jump instructions under the umbrella
 type Long struct {
@@ -464,6 +485,9 @@ type Long struct {
 	mode  AddressingMode
 
 	register uint16
+}
+
+func (i *Long) Setup(u *Umbrella) {
 }
 
 func (i *Long) Step(cpu *CPU, u *Umbrella) bool {
@@ -487,8 +511,9 @@ func (i *Long) Step(cpu *CPU, u *Umbrella) bool {
 	case READ_LO:
 		u.addressLo = mask24(createAddress(u.lowByte, u.highByte, u.bankByte) + uint32(i.register))
 		u.addressHi = mask24(u.addressLo + 1)
+
 		//long executes the instruction here if we are in write mode
-		if u.executeInFetch && u.mode == WRITE_RAM {
+		if u.executeInFetch {
 			return true
 		}
 
@@ -516,12 +541,15 @@ type Immediate struct {
 	register uint16
 }
 
+func (i *Immediate) Setup(u *Umbrella) {
+}
+
 func (i *Immediate) Step(cpu *CPU, u *Umbrella) bool {
 	switch i.state {
 	case FETCH_OP_1:
 		u.lowByte = cpu.fetchByte()
 		u.addressLo = mapOffsetToBank(cpu.r.PB, cpu.r.PC)
-		if i.mode == LOCKED_8 || (i.mode == CHECK_PARENT && u.is8Bit(cpu)) {
+		if (i.mode == CHECK_PARENT && u.is8Bit(cpu)) || i.mode == LOCKED_8 {
 			return true
 		}
 		i.state = FETCH_OP_2
@@ -541,7 +569,15 @@ type StackS struct {
 	state InstructionState
 	mode  AddressingMode
 
+	executeInFetch bool
+	isPointer      bool
+
 	register uint16
+}
+
+func (i *StackS) Setup(u *Umbrella) {
+	i.isPointer = i.mode == INDIRECT_INDEXED
+	i.executeInFetch = u.executeInFetch && u.mode == WRITE_RAM && !i.isPointer
 }
 
 func (i *StackS) Step(cpu *CPU, u *Umbrella) bool {
@@ -561,19 +597,19 @@ func (i *StackS) Step(cpu *CPU, u *Umbrella) bool {
 		u.addressHi = mapOffsetToBank(0x00, i.register+1)
 
 		//StackS executes the instruction here if its not a pointer and we are in write mode
-		if u.executeInFetch && u.mode == WRITE_RAM && !i.isPointer() {
+		if i.executeInFetch {
 			return true
 		}
 		u.lowByte = cpu.readByte(u.addressLo)
 
-		if !i.isPointer() && u.is8Bit(cpu) {
+		if !i.isPointer && u.is8Bit(cpu) {
 			return true
 		} else {
 			i.state = READ_HI
 		}
 	case READ_HI:
 		u.highByte = cpu.readByte(u.addressHi)
-		if !i.isPointer() {
+		if !i.isPointer {
 			return true
 		}
 		i.state = EXTRA_CYCLE_P
@@ -601,8 +637,4 @@ func (i *StackS) Step(cpu *CPU, u *Umbrella) bool {
 
 func (i *StackS) Reset(cpu *CPU) {
 	i.state = FETCH_OP_1
-}
-
-func (i *StackS) isPointer() bool {
-	return i.mode == INDIRECT_INDEXED
 }
