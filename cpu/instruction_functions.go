@@ -50,25 +50,17 @@ func ldy(val uint16, width int, cpu *CPU) (result uint16) {
 
 // Test and Reset/Set Bits
 func trb(val uint16, width int, cpu *CPU) (result uint16) {
-	result = val
-	for v := range width {
-		if (cpu.r.A>>v)&1 == 1 {
-			result &= ^(1 << v)
-		}
-	}
+	result = (cpu.r.A) & ((1 << width) - 1)
+	result = val & ^result
 	cpu.r.setFlag(FlagZ, (val&cpu.r.A) != 0)
-	return result
+	return
 }
 
 func tsb(val uint16, width int, cpu *CPU) (result uint16) {
-	result = val
-	for v := range width {
-		if (cpu.r.A>>v)&1 == 1 {
-			result |= 1 << v
-		}
-	}
+	result = (cpu.r.A) & ((1 << width) - 1)
+	result = val | result
 	cpu.r.setFlag(FlagZ, (val&cpu.r.A) != 0)
-	return result
+	return
 }
 
 // Arithmetic Shift Left
