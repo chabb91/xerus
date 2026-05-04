@@ -2,6 +2,8 @@ package cpu
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -12,8 +14,32 @@ import (
 var cause string
 var cycleCause string
 
+var testDir = "/home/chabb/Documents/65816/v1/"
+
+func TestAllInstructions(t *testing.T) {
+	entries, err := os.ReadDir(testDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+
+		testFile := filepath.Join(testDir, entry.Name())
+		t.Run(entry.Name(), func(t *testing.T) {
+			runInstructionTests(t, testFile)
+		})
+	}
+}
+
 func TestSingleInstruction(t *testing.T) {
-	tests, err := debugger.LoadTests[debugger.CPUState]("/home/chabb/Documents/SNES-cpu-tests/65c816/72.n.json")
+	runInstructionTests(t, testDir+"fc.n.json")
+}
+
+func runInstructionTests(t *testing.T, testFile string) {
+	tests, err := debugger.LoadTests[debugger.CPUState](testFile)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -11,7 +11,7 @@ import (
 
 var cause string
 
-func TestAllInetructions(t *testing.T) {
+func TestAllInstructions(t *testing.T) {
 	testDir := "/home/chabb/Documents/SNES-cpu-tests/spc700"
 
 	entries, err := os.ReadDir(testDir)
