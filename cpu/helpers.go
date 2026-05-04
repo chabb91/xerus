@@ -24,22 +24,21 @@ func rel16(val uint16) uint16 {
 // One main functions and 2 wrappers for convenience
 func directPageLogic(cpu *CPU, op byte, register uint16, isPEI bool) (addressLo, addressHi uint32) {
 	if cpu.isW() && cpu.r.E && !isPEI {
-		low := getLowByte(uint16(op) + register)
-		addressLo = mapOffsetToBank(0x00, createWord(getHighByte(cpu.r.D), low))
-		addressHi = mapOffsetToBank(0x00, createWord(getHighByte(cpu.r.D), low+1))
+		low := op + byte(register)
+		addressLo = mapOffsetToBank(0x00, cpu.r.D|uint16(low))
+		addressHi = mapOffsetToBank(0x00, cpu.r.D|uint16(low+1))
 	} else {
 		offset := cpu.r.D + uint16(op) + register
 		addressLo = mapOffsetToBank(0x00, offset)
 		addressHi = mapOffsetToBank(0x00, offset+1)
 	}
-
-	return addressLo, addressHi
+	return
 }
 
 func absolute(bank, high, low byte, register uint16) (addressLo, addressHi uint32) {
 	addressLo = mask24(mapOffsetToBank(bank, createWord(high, low)) + uint32(register))
 	addressHi = mask24(addressLo + 1)
-	return addressLo, addressHi
+	return
 }
 
 // high byte=AB of ABCD
@@ -74,13 +73,13 @@ func splitWord(word uint16) (high, low byte) {
 	high = byte(word >> 8)
 	low = byte(word & 0xFF)
 
-	return high, low
+	return
 }
 
 // check if the low byte of the D register is 0
 // needed for cycle calculations and for a legacy edge case in direct page addressing
 func (cpu *CPU) isW() bool {
-	return getLowByte(cpu.r.D) == 0
+	return cpu.r.D&0xFF == 0
 }
 
 // if M or X flags are 1 and indicating 8 bit mode return the 8 as in how many bits are we working on

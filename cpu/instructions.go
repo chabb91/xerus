@@ -117,7 +117,7 @@ func NewInstructionMap() []Instruction {
 	ret[0x81] = NewUmbrellaWrite(sta, &Direct{mode: INDEXED_INDIRECT}, true, true, false, false, is8BitM)
 	ret[0x83] = NewUmbrellaWrite(sta, &StackS{mode: BASE_MODE}, true, true, true, false, is8BitM)
 	ret[0x85] = NewUmbrellaWrite(sta, &Direct{mode: BASE_MODE}, true, true, true, false, is8BitM)
-	ret[0x87] = NewUmbrellaWrite(sta, &Direct{mode: INDIRECT_LONG}, true, true, true, false, is8BitM)
+	ret[0x87] = NewUmbrellaWrite(sta, &Direct{mode: INDIRECT_LONG}, true, true, false, false, is8BitM)
 	ret[0x8D] = NewUmbrellaWrite(sta, &Absolute{mode: BASE_MODE}, true, true, true, false, is8BitM)
 	ret[0x8F] = NewUmbrellaWrite(sta, &Long{mode: BASE_MODE}, true, true, true, false, is8BitM)
 	ret[0x91] = NewUmbrellaWrite(sta, &Direct{mode: INDIRECT_INDEXED}, true, false, false, false, is8BitM)

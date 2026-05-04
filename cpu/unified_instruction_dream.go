@@ -220,7 +220,7 @@ func isNot8Bit(cpu *CPU) bool {
 	return false
 }
 
-// the micro instruction for direct/direct, X/ diecct, Y
+// the micro instruction for ALL 16 variations of the DIRECT addressing mode
 type Direct struct {
 	state InstructionState
 	mode  AddressingMode
@@ -229,17 +229,22 @@ type Direct struct {
 	register uint16
 
 	addressResolver func(cpu *CPU, op byte) (addressLo, addressHi, addressBank uint32)
-	isXY            bool
 	isPointer       bool
 	checkP          bool
 	isIndirectLong  bool
+	stateAfterFetch InstructionState
 }
 
 func (i *Direct) Setup(u *Umbrella) {
-	i.isXY = i.mode == BASE_MODE_X || i.mode == BASE_MODE_Y || i.mode == INDEXED_INDIRECT
 	i.checkP = i.mode == INDIRECT_INDEXED && u.mode == READ_RAM
 	i.isPointer = !(i.mode == BASE_MODE_X || i.mode == BASE_MODE_Y || i.mode == BASE_MODE)
 	i.isIndirectLong = i.mode == INDIRECT_LONG_INDEXED || i.mode == INDIRECT_LONG
+
+	if i.mode == BASE_MODE_X || i.mode == BASE_MODE_Y || i.mode == INDEXED_INDIRECT {
+		i.stateAfterFetch = REGISTER_READ
+	} else {
+		i.stateAfterFetch = READ_LO
+	}
 
 	switch i.mode {
 	case BASE_MODE_X, BASE_MODE_Y, INDEXED_INDIRECT:
@@ -256,20 +261,12 @@ func (i *Direct) Step(cpu *CPU, u *Umbrella) bool {
 	case FETCH_OP_1:
 		u.lowByte = cpu.fetchByte()
 		if cpu.isW() {
-			if i.isXY {
-				i.state = REGISTER_READ
-			} else {
-				i.state = READ_LO
-			}
+			i.state = i.stateAfterFetch
 		} else {
 			i.state = EXTRA_CYCLE_W
 		}
 	case EXTRA_CYCLE_W:
-		if i.isXY {
-			i.state = REGISTER_READ
-		} else {
-			i.state = READ_LO
-		}
+		i.state = i.stateAfterFetch
 	case REGISTER_READ:
 		switch i.mode {
 		case BASE_MODE_X, INDEXED_INDIRECT:
@@ -316,14 +313,12 @@ func (i *Direct) Step(cpu *CPU, u *Umbrella) bool {
 			//the real hardware tries to read the Y regisger this cycle
 			//but it can only do it if X flag is 1 and
 			//the page isnt crossed. what i do instead is just get Y and stall a cycle if needed.
-			if i.checkP {
-				if !cpu.r.hasFlag(FlagX) ||
-					isPageBoundaryCrossed(i.register, i.register+uint16(u.lowByte)) {
-					i.state = EXTRA_CYCLE_P
-					break
-				}
+			if i.checkP && (!cpu.r.hasFlag(FlagX) ||
+				isPageBoundaryCrossed(i.register, i.register+uint16(u.lowByte))) {
+				i.state = EXTRA_CYCLE_P
+			} else {
+				i.state = RESOLVE_POINTER_LO
 			}
-			i.state = RESOLVE_POINTER_LO
 		}
 	case RESOLVE_POINTER_LO:
 		u.lowByte = cpu.readByte(u.addressLo)
@@ -361,7 +356,7 @@ func (i *Direct) directPageXY(cpu *CPU, op byte) (addressLo, addressHi, _ uint32
 	//little hardware quirk
 	//the last part is just the !isW function
 	if i.mode == INDEXED_INDIRECT && cpu.r.E && (cpu.r.D&0xFF != 0) {
-		addressHi = (addressLo+1)&0xFF | addressLo&0xFFFF00
+		addressHi = addressHi&0xFF | addressLo&0xFFFF00
 	}
 	return
 }
