@@ -8,9 +8,9 @@ type Accumulator struct {
 }
 
 func (i *Accumulator) Step(cpu *CPU) bool {
-	width := 16
+	width := W_16
 	if cpu.r.hasFlag(FlagM) {
-		width = 8
+		width = W_8
 	}
 	i.result = i.instructionFunc(cpu.r.A, width, cpu)
 

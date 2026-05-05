@@ -3,70 +3,83 @@ package cpu
 // here are the core functions for all the basic instructions (so non implied or out of the ordinary)
 // that can be used separately from the addressing modes.
 
+type iWidth int
+
+func (w iWidth) msbMask() uint16 {
+	return 1 << (w - 1)
+}
+
+func (w iWidth) maxValue() uint16 {
+	return (1 << w) - 1
+}
+
+const W_8 iWidth = 8
+const W_16 iWidth = 16
+
 // the functuion type that all these insctructions can hopefully use
-type instructionFuncWith16BitReturn func(val uint16, width int, cpu *CPU) (result uint16)
+type instructionFuncWith16BitReturn func(val uint16, w iWidth, cpu *CPU) (result uint16)
 
 // LoaD Accumulator/X/Y
-func sta(_ uint16, _ int, cpu *CPU) uint16 {
+func sta(_ uint16, _ iWidth, cpu *CPU) uint16 {
 	return cpu.r.GetA()
 }
 
-func stx(_ uint16, _ int, cpu *CPU) uint16 {
+func stx(_ uint16, _ iWidth, cpu *CPU) uint16 {
 	return cpu.r.GetX()
 }
 
-func sty(_ uint16, _ int, cpu *CPU) uint16 {
+func sty(_ uint16, _ iWidth, cpu *CPU) uint16 {
 	return cpu.r.GetY()
 }
 
-func stz(_ uint16, _ int, _ *CPU) uint16 {
+func stz(_ uint16, _ iWidth, _ *CPU) uint16 {
 	return 0
 }
 
 // STore Accumulator/X/Y/Zero
-func lda(val uint16, width int, cpu *CPU) (result uint16) {
+func lda(val uint16, w iWidth, cpu *CPU) (result uint16) {
 	result = val
-	cpu.r.setFlag(FlagN, (1<<(width-1))&result == 0)
+	cpu.r.setFlag(FlagN, w.msbMask()&result == 0)
 	cpu.r.setFlag(FlagZ, result != 0)
 	cpu.r.SetA(result)
 	return result
 }
 
-func ldx(val uint16, width int, cpu *CPU) (result uint16) {
+func ldx(val uint16, w iWidth, cpu *CPU) (result uint16) {
 	result = val
-	cpu.r.setFlag(FlagN, (1<<(width-1))&result == 0)
+	cpu.r.setFlag(FlagN, w.msbMask()&result == 0)
 	cpu.r.setFlag(FlagZ, result != 0)
 	cpu.r.SetX(result)
 	return result
 }
 
-func ldy(val uint16, width int, cpu *CPU) (result uint16) {
+func ldy(val uint16, w iWidth, cpu *CPU) (result uint16) {
 	result = val
-	cpu.r.setFlag(FlagN, (1<<(width-1))&result == 0)
+	cpu.r.setFlag(FlagN, w.msbMask()&result == 0)
 	cpu.r.setFlag(FlagZ, result != 0)
 	cpu.r.SetY(result)
 	return result
 }
 
 // Test and Reset/Set Bits
-func trb(val uint16, width int, cpu *CPU) (result uint16) {
-	result = (cpu.r.A) & ((1 << width) - 1)
+func trb(val uint16, w iWidth, cpu *CPU) (result uint16) {
+	result = (cpu.r.A) & w.maxValue()
 	result = val & ^result
 	cpu.r.setFlag(FlagZ, (val&cpu.r.A) != 0)
 	return
 }
 
-func tsb(val uint16, width int, cpu *CPU) (result uint16) {
-	result = (cpu.r.A) & ((1 << width) - 1)
+func tsb(val uint16, w iWidth, cpu *CPU) (result uint16) {
+	result = (cpu.r.A) & w.maxValue()
 	result = val | result
 	cpu.r.setFlag(FlagZ, (val&cpu.r.A) != 0)
 	return
 }
 
 // Arithmetic Shift Left
-func asl(val uint16, width int, cpu *CPU) uint16 {
-	mask := uint16(1) << (width - 1)
-	result := (val << 1) & ((1 << width) - 1)
+func asl(val uint16, w iWidth, cpu *CPU) uint16 {
+	mask := w.msbMask()
+	result := (val << 1) & w.maxValue()
 
 	cpu.r.setFlag(FlagC, (val&mask) == 0)
 	cpu.r.setFlag(FlagN, (result&mask) == 0)
@@ -76,9 +89,8 @@ func asl(val uint16, width int, cpu *CPU) uint16 {
 }
 
 // Logical Shift Right
-func lsr(val uint16, width int, cpu *CPU) uint16 {
-	mask := uint16((1 << width) - 1)
-	result := (val & mask) >> 1
+func lsr(val uint16, w iWidth, cpu *CPU) uint16 {
+	result := (val & w.maxValue()) >> 1
 
 	cpu.r.setFlag(FlagC, (val&1) == 0)
 	cpu.r.setFlag(FlagN, true)
@@ -88,17 +100,13 @@ func lsr(val uint16, width int, cpu *CPU) uint16 {
 }
 
 // Rotate Right
-func ror(val uint16, width int, cpu *CPU) uint16 {
+func ror(val uint16, w iWidth, cpu *CPU) uint16 {
 	inputCarry := cpu.r.hasFlag(FlagC)
-	mask := uint16(1) << (width - 1)
 
-	result := (val >> 1) & ((1 << width) - 1)
+	result := (val & w.maxValue()) >> 1
 	if inputCarry {
-		result |= mask
-	} else {
-		result &= ^mask
+		result |= w.msbMask()
 	}
-
 	cpu.r.setFlag(FlagC, (val&1) == 0)
 	cpu.r.setFlag(FlagN, !inputCarry)
 	cpu.r.setFlag(FlagZ, result != 0)
@@ -107,17 +115,14 @@ func ror(val uint16, width int, cpu *CPU) uint16 {
 }
 
 // Rotate Left
-func rol(val uint16, width int, cpu *CPU) uint16 {
+func rol(val uint16, w iWidth, cpu *CPU) uint16 {
 	inputCarry := cpu.r.hasFlag(FlagC)
-	mask := uint16(1) << (width - 1)
+	mask := w.msbMask()
 
-	result := (val << 1) & ((1 << width) - 1)
+	result := (val << 1) & w.maxValue()
 	if inputCarry {
 		result |= 1
-	} else {
-		result &= (1 << width) - 2
 	}
-
 	cpu.r.setFlag(FlagC, (val&mask) == 0)
 	cpu.r.setFlag(FlagN, (result&mask) == 0)
 	cpu.r.setFlag(FlagZ, result != 0)
@@ -127,7 +132,7 @@ func rol(val uint16, width int, cpu *CPU) uint16 {
 
 // test BITs
 // the only instruction that behaves differently based on addressing mode
-func bit_imm(val uint16, _ int, cpu *CPU) (result uint16) {
+func bit_imm(val uint16, _ iWidth, cpu *CPU) (result uint16) {
 	result = val & cpu.r.GetA()
 
 	cpu.r.setFlag(FlagZ, result != 0)
@@ -135,107 +140,108 @@ func bit_imm(val uint16, _ int, cpu *CPU) (result uint16) {
 	return result
 }
 
-func bit(val uint16, width int, cpu *CPU) (result uint16) {
-	cpu.r.setFlag(FlagN, val&(1<<(width-1)) == 0)
-	cpu.r.setFlag(FlagV, val&(1<<(width-2)) == 0)
+func bit(val uint16, w iWidth, cpu *CPU) (result uint16) {
+	cpu.r.setFlag(FlagN, val&w.msbMask() == 0)
+	cpu.r.setFlag(FlagV, val&(w.msbMask()>>1) == 0)
 
-	return bit_imm(val, width, cpu)
+	return bit_imm(val, w, cpu)
 }
 
 // bitwise AND
-func and(val uint16, width int, cpu *CPU) (result uint16) {
-	result = bit_imm(val, width, cpu)
+func and(val uint16, w iWidth, cpu *CPU) (result uint16) {
+	result = bit_imm(val, w, cpu)
 
-	cpu.r.setFlag(FlagN, result&(1<<(width-1)) == 0)
+	cpu.r.setFlag(FlagN, result&w.msbMask() == 0)
 	cpu.r.SetA(result)
 
 	return result
 }
 
 // bitwise Exclusive OR
-func eor(val uint16, width int, cpu *CPU) (result uint16) {
+func eor(val uint16, w iWidth, cpu *CPU) (result uint16) {
 	result = val ^ cpu.r.GetA()
 
 	cpu.r.setFlag(FlagZ, result != 0)
-	cpu.r.setFlag(FlagN, result&(1<<(width-1)) == 0)
+	cpu.r.setFlag(FlagN, result&w.msbMask() == 0)
 	cpu.r.SetA(result)
 	return result
 }
 
 // bitwise OR Accumulator
-func ora(val uint16, width int, cpu *CPU) (result uint16) {
+func ora(val uint16, w iWidth, cpu *CPU) (result uint16) {
 	result = val | cpu.r.GetA()
 
 	cpu.r.setFlag(FlagZ, result != 0)
-	cpu.r.setFlag(FlagN, result&(1<<(width-1)) == 0)
+	cpu.r.setFlag(FlagN, result&w.msbMask() == 0)
 	cpu.r.SetA(result)
 	return result
 }
 
 // DECrement
-func dec(val uint16, width int, cpu *CPU) (result uint16) {
+func dec(val uint16, w iWidth, cpu *CPU) (result uint16) {
 	result = val - 1
-	cpu.r.setFlag(FlagN, result&(1<<(width-1)) == 0)
-	cpu.r.setFlag(FlagZ, result&((1<<width)-1) != 0)
+	cpu.r.setFlag(FlagN, result&w.msbMask() == 0)
+	cpu.r.setFlag(FlagZ, result&w.maxValue() != 0)
 	return result
 }
 
 func decX(cpu *CPU) {
-	cpu.r.SetX(dec(cpu.r.GetX(), boolToBitCount(cpu.r.hasFlag(FlagX)), cpu))
+	cpu.r.SetX(dec(cpu.r.GetX(), getInstructionWidth(cpu.r.hasFlag(FlagX)), cpu))
 }
 
 func decY(cpu *CPU) {
-	cpu.r.SetY(dec(cpu.r.GetY(), boolToBitCount(cpu.r.hasFlag(FlagX)), cpu))
+	cpu.r.SetY(dec(cpu.r.GetY(), getInstructionWidth(cpu.r.hasFlag(FlagX)), cpu))
 }
 
 // INCrement
-func inc(val uint16, width int, cpu *CPU) (result uint16) {
+func inc(val uint16, w iWidth, cpu *CPU) (result uint16) {
 	result = val + 1
-	cpu.r.setFlag(FlagN, result&(1<<(width-1)) == 0)
-	cpu.r.setFlag(FlagZ, result&((1<<width)-1) != 0)
+	cpu.r.setFlag(FlagN, result&w.msbMask() == 0)
+	cpu.r.setFlag(FlagZ, result&w.maxValue() != 0)
 	return result
 }
 
 func incX(cpu *CPU) {
-	cpu.r.SetX(inc(cpu.r.GetX(), boolToBitCount(cpu.r.hasFlag(FlagX)), cpu))
+	cpu.r.SetX(inc(cpu.r.GetX(), getInstructionWidth(cpu.r.hasFlag(FlagX)), cpu))
 }
 
 func incY(cpu *CPU) {
-	cpu.r.SetY(inc(cpu.r.GetY(), boolToBitCount(cpu.r.hasFlag(FlagX)), cpu))
+	cpu.r.SetY(inc(cpu.r.GetY(), getInstructionWidth(cpu.r.hasFlag(FlagX)), cpu))
 }
 
 // CoMPare (to accumulator)
-func cmpLogic(reg, val uint16, width int, cpu *CPU) (result uint16) {
+func cmpLogic(reg, val uint16, w iWidth, cpu *CPU) (result uint16) {
 	result = reg
 	cpu.r.setFlag(FlagC, result < val)
 	result -= val
-	cpu.r.setFlag(FlagN, result&(1<<(width-1)) == 0)
-	cpu.r.setFlag(FlagZ, result&((1<<width)-1) != 0)
+	cpu.r.setFlag(FlagN, result&w.msbMask() == 0)
+	cpu.r.setFlag(FlagZ, result&w.maxValue() != 0)
 	return result
 }
 
-func cmp(val uint16, width int, cpu *CPU) (result uint16) {
-	return cmpLogic(cpu.r.GetA(), val, width, cpu)
+func cmp(val uint16, w iWidth, cpu *CPU) (result uint16) {
+	return cmpLogic(cpu.r.GetA(), val, w, cpu)
 }
 
 // ComPare to X register
-func cpX(val uint16, width int, cpu *CPU) (result uint16) {
-	return cmpLogic(cpu.r.GetX(), val, width, cpu)
+func cpX(val uint16, w iWidth, cpu *CPU) (result uint16) {
+	return cmpLogic(cpu.r.GetX(), val, w, cpu)
 }
 
 // ComPare to Y register
-func cpY(val uint16, width int, cpu *CPU) (result uint16) {
-	return cmpLogic(cpu.r.GetY(), val, width, cpu)
+func cpY(val uint16, w iWidth, cpu *CPU) (result uint16) {
+	return cmpLogic(cpu.r.GetY(), val, w, cpu)
 }
 
 // ADd with Carry
-func adc(val uint16, width int, cpu *CPU) (result uint16) {
-	mask1 := uint16((1 << width) - 1)
-	mask2 := uint16(1 << (width - 1))
+func adc(val uint16, w iWidth, cpu *CPU) (result uint16) {
+	mask1 := w.maxValue()
+	mask2 := w.msbMask()
 	a := cpu.r.GetA()
 	c := min(cpu.r.P&FlagC, 1)
 
 	if cpu.r.hasFlag(FlagD) {
+		width := int(w)
 		for i := 0; i < width; i += 4 {
 			tmp := (a>>i)&0xF + (val>>i)&0xF + uint16(c)
 			result = (result &^ (0xF << i)) | ((tmp & 0xF) << i)
@@ -270,13 +276,14 @@ func adc(val uint16, width int, cpu *CPU) (result uint16) {
 // SuBtract with Carry
 // carry flag is set on underflow
 // overflow is calculated differently
-func sbc(val uint16, width int, cpu *CPU) (result uint16) {
-	mask1 := uint16((1 << width) - 1)
-	mask2 := uint16(1 << (width - 1))
+func sbc(val uint16, w iWidth, cpu *CPU) (result uint16) {
+	mask1 := w.maxValue()
+	mask2 := w.msbMask()
 	a := cpu.r.GetA()
 	c := min(cpu.r.P&FlagC, 1)
 
 	if cpu.r.hasFlag(FlagD) {
+		width := int(w)
 		for i := 0; i < width; i += 4 {
 			tmp := int16((a>>i)&0xF) - int16((val>>i)&0xF) - 1 + int16(c)
 			result = (result &^ (0xF << i)) | (uint16(tmp&0xF) << i)
@@ -319,12 +326,12 @@ func transferFlagHelper(hasFlag bool, register uint16, cpu *CPU) {
 }
 
 // the "logic" for pei and pea. its a bit slow because umbrella creates a word for no reason that gets split right after.
-func peAI(val uint16, _ int, _ *CPU) uint16 {
+func peAI(val uint16, _ iWidth, _ *CPU) uint16 {
 	return val
 }
 
 // Push Effective Relative address
-func per(val uint16, _ int, cpu *CPU) uint16 {
+func per(val uint16, _ iWidth, cpu *CPU) uint16 {
 	return cpu.r.PC + rel16(val)
 }
 

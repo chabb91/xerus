@@ -173,7 +173,7 @@ func (i *Umbrella) WriteLo(cpu *CPU) {
 
 func (i *Umbrella) Execute(cpu *CPU) bool {
 	if i.is8Bit(cpu) {
-		i.result = i.instructionFunc(uint16(i.lowByte), 8, cpu)
+		i.result = i.instructionFunc(uint16(i.lowByte), W_8, cpu)
 		if i.mode == WRITE_RAM {
 			if i.combineExecuteAndWrite {
 				i.WriteLo(cpu)
@@ -185,7 +185,7 @@ func (i *Umbrella) Execute(cpu *CPU) bool {
 			return true
 		}
 	} else {
-		i.result = i.instructionFunc(createWord(i.highByte, i.lowByte), 16, cpu)
+		i.result = i.instructionFunc(createWord(i.highByte, i.lowByte), W_16, cpu)
 		if i.mode == WRITE_RAM {
 			if i.combineExecuteAndWrite {
 				if i.reverseWrites {

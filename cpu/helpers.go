@@ -83,10 +83,10 @@ func (cpu *CPU) isW() bool {
 }
 
 // if M or X flags are 1 and indicating 8 bit mode return the 8 as in how many bits are we working on
-func boolToBitCount(c bool) int {
+func getInstructionWidth(c bool) iWidth {
 	if c {
-		return 8
+		return W_8
 	} else {
-		return 16
+		return W_16
 	}
 }
