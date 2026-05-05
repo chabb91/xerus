@@ -23,7 +23,7 @@ go run . [options] <rom-path>
 Or built like:
 
 ```bash
-go build -o xerus
+go build -tags=release -o xerus
 ```
 
 _Note_: Building it with the tag `GOAMD64=v3` or `GOAMD64=v4` for AVX2 or AVX512 machines respectively may improve performance.
