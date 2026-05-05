@@ -128,15 +128,15 @@ func (b *SnesBus) WriteByte(address uint32, value byte) {
 }
 
 func splitAddress24(address uint32) (byte, uint16) {
-	return byte((address >> 16) & 0xFF), uint16(address & 0xFFFF)
+	return byte(address >> 16), uint16(address)
 }
 
 func (b *SnesBus) wramIndex(bank byte, offset uint16) (int, bool) {
-	if bank == 0x7E || ((bank <= 0x3F || (bank >= 0x80 && bank <= 0xBF)) && offset <= 0x1FFF) {
+	if bank == 0x7E || ((bank&0x7F <= 0x3F) && offset <= 0x1FFF) {
 		return int(offset), true
 	}
 	if bank == 0x7F {
-		return 0x10000 + int(offset), true
+		return 0x10000 | int(offset), true
 	}
 	return 0, false
 }

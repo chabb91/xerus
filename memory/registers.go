@@ -47,7 +47,7 @@ func (rs *RegisterSystem) FindHandler(addr uint16) (RegisterHandler, string, err
 
 func (rs *RegisterSystem) IsRegisterAddress(bank byte, addr uint16) bool {
 	if addr >= 0x2000 && addr <= 0x5FFF {
-		return (bank <= 0x3F) || (bank >= 0x80 && bank <= 0xBF)
+		return bank&0x7F <= 0x3F
 	}
 	return false
 }
