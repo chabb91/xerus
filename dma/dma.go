@@ -93,7 +93,9 @@ func (dma *Dma) Step() uint64 {
 		dma.DmaState = HDMA_RELOAD
 		return constants.CYCLE_18
 	case HDMA_RELOAD:
-		log.Printf("RELOADING HDMA with params %+v\n", dma.currentHdmaOp.channel)
+		if constants.ShowDebugLog {
+			log.Printf("RELOADING HDMA with params %+v\n", dma.currentHdmaOp.channel)
+		}
 		cycles := dma.currentHdmaOp.reload()
 		if nextChannel := getNextActiveChannel(dma.HdmaenLatch, dma.currentHdmaOp.channel.id+1); nextChannel == -1 {
 			dma.DmaState = HDMA_INACTIVE
@@ -124,7 +126,9 @@ func (dma *Dma) Step() uint64 {
 			if dma.currentDmaOp == nil {
 				nextChannel := getNextActiveChannel(dma.Mdmaen, 0)
 				dma.currentDmaOp = dma.dmaOp.setup(&dma.Channels[nextChannel])
-				log.Printf("Starting dma with params %+v\n", dma.currentDmaOp.channel)
+				if constants.ShowDebugLog {
+					log.Printf("Starting dma with params %+v\n", dma.currentDmaOp.channel)
+				}
 			} else if dma.currentDmaOp.stepCycle() {
 				dma.Mdmaen &= ^(1 << dma.currentDmaOp.channel.id)
 				dma.currentDmaOp = nil
@@ -151,7 +155,9 @@ func (dma *Dma) cancelConflictingDmaTransfers(firstHdmaId int) {
 	for i := firstHdmaId; i < 8; i++ {
 		mask := byte(1) << i
 		if dma.Mdmaen&mask != 0 && dma.HdmaenLatch&mask != 0 {
-			log.Printf("Axing conflicting dma transfer: %+v\n", dma.Channels[i])
+			if constants.ShowErrors {
+				log.Printf("Axing conflicting dma transfer: %+v\n", dma.Channels[i])
+			}
 			dma.Mdmaen &= ^mask
 			if dma.currentDmaOp != nil {
 				dma.currentDmaOp = nil

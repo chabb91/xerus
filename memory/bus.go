@@ -62,13 +62,17 @@ func (b *SnesBus) ReadByte(address uint32) byte {
 	if b.registers.IsRegisterAddress(bank, addr) {
 		handler, name, err := b.registers.FindHandler(addr)
 		if err != nil {
-			log.Printf("Warning: No handler for register $%04X (%s)", addr, name)
+			if constants.ShowWarnings {
+				log.Printf("Warning: No handler for register $%04X (%s)", addr, name)
+			}
 			return b.openBus
 		}
 
 		value, err := handler.Read(addr)
 		if err != nil {
-			log.Printf("Warning: Register read error at $%04X (%s): %v", addr, name, err)
+			if constants.ShowWarnings {
+				log.Printf("Warning: Register read error at $%04X (%s): %v", addr, name, err)
+			}
 			return b.openBus
 		}
 
@@ -82,7 +86,9 @@ func (b *SnesBus) ReadByte(address uint32) byte {
 		return b.openBus
 	}
 
-	log.Printf("Warning: Read from unmapped address $%06X", address)
+	if constants.ShowWarnings {
+		log.Printf("Warning: Read from unmapped address $%06X", address)
+	}
 	return b.openBus
 }
 
@@ -98,22 +104,27 @@ func (b *SnesBus) WriteByte(address uint32, value byte) {
 	if b.registers.IsRegisterAddress(bank, addr) {
 		handler, name, err := b.registers.FindHandler(addr)
 		if err != nil {
-			log.Printf("Warning: No handler for register $%04X (%s)", addr, name)
+			if constants.ShowWarnings {
+				log.Printf("Warning: No handler for register $%04X (%s)", addr, name)
+			}
 			return
 		}
 
 		err = handler.Write(addr, value)
 		if err != nil {
-			log.Printf("Warning: Register write error at $%04X (%s): %v", addr, name, err)
+			if constants.ShowWarnings {
+				log.Printf("Warning: Register write error at $%04X (%s): %v", addr, name, err)
+			}
 		}
 		return
 	}
 
 	err := b.cartridge.WriteByte(bank, addr, value)
 	if err != nil {
-		log.Printf("Cartridge: Write to unmapped or invalid address $%06X", address)
+		if constants.ShowWarnings {
+			log.Printf("Cartridge: Write to unmapped or invalid address $%06X", address)
+		}
 	}
-
 }
 
 func splitAddress24(address uint32) (byte, uint16) {
