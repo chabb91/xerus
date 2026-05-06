@@ -11,6 +11,7 @@ import (
 
 	"github.com/chabb91/xerus/coprocessor"
 	"github.com/chabb91/xerus/coprocessor/gsu"
+	"github.com/chabb91/xerus/internal/constants"
 	"github.com/chabb91/xerus/internal/types"
 )
 
@@ -297,6 +298,7 @@ func (cart *Cartridge) DetectCoprocessor() coprocessor.Coprocessor {
 			return gsu.New()
 		case CpuOBC1:
 		case CpuSA1:
+			log.Printf("Cartridge: SA-1 detected.")
 		case CpuSDD1:
 		case CpuSRTC:
 		case CpuOther:
@@ -310,6 +312,9 @@ func (cart *Cartridge) DetectCoprocessor() coprocessor.Coprocessor {
 			case CpuST018:
 			case CpuCX4:
 			}
+		}
+		if constants.PanicIfComponentMissing {
+			panic("Unimplemented coprocessor detected. Exiting...:(")
 		}
 	}
 	return nil

@@ -63,7 +63,7 @@ func (b *SnesBus) ReadByte(address uint32) byte {
 		handler, name, err := b.registers.FindHandler(addr)
 		if err != nil {
 			if constants.ShowWarnings {
-				log.Printf("Warning: No handler for register $%04X (%s)", addr, name)
+				log.Printf("Warning: Register read error: %v ", err)
 			}
 			return b.openBus
 		}
@@ -105,7 +105,7 @@ func (b *SnesBus) WriteByte(address uint32, value byte) {
 		handler, name, err := b.registers.FindHandler(addr)
 		if err != nil {
 			if constants.ShowWarnings {
-				log.Printf("Warning: No handler for register $%04X (%s)", addr, name)
+				log.Printf("Warning: Register write error: %v ", err)
 			}
 			return
 		}
