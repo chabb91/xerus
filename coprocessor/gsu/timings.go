@@ -58,19 +58,21 @@ func (gsu *GSU) getSnesSideCycles() (cycles uint64) {
 	return
 }
 
-func (gsu *GSU) stepRomAddrPtr(step uint64) {
+func (gsu *GSU) setRomAddrPtr() {
 	if gsu.r.r14Modified {
 		gsu.r14Clock = gsu.currentAccessTime.cart
 		gsu.r.r14Modified = false
 		setFlag(&gsu.r.SFR, FlagR, true)
-	} else {
-		if gsu.r14Clock != 0 {
-			gsu.r14Clock -= min(gsu.r14Clock, step)
-			if gsu.r14Clock == 0 {
-				setFlag(&gsu.r.SFR, FlagR, false)
-				val, _ := gsu.Read8(gsu.r.ROMBR, gsu.r.cpuRegisters[14])
-				gsu.r.romAddrPtr = val
-			}
+	}
+}
+
+func (gsu *GSU) stepRomAddrPtr(step uint64) {
+	if gsu.r14Clock != 0 {
+		gsu.r14Clock -= min(gsu.r14Clock, step)
+		if gsu.r14Clock == 0 {
+			setFlag(&gsu.r.SFR, FlagR, false)
+			val, _ := gsu.Read8(gsu.r.ROMBR, gsu.r.cpuRegisters[14])
+			gsu.r.romAddrPtr = val
 		}
 	}
 }
