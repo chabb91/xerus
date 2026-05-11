@@ -9,7 +9,7 @@ import (
 const CPU_DELAY_INTERRUPT_AFTER_DMA = uint64(2) //cpu cycle count
 
 func (soc SoC) Run() {
-	var cpuCnt uint64 //the dma/cpu cycle counter is counting down due to the variable access speed
+	var cpuCnt uint64
 	var ppuCnt uint64
 	var copCnt uint64
 	var prevApuStep uint64
