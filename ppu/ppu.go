@@ -253,32 +253,56 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 		hasMosaic = value&0xF > 0
 	case 0x2107:
 		//fmt.Println("BG1SC: ", value)
+		if ppu.registerPreviousValues[0x07] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x07] = uint16(value)
 		ppu.Bg1.tileMapSize = uint16(value & 0x3)
 		ppu.Bg1.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.invalidateLayer(bg1)
 	case 0x2108:
 		//fmt.Println("BG2SC: ", value)
+		if ppu.registerPreviousValues[0x08] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x08] = uint16(value)
 		ppu.Bg2.tileMapSize = uint16(value & 0x3)
 		ppu.Bg2.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.invalidateLayer(bg2)
 	case 0x2109:
 		//fmt.Println("BG3SC: ", value)
+		if ppu.registerPreviousValues[0x09] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x09] = uint16(value)
 		ppu.Bg3.tileMapSize = uint16(value & 0x3)
 		ppu.Bg3.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.invalidateLayer(bg3)
 	case 0x210A:
 		//fmt.Println("BG4SC: ", value)
+		if ppu.registerPreviousValues[0x0A] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x0A] = uint16(value)
 		ppu.Bg4.tileMapSize = uint16(value & 0x3)
 		ppu.Bg4.tileMapAddress = (uint16((value>>2)&0x3F) << 10) & 0x7FFF
 		ppu.invalidateLayer(bg4)
 	case 0x210B:
 		//fmt.Println("BG12NBA: ", value)
+		if ppu.registerPreviousValues[0x0B] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x0B] = uint16(value)
 		ppu.Bg1.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
 		ppu.Bg2.charTileAddressBase = (uint16((value>>4)&0xF) << 12) & 0x7FFF
 		ppu.invalidateLayer(bg1)
 		ppu.invalidateLayer(bg2)
 	case 0x210C:
 		//fmt.Println("BG34NBA: ", value)
+		if ppu.registerPreviousValues[0x0C] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x0C] = uint16(value)
 		ppu.Bg3.charTileAddressBase = (uint16(value&0xF) << 12) & 0x7FFF
 		ppu.Bg4.charTileAddressBase = (uint16((value>>4)&0xF) << 12) & 0x7FFF
 		ppu.invalidateLayer(bg3)
@@ -340,26 +364,62 @@ func (ppu *PPU) Write(addr uint16, value byte) error {
 	case 0x2122:
 		ppu.CGRAM.WriteData(value)
 	case 0x2123:
+		if ppu.registerPreviousValues[0x23] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x23] = uint16(value)
 		ppu.WINDOWS.W12SEL(value)
 	case 0x2124:
+		if ppu.registerPreviousValues[0x24] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x24] = uint16(value)
 		ppu.WINDOWS.W34SEL(value)
 	case 0x2125:
+		if ppu.registerPreviousValues[0x25] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x25] = uint16(value)
 		ppu.WINDOWS.WOBJSEL(value)
 	case 0x2126:
+		if ppu.registerPreviousValues[0x26] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x26] = uint16(value)
 		ppu.WINDOWS.w1LeftPos = value
 		ppu.markActiveWindowsDirty()
 	case 0x2127:
+		if ppu.registerPreviousValues[0x27] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x27] = uint16(value)
 		ppu.WINDOWS.w1RightPos = value
 		ppu.markActiveWindowsDirty()
 	case 0x2128:
+		if ppu.registerPreviousValues[0x28] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x28] = uint16(value)
 		ppu.WINDOWS.w2LeftPos = value
 		ppu.markActiveWindowsDirty()
 	case 0x2129:
+		if ppu.registerPreviousValues[0x29] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x29] = uint16(value)
 		ppu.WINDOWS.w2RightPos = value
 		ppu.markActiveWindowsDirty()
 	case 0x212A:
+		if ppu.registerPreviousValues[0x2A] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x2A] = uint16(value)
 		ppu.WINDOWS.WBGLOG(value)
 	case 0x212B:
+		if ppu.registerPreviousValues[0x2B] == uint16(value) {
+			break
+		}
+		ppu.registerPreviousValues[0x2B] = uint16(value)
 		ppu.WINDOWS.WOBJLOG(value)
 	case 0x212C:
 		//fmt.Println("TM: ", value)
