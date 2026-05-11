@@ -1,6 +1,7 @@
 package ppu
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math/bits"
 )
@@ -482,19 +483,19 @@ func RenderTile8bpp(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 }
 
 func RenderTile2bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
+	_ = VRAM[wordBase+7]
 	for row := range 8 {
 		word := VRAM[wordBase+uint16(row)]
 
-		lowBits := bitplaneLUT[byte(word)]
-		highBits := bitplaneLUT[byte(word>>8)]
+		p0 := bitplaneLUT[byte(word)]
+		p1 := bitplaneLUT[byte(word>>8)]
 
-		for px := range 8 {
-			out[row][px] = lowBits[px] | (highBits[px] << 1)
-		}
+		binary.LittleEndian.PutUint64(out[row][:], p1<<1|p0)
 	}
 }
 
 func RenderTile4bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
+	_ = VRAM[wordBase+15]
 	for row := range uint16(8) {
 		currentRow := wordBase + row
 		w01 := VRAM[currentRow]   // bitplanes 0-1
@@ -505,16 +506,12 @@ func RenderTile4bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 		p2 := bitplaneLUT[byte(w23)]
 		p3 := bitplaneLUT[byte(w23>>8)]
 
-		for px := range 8 {
-			out[row][px] = p0[px] |
-				p1[px]<<1 |
-				p2[px]<<2 |
-				p3[px]<<3
-		}
+		binary.LittleEndian.PutUint64(out[row][:], p3<<3|p2<<2|p1<<1|p0)
 	}
 }
 
 func RenderTile8bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
+	_ = VRAM[wordBase+31]
 	for row := range uint16(8) {
 		currentRow := wordBase + row
 		w01 := VRAM[currentRow]    // bitplanes 0-1
@@ -531,15 +528,6 @@ func RenderTile8bppLUT(VRAM []uint16, wordBase uint16, out *[8][8]byte) {
 		p6 := bitplaneLUT[byte(w67)]
 		p7 := bitplaneLUT[byte(w67>>8)]
 
-		for px := range 8 {
-			out[row][px] = p0[px] |
-				p1[px]<<1 |
-				p2[px]<<2 |
-				p3[px]<<3 |
-				p4[px]<<4 |
-				p5[px]<<5 |
-				p6[px]<<6 |
-				p7[px]<<7
-		}
+		binary.LittleEndian.PutUint64(out[row][:], p7<<7|p6<<6|p5<<5|p4<<4|p3<<3|p2<<2|p1<<1|p0)
 	}
 }

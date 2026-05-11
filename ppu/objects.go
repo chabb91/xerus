@@ -232,7 +232,7 @@ func (ob *Objects) drawASpriteTileRow(sprite *Sprite, dimensions ObTileSize, H, 
 	rowData := char.getRowAt(ob.colorDepth, sprite.GetVramTileWordIndex, tileIndex, byte(y)^sprite.verticalFlipMask)
 	limit := min(8-x, SCREEN_WIDTH-H)
 
-	for i := uint16(0); i < limit; i++ {
+	for i := range limit {
 		renderDot := &ob.resolvedDotsOnScanLine[H+i]
 		if renderDot.color != BG_BACKDROP_COLOR {
 			continue

@@ -33,6 +33,7 @@ func newMode7(ds tileDataSource, bg1, bg2 *Background) *Mode7 {
 }
 
 func (bg *Mode7) prepareScanLine(V uint16) {
+	V += 1 << interlace
 	if *bg.bg1Mosaic {
 		V = V - V%uint16(mosaicSize)
 	}

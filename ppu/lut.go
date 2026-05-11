@@ -1,6 +1,5 @@
 package ppu
 
-var bitplaneLUT [256][8]byte
 var tileMapDimensionsLUT = [4]struct{ W, H, mapsPerRow, mapsPerColumn, wordSize, divMaskW, divMaskH, modMaskW, modMaskH, mapsPerRowMinusOne uint16 }{
 	{32, 32, 1, 1, 0x400, 5, 5, 31, 31, 0},
 	{64, 32, 2, 1, 0x800, 6, 5, 63, 31, 1},
@@ -61,11 +60,12 @@ func init() {
 	PAL_TIMING.VisibilityLUTs[true] = GenerateVisibilityLUT(&PAL_TIMING, true)
 }
 
+var bitplaneLUT [256]uint64
+
 func initBitplaneLUT() {
-	// Pre-compute all possible byte -> 8 pixels mappings
 	for b := range 256 {
 		for px := range 8 {
-			bitplaneLUT[b][px] = byte((b >> (7 - px)) & 1)
+			bitplaneLUT[b] |= uint64((b>>(7-px))&1) << (px << 3)
 		}
 	}
 }
