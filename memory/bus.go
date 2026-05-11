@@ -171,12 +171,12 @@ func (b *SnesBus) GetAccessClass(address uint32) uint64 {
 	}
 
 	//[00-3F] or [80-BF]
-	if offset >= 0x20 && offset <= 0x5F {
-		return FAST_REGION
-	}
-
 	if offset == 0x40 || offset == 0x41 {
 		return XSLOW_REGION
+	}
+
+	if offset >= 0x20 && offset <= 0x5F {
+		return FAST_REGION
 	}
 
 	return SLOW_REGION

@@ -21,20 +21,20 @@ func NewHWInterruptMap() []Instruction {
 func NewInstructionMap() []Instruction {
 	ret := make([]Instruction, 256)
 
-	ret[0x4C] = &JMP_Abs{}
-	ret[0x5C] = &JMP_Long{}
-	ret[0x6C] = &JMP_AbsIndirect{}
-	ret[0x7C] = &JMP_AbsIndexedIndirect{}
-	ret[0xDC] = &JMP_AbsLong{}
-	ret[0xFC] = &JSR_AbsIndexedIndirect{}
-	ret[0x20] = &JSR_Abs{}
-	ret[0x22] = &JSL{}
+	ret[0x4C] = &JmpAbs{}
+	ret[0x5C] = &JmpLong{}
+	ret[0x6C] = &JmpAbsIndirect{}
+	ret[0x7C] = &JmpAbsIndexedIndirect{}
+	ret[0xDC] = &JmpAbsLong{}
+	ret[0xFC] = &JsrAbsIndexedIndirect{}
+	ret[0x20] = &JsrAbs{}
+	ret[0x22] = &Jsl{}
 
-	ret[0x40] = &RTI{}
+	ret[0x40] = &Rti{}
 	ret[0x6B] = &RtsRtl{long: true}
 	ret[0x60] = &RtsRtl{long: false}
 
-	ret[0x82] = &BRL{}
+	ret[0x82] = &Brl{}
 
 	ret[0x80] = &OneByteBranch{shouldBranch: func(cpu *CPU) bool { return true }}                  //BRA or branch always
 	ret[0x10] = &OneByteBranch{shouldBranch: func(cpu *CPU) bool { return !cpu.r.hasFlag(FlagN) }} //BPL or branch if positive
@@ -75,7 +75,7 @@ func NewInstructionMap() []Instruction {
 	ret[0xDB] = &StpWai{executionState: stopState}
 	ret[0xCB] = &StpWai{executionState: waitState}
 
-	ret[0xEB] = &XBA{}
+	ret[0xEB] = &Xba{}
 
 	//WDM/NOP instructions
 	ret[0xEA] = &TwoCycleImplied{instructionFunc: func(cpu *CPU) {}}
@@ -362,14 +362,14 @@ func NewInstructionMap() []Instruction {
 //TODO many instructions are using address + 1 now without masking 24 bits this CAN OVERFLOW
 
 // JMP with absolute addressing
-type JMP_Abs struct {
+type JmpAbs struct {
 	state    int
 	lowByte  byte
 	highByte byte
 	address  uint16
 }
 
-func (i *JMP_Abs) Step(cpu *CPU) bool {
+func (i *JmpAbs) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.lowByte = cpu.fetchByte()
@@ -383,12 +383,12 @@ func (i *JMP_Abs) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JMP_Abs) Reset(cpu *CPU) {
+func (i *JmpAbs) Reset(cpu *CPU) {
 	i.state = 0
 }
 
 // JMP with long addressing
-type JMP_Long struct {
+type JmpLong struct {
 	state    int
 	lowByte  byte
 	highByte byte
@@ -396,7 +396,7 @@ type JMP_Long struct {
 	address  uint16
 }
 
-func (i *JMP_Long) Step(cpu *CPU) bool {
+func (i *JmpLong) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.lowByte = cpu.fetchByte()
@@ -414,12 +414,12 @@ func (i *JMP_Long) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JMP_Long) Reset(cpu *CPU) {
+func (i *JmpLong) Reset(cpu *CPU) {
 	i.state = 0
 }
 
 // JMP with absolute(indirect) addressing
-type JMP_AbsIndirect struct {
+type JmpAbsIndirect struct {
 	state int
 
 	lowByte  byte
@@ -428,7 +428,7 @@ type JMP_AbsIndirect struct {
 	pointerAddress uint16
 }
 
-func (i *JMP_AbsIndirect) Step(cpu *CPU) bool {
+func (i *JmpAbsIndirect) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.lowByte = cpu.fetchByte()
@@ -449,12 +449,12 @@ func (i *JMP_AbsIndirect) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JMP_AbsIndirect) Reset(cpu *CPU) {
+func (i *JmpAbsIndirect) Reset(cpu *CPU) {
 	i.state = 0
 }
 
 // JMP with absolute(indexed indirect) addressing
-type JMP_AbsIndexedIndirect struct {
+type JmpAbsIndexedIndirect struct {
 	state int
 
 	lowByte  byte
@@ -463,7 +463,7 @@ type JMP_AbsIndexedIndirect struct {
 	pointerAddress uint16
 }
 
-func (i *JMP_AbsIndexedIndirect) Step(cpu *CPU) bool {
+func (i *JmpAbsIndexedIndirect) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.lowByte = cpu.fetchByte()
@@ -486,12 +486,12 @@ func (i *JMP_AbsIndexedIndirect) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JMP_AbsIndexedIndirect) Reset(cpu *CPU) {
+func (i *JmpAbsIndexedIndirect) Reset(cpu *CPU) {
 	i.state = 0
 }
 
 // JMP with absolute long addressing
-type JMP_AbsLong struct {
+type JmpAbsLong struct {
 	state int
 
 	lowByte  byte
@@ -501,7 +501,7 @@ type JMP_AbsLong struct {
 	pointerAddress uint16
 }
 
-func (i *JMP_AbsLong) Step(cpu *CPU) bool {
+func (i *JmpAbsLong) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.lowByte = cpu.fetchByte()
@@ -525,12 +525,12 @@ func (i *JMP_AbsLong) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JMP_AbsLong) Reset(cpu *CPU) {
+func (i *JmpAbsLong) Reset(cpu *CPU) {
 	i.state = 0
 }
 
 // Jump to SubRoutine with absolute addressing
-type JSR_Abs struct {
+type JsrAbs struct {
 	state int
 
 	lowByte  byte
@@ -540,7 +540,7 @@ type JSR_Abs struct {
 }
 
 // MLB active TODO
-func (i *JSR_Abs) Step(cpu *CPU) bool {
+func (i *JsrAbs) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.lowByte = cpu.fetchByte()
@@ -563,12 +563,12 @@ func (i *JSR_Abs) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JSR_Abs) Reset(cpu *CPU) {
+func (i *JsrAbs) Reset(cpu *CPU) {
 	i.state = 0
 }
 
 // Jump to Subroutine Long
-type JSL struct {
+type Jsl struct {
 	state    int
 	lowByte  byte
 	highByte byte
@@ -577,7 +577,7 @@ type JSL struct {
 
 // the emulation test case for this so 22.e.json seems to not wrap the stack pointer
 // future me: nor should it
-func (i *JSL) Step(cpu *CPU) bool {
+func (i *Jsl) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.lowByte = cpu.fetchByte()
@@ -608,13 +608,13 @@ func (i *JSL) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JSL) Reset(cpu *CPU) {
+func (i *Jsl) Reset(cpu *CPU) {
 	i.state = 0
 }
 
 // Jump to SubRoutine with absolute(indexed indirect) addressing
 // another new instruction, new pain
-type JSR_AbsIndexedIndirect struct {
+type JsrAbsIndexedIndirect struct {
 	state int
 
 	lowByte  byte
@@ -625,7 +625,7 @@ type JSR_AbsIndexedIndirect struct {
 	pointerAddress uint16
 }
 
-func (i *JSR_AbsIndexedIndirect) Step(cpu *CPU) bool {
+func (i *JsrAbsIndexedIndirect) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.lowByte = cpu.fetchByte()
@@ -657,19 +657,19 @@ func (i *JSR_AbsIndexedIndirect) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JSR_AbsIndexedIndirect) Reset(cpu *CPU) {
+func (i *JsrAbsIndexedIndirect) Reset(cpu *CPU) {
 	i.state = 0
 }
 
 // return from interrupt instruction
-type RTI struct {
+type Rti struct {
 	state int
 
 	lowByte  byte
 	highByte byte
 }
 
-func (i *RTI) Step(cpu *CPU) bool {
+func (i *Rti) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.state++
@@ -701,7 +701,7 @@ func (i *RTI) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *RTI) Reset(cpu *CPU) {
+func (i *Rti) Reset(cpu *CPU) {
 	i.state = 0
 }
 
@@ -754,15 +754,15 @@ func (i *RtsRtl) Reset(cpu *CPU) {
 	i.state = 0
 }
 
-// BRL represents the BRL or branch always long instruction
-type BRL struct {
+// Brl represents the Brl or branch always long instruction
+type Brl struct {
 	state int
 
 	offsetL byte
 	offsetH byte
 }
 
-func (i *BRL) Step(cpu *CPU) bool {
+func (i *Brl) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.offsetL = cpu.fetchByte()
@@ -777,7 +777,7 @@ func (i *BRL) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *BRL) Reset(cpu *CPU) {
+func (i *Brl) Reset(cpu *CPU) {
 	i.state = 0
 }
 
@@ -1021,14 +1021,16 @@ type ResetSequence struct {
 }
 
 // TODO unsure if this is correct or not but i heard reset takes 6-9 instructions and this with the signal catch is 8
+// delaying reset to match the boot time of bsnes
+// TODO update this as timing improves
 func (i *ResetSequence) Step(cpu *CPU) bool {
-	switch i.state {
-	case 0, 1, 2, 3, 4:
+	switch {
+	case i.state <= 26:
 		i.state++
-	case 5:
+	case i.state == 27:
 		i.lowByte = cpu.readByte(i.eAddress)
 		i.state++
-	case 6:
+	case i.state == 28:
 		i.highByte = cpu.readByte(i.eAddress + 1)
 
 		cpu.r.E = true
@@ -1108,13 +1110,13 @@ func (i *StpWai) Reset(cpu *CPU) {
 	i.state = 0
 }
 
-type XBA struct {
+type Xba struct {
 	state int
 
 	lowByte, highByte byte
 }
 
-func (i *XBA) Step(cpu *CPU) bool {
+func (i *Xba) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		i.highByte, i.lowByte = splitWord(cpu.r.A)
@@ -1128,6 +1130,6 @@ func (i *XBA) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *XBA) Reset(cpu *CPU) {
+func (i *Xba) Reset(cpu *CPU) {
 	i.state = 0
 }

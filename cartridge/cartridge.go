@@ -314,7 +314,8 @@ func (cart *Cartridge) DetectCoprocessor() coprocessor.Coprocessor {
 			}
 		}
 		if constants.PanicIfComponentMissing {
-			panic("Unimplemented coprocessor detected. Exiting...:(")
+			panic(fmt.Sprintf("Unimplemented coprocessor detected (id: %02X). Exiting...:(",
+				chipset>>4))
 		}
 	}
 	return nil
