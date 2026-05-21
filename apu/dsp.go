@@ -1,6 +1,7 @@
 package apu
 
 import (
+	"encoding/binary"
 	"fmt"
 	"sync"
 )
@@ -363,6 +364,8 @@ func (ab *RingBuffer) Write(sampleL, sampleR int16) {
 	defer ab.Unlock()
 
 	//go sign extends uint32(sample) so the inner cast isnt optional
+	//oto ioreader in an int16 bit depth stream requests data in this order
+	//read back as little endian (so left -> right)
 	ab.storage[ab.head] = (uint32(uint16(sampleR)) << 16) | uint32(uint16(sampleL))
 	ab.head = (ab.head + 1) & ab.size
 
@@ -380,16 +383,15 @@ func (ab *RingBuffer) Read(p []byte) (n int, err error) {
 
 	for i := 0; i < len(p); i += 4 {
 		if ab.count > 0 {
-			sample := ab.storage[ab.tail]
-			p[i] = byte(sample)
-			p[i+1] = byte(sample >> 8)
-			p[i+2] = byte(sample >> 16)
-			p[i+3] = byte(sample >> 24)
+			binary.LittleEndian.PutUint32(p[i:], ab.storage[ab.tail])
 			ab.tail = (ab.tail + 1) & ab.size
 			ab.count--
-		} else { //empty buffer
-			clear(p[i:]) //only works because this holds the mutex and so
-			break        //once the buffer is empty it stays so
+		} else {
+			//empty buffer
+			//only works because this holds the mutex and so
+			//once the buffer is empty it stays so
+			clear(p[i:])
+			break
 		}
 	}
 	return len(p), nil
