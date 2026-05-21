@@ -67,7 +67,10 @@ func getRomMapper(romData []byte) (types.RomMapper, error) {
 	exHiRomPt := testCandidateHeader(ExHiROM, 0x40FFC0, romData, checksum)
 
 	bestResult := max(loRomPt, hiRomPt, exHiRomPt)
-	if bestResult >= 4 {
+	// 3 means reset vector checks out plus something else which is the bare minimum
+	// if a rom is more scuffed than that then the code has to be executed and evaluated
+	// while running
+	if bestResult >= 3 {
 		if bestResult == loRomPt {
 			log.Printf("Cartridge: LoROM detected with a fitness of: %v", bestResult)
 			return mapLoRom, nil
