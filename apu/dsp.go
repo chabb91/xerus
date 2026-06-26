@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"sync"
+	"sync/atomic"
 )
 
 // Number of samples per counter event
@@ -102,8 +103,9 @@ type DSP struct {
 func NewDsp(psram *SPCMemory) *DSP {
 	dsp := &DSP{
 		noiseSampleRaw: 0x4000,
-		Buffer:         newRingBuffer(11),
-		ram:            &psram.ram,
+		//Buffer:         newRingBuffer(11),
+		Buffer: newAtomicBuffer(11),
+		ram:    &psram.ram,
 	}
 	for i := range len(dsp.Voices) {
 		dsp.Voices[i] = newVoice(i, &dsp.registers, &psram.ram)
@@ -253,25 +255,20 @@ func (f *fir) getSample(d *DSP) (echoL, echoR int32) {
 	f.leftSampleBuffer[f.idx], f.rightSampleBuffer[f.idx] = d.readEchoBuffer()
 	f.idx = (f.idx + 1) & 7
 
-	var L, R int32
-
 	for i := range 8 {
 		idx := (f.idx + i) & 7
 		firCoeff := int32(int8(d.registers[i<<4|int(FFCx)]))
-		L += (int32(f.leftSampleBuffer[idx]) * firCoeff) >> 6
-		R += (int32(f.rightSampleBuffer[idx]) * firCoeff) >> 6
+		echoL += (int32(f.leftSampleBuffer[idx]) * firCoeff) >> 6
+		echoR += (int32(f.rightSampleBuffer[idx]) * firCoeff) >> 6
 
 		if i == 6 {
-			L = int32(int16(L))
-			R = int32(int16(R))
-		}
-		if i == 7 { //newest sample
-			L = clamp16(L)
-			R = clamp16(R)
+			echoL = int32(int16(echoL))
+			echoR = int32(int16(echoR))
 		}
 	}
-	echoL = (L &^ 1)
-	echoR = (R &^ 1)
+	//i==7 aka newest sample
+	echoL = clamp16(echoL) &^ 1
+	echoR = clamp16(echoR) &^ 1
 
 	return
 }
@@ -392,6 +389,53 @@ func (ab *RingBuffer) Read(p []byte) (n int, err error) {
 			//once the buffer is empty it stays so
 			clear(p[i:])
 			break
+		}
+	}
+	return len(p), nil
+}
+
+type AtomicBuffer struct {
+	storage []uint32
+	head    atomic.Uint64
+	tail    atomic.Uint64
+	size    uint64
+}
+
+// the buffer size will be (1<<sizeShift)-1 to avoid modulo.
+// note that % size == & size-1
+func newAtomicBuffer(sizeShift int) *AtomicBuffer {
+	mask := uint64(1 << sizeShift)
+	return &AtomicBuffer{
+		size:    mask - 1,
+		storage: make([]uint32, mask),
+	}
+}
+
+func (ab *AtomicBuffer) Write(sampleL, sampleR int16) {
+	//go sign extends uint32(sample) so the inner cast isnt optional
+	//oto ioreader in an int16 bit depth stream requests data in this order
+	//read back as little endian (so left -> right)
+	head := ab.head.Load()
+	tail := ab.tail.Load()
+
+	newHead := (head + 1)
+
+	if newHead&ab.size != tail&ab.size {
+		ab.storage[head&ab.size] = (uint32(uint16(sampleR)) << 16) | uint32(uint16(sampleL))
+		ab.head.Store(newHead)
+	}
+}
+
+func (ab *AtomicBuffer) Read(p []byte) (n int, err error) {
+	for i := 0; i < len(p); i += 4 {
+		head := ab.head.Load()
+		tail := ab.tail.Load()
+
+		if tail != head {
+			binary.LittleEndian.PutUint32(p[i:], ab.storage[tail&ab.size])
+			ab.tail.Store(tail + 1)
+		} else {
+			binary.LittleEndian.PutUint32(p[i:], 0)
 		}
 	}
 	return len(p), nil
