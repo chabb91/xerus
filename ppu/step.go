@@ -172,7 +172,7 @@ func (ppu *PPU) performAction(draw VisibilityEntry) {
 		if !ppu.Bg1.mosaic || shouldReset {
 			ppu.Bg1.renderCacheEnd = 0
 			if ppu.BGMODE == 7 {
-				ppu.Mode7.prepareScanLine(draw.V<<interlace | (interlaceStep & interlace))
+				ppu.Mode7.prepareScanLine(byte(draw.V))
 			}
 		}
 		if !ppu.Bg2.mosaic || shouldReset {

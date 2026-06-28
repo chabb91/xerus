@@ -32,18 +32,18 @@ func newMode7(ds tileDataSource, bg1, bg2 *Background) *Mode7 {
 	}
 }
 
-func (bg *Mode7) prepareScanLine(V uint16) {
-	V += 1 << interlace
+func (bg *Mode7) prepareScanLine(V byte) {
+	V++
 	if *bg.bg1Mosaic {
-		V = V - V%uint16(mosaicSize)
+		V = V - V%mosaicSize
 	}
 	hFlipMask := byte(0)
 	if bg.isFlippedHorizontally {
 		hFlipMask = 0xFF
 	}
 	if bg.isFlippedVertically {
-		//is this how it should be who knows
-		V = (256 << interlace) - 1 - V
+		//not sure if it flips based on the screen height or max height before wrap
+		V ^= 0xFF
 	}
 	vram := bg.VRAM
 
