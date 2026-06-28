@@ -6,14 +6,17 @@ func (ppu *PPU) Step() uint64 {
 	draw := currentTimingRow[min(ppu.H, H_TOTAL-1)] //pal long line smh
 	if draw.IsVisible {
 		h := draw.H
-		v := draw.V<<interlace | (interlaceStep & interlace)
 		if h == 0 {
+			v := draw.V<<interlace | (interlaceStep & interlace)
 			currentPixelBufferRow = &ppu.Framebuffer.Back[v]
 		}
 		if ppu.FBlank {
 			currentPixelBufferRow[h].SetColor(0, 0, ppu.brightness)
 		} else {
-			if hires == 1 || pseudoHires == 1 {
+			v := draw.V<<(interlace&uint16(hires)) | (interlaceStep & interlace & uint16(hires))
+			//v := draw.V<<(interlace&uint16(hires)) | (interlaceStep & interlace)
+			//not sure which is correct, mesen does it the first way
+			if hires|pseudoHires == 1 {
 				//flipping this causes artifacts because the subscreen is always first in the rendering order
 				ss, l2, _ := ppu.renderSubScreen(h, v)
 				ms, l1, math := ppu.renderMainScreen(h, v)
