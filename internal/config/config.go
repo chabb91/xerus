@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	"github.com/chabb91/xerus/ui"
@@ -25,6 +26,8 @@ type EmulatorConfig struct {
 	Inputs       InputDeviceMapping
 
 	Shader string
+
+	BuildInfo bool
 }
 
 func New() *EmulatorConfig {
@@ -44,9 +47,16 @@ func New() *EmulatorConfig {
 			"\n\"none\" - a simple bgr15 decoder"+
 			"\n\"crt_basic\" - a crt shader")
 
+	flag.BoolVar(&conf.BuildInfo, "build-info", false, "Print some information about the current build and exit.\nProvided by debug.ReadBuildInfo()")
+
 	flag.Parse()
 
 	flag.Usage = usage
+
+	if conf.BuildInfo {
+		printBuildInfo()
+		os.Exit(1)
+	}
 
 	args := flag.Args()
 
@@ -99,6 +109,15 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "Usage: %s [options] <rom-path>\n", os.Args[0])
 	fmt.Println("The list of all available [options]: ")
 	flag.PrintDefaults()
+}
+
+func printBuildInfo() {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		fmt.Println("Error: Couldn't fetch the build information")
+	} else {
+		fmt.Println(info)
+	}
 }
 
 func (ec *EmulatorConfig) GetInputMapping() []ui.SnesInput {
