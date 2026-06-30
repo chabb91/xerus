@@ -1,6 +1,8 @@
 package cpu
 
 import (
+	"log"
+
 	"github.com/chabb91/xerus/internal/constants"
 	"github.com/chabb91/xerus/memory"
 )
@@ -86,6 +88,7 @@ func (c *CPU) handleReset() bool {
 	}
 	c.currentInstruction = c.hwInterrupts[resetId]
 	c.currentInstruction.Reset(c)
+	c.previousIFlag = -1
 	//reset clears all other interrupts
 	c.resetSignal = false
 	c.abortSignal = false
@@ -104,6 +107,7 @@ func (c *CPU) handleAbort() bool {
 	//this is a footgun so it should be addressed but this is the only place where its relevant
 	//so ill just write this comment instead
 	abort.Reset(c)
+	c.previousIFlag = -1
 	c.currentInstruction = abort
 	c.abortSignal = false
 	c.executionState = normalState
@@ -122,6 +126,7 @@ func (c *CPU) handleNMI() bool {
 	c.CyclesTaken = c.bus.GetAccessClass(mapOffsetToBank(c.r.PB, c.r.PC))
 	c.currentInstruction = c.hwInterrupts[nmiId]
 	c.currentInstruction.Reset(c)
+	c.previousIFlag = -1
 	c.NmiSignal = false
 	return true
 }
@@ -139,20 +144,20 @@ func (c *CPU) handleIRQ() bool {
 	}
 
 	var hasFlag bool
-	/*  FIXME this is supposedly hardware accurate but right now it introduces breaking issues
-	because some other timing related things i guess. has to be turned back on later
 	if c.previousIFlag >= 0 {
+		if constants.ShowDebugLog && c.r.P&FlagI != byte(c.previousIFlag) {
+			log.Printf("CPU Quirk: The previous I flag doesnt match the current one at IRQ evaluation.")
+		}
 		hasFlag = c.previousIFlag > 0
 	} else {
 		hasFlag = c.r.hasFlag(FlagI)
 	}
-	*/
-	hasFlag = c.r.hasFlag(FlagI)
 
 	if !hasFlag {
 		c.CyclesTaken = c.bus.GetAccessClass(mapOffsetToBank(c.r.PB, c.r.PC))
 		c.currentInstruction = c.hwInterrupts[irqId]
 		c.currentInstruction.Reset(c)
+		c.previousIFlag = -1
 		c.executionState = normalState
 		return true
 	}
@@ -209,7 +214,8 @@ func (cpu *CPU) PopByte() byte {
 	return cpu.readByte(uint32(cpu.r.GetStack()))
 }
 
-// TODO this method might mess up the stack pouinter in emulation mode after an abort interrupt!
+// TODO this method might mess up the stack pointer in emulation mode after an abort interrupt!
+// (which doesnt exist on the SNES but w/e)
 // new instructions(the ones expanding the original 6502 instructionset
 // dont wrap the stack pointer till they are done
 func (cpu *CPU) PushByteNewOpCode(val byte) {
