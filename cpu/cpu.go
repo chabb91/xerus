@@ -159,6 +159,9 @@ func (c *CPU) handleIRQ() bool {
 
 func (c *CPU) executeNextInstruction() bool {
 	if c.currentInstruction == nil {
+		// for the sake of completeness i'll mention that this instrPC assignment
+		// might have to be added to interrupts too just like previousIFlag is
+		// if this cpu core were ever used in something other than the snes
 		c.r.instrPC = c.r.PC
 		c.setCurrentInstruction(c.instructions[c.fetchByte()])
 		return false
