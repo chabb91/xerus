@@ -5,7 +5,7 @@ type Instruction interface {
 	// Step performs one cycle of the instruction's execution.
 	// It returns true if the instruction is complete, false otherwise.
 	Step(cpu *CPU) bool
-	Reset(cpu *CPU)
+	Reset()
 }
 
 func NewHWInterruptMap() []Instruction {
@@ -383,7 +383,7 @@ func (i *JmpAbs) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JmpAbs) Reset(cpu *CPU) {
+func (i *JmpAbs) Reset() {
 	i.state = 0
 }
 
@@ -414,7 +414,7 @@ func (i *JmpLong) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JmpLong) Reset(cpu *CPU) {
+func (i *JmpLong) Reset() {
 	i.state = 0
 }
 
@@ -449,7 +449,7 @@ func (i *JmpAbsIndirect) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JmpAbsIndirect) Reset(cpu *CPU) {
+func (i *JmpAbsIndirect) Reset() {
 	i.state = 0
 }
 
@@ -486,7 +486,7 @@ func (i *JmpAbsIndexedIndirect) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JmpAbsIndexedIndirect) Reset(cpu *CPU) {
+func (i *JmpAbsIndexedIndirect) Reset() {
 	i.state = 0
 }
 
@@ -525,7 +525,7 @@ func (i *JmpAbsLong) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JmpAbsLong) Reset(cpu *CPU) {
+func (i *JmpAbsLong) Reset() {
 	i.state = 0
 }
 
@@ -563,7 +563,7 @@ func (i *JsrAbs) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JsrAbs) Reset(cpu *CPU) {
+func (i *JsrAbs) Reset() {
 	i.state = 0
 }
 
@@ -608,7 +608,7 @@ func (i *Jsl) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *Jsl) Reset(cpu *CPU) {
+func (i *Jsl) Reset() {
 	i.state = 0
 }
 
@@ -657,7 +657,7 @@ func (i *JsrAbsIndexedIndirect) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *JsrAbsIndexedIndirect) Reset(cpu *CPU) {
+func (i *JsrAbsIndexedIndirect) Reset() {
 	i.state = 0
 }
 
@@ -701,7 +701,7 @@ func (i *Rti) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *Rti) Reset(cpu *CPU) {
+func (i *Rti) Reset() {
 	i.state = 0
 }
 
@@ -750,7 +750,7 @@ func (i *RtsRtl) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *RtsRtl) Reset(cpu *CPU) {
+func (i *RtsRtl) Reset() {
 	i.state = 0
 }
 
@@ -777,7 +777,7 @@ func (i *Brl) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *Brl) Reset(cpu *CPU) {
+func (i *Brl) Reset() {
 	i.state = 0
 }
 
@@ -814,7 +814,7 @@ func (i *OneByteBranch) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *OneByteBranch) Reset(cpu *CPU) {
+func (i *OneByteBranch) Reset() {
 	i.state = 0
 }
 
@@ -878,7 +878,7 @@ func (i *softwareInterrupt) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *softwareInterrupt) Reset(cpu *CPU) {
+func (i *softwareInterrupt) Reset() {
 	i.state = 0
 }
 
@@ -898,8 +898,13 @@ type NmiIrqSequence struct {
 func (i *NmiIrqSequence) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		cpu.PushByte(cpu.r.PB)
 		i.state++
+		if !cpu.r.E {
+			cpu.PushByte(cpu.r.PB)
+			return false
+		}
+		//in emulation mode skip to case 1 immediately written in a fancy way
+		fallthrough
 	case 1:
 		i.highByte, i.lowByte = splitWord(cpu.r.PC)
 		cpu.PushByte(i.highByte)
@@ -936,12 +941,8 @@ func (i *NmiIrqSequence) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *NmiIrqSequence) Reset(cpu *CPU) {
-	if cpu.r.E {
-		i.state = 1
-	} else {
-		i.state = 0
-	}
+func (i *NmiIrqSequence) Reset() {
+	i.state = 0
 }
 
 type AbortSequence struct {
@@ -961,8 +962,13 @@ type AbortSequence struct {
 func (i *AbortSequence) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		cpu.PushByte(cpu.r.PB)
 		i.state++
+		if !cpu.r.E {
+			cpu.PushByte(cpu.r.PB)
+			return false
+		}
+		//in emulation mode skip to case 1 immediately written in a fancy way
+		fallthrough
 	case 1:
 		i.highByte, i.lowByte = splitWord(i.PC)
 		cpu.PushByte(i.highByte)
@@ -995,18 +1001,17 @@ func (i *AbortSequence) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *AbortSequence) Reset(cpu *CPU) {
+func (i *AbortSequence) snapshotPc(cpu *CPU) Instruction {
 	if cpu.currentInstruction != nil {
 		i.PC = cpu.r.instrPC
 	} else {
 		i.PC = cpu.r.PC
 	}
+	return i
+}
 
-	if cpu.r.E {
-		i.state = 1
-	} else {
-		i.state = 0
-	}
+func (i *AbortSequence) Reset() {
+	i.state = 0
 }
 
 type ResetSequence struct {
@@ -1050,7 +1055,7 @@ func (i *ResetSequence) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *ResetSequence) Reset(cpu *CPU) {
+func (i *ResetSequence) Reset() {
 	i.state = 0
 }
 
@@ -1085,7 +1090,7 @@ func (i *RepSep) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *RepSep) Reset(cpu *CPU) {
+func (i *RepSep) Reset() {
 	i.state = 0
 }
 
@@ -1106,7 +1111,7 @@ func (i *StpWai) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *StpWai) Reset(cpu *CPU) {
+func (i *StpWai) Reset() {
 	i.state = 0
 }
 
@@ -1130,6 +1135,6 @@ func (i *Xba) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *Xba) Reset(cpu *CPU) {
+func (i *Xba) Reset() {
 	i.state = 0
 }

@@ -55,7 +55,7 @@ const (
 type AccessMicroInstruction interface {
 	Setup(*Umbrella)
 	Step(cpu *CPU, u *Umbrella) bool
-	Reset(cpu *CPU)
+	Reset()
 }
 
 type Umbrella struct {
@@ -144,9 +144,9 @@ func (i *Umbrella) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *Umbrella) Reset(cpu *CPU) {
+func (i *Umbrella) Reset() {
 	i.state = FETCH
-	i.addressMode.Reset(cpu)
+	i.addressMode.Reset()
 }
 
 func (i *Umbrella) WriteHi(cpu *CPU) {
@@ -370,7 +370,7 @@ func (i *Direct) directPageLong(cpu *CPU, op byte) (addressLo, addressHi, addres
 	return
 }
 
-func (i *Direct) Reset(cpu *CPU) {
+func (i *Direct) Reset() {
 	i.state = FETCH_OP_1
 }
 
@@ -438,7 +438,7 @@ func (i *Absolute) Step(cpu *CPU, u *Umbrella) bool {
 	return false
 }
 
-func (i *Absolute) Reset(cpu *CPU) {
+func (i *Absolute) Reset() {
 	i.state = FETCH_OP_1
 }
 
@@ -494,7 +494,7 @@ func (i *Long) Step(cpu *CPU, u *Umbrella) bool {
 	return false
 }
 
-func (i *Long) Reset(cpu *CPU) {
+func (i *Long) Reset() {
 	i.state = FETCH_OP_1
 }
 
@@ -525,7 +525,7 @@ func (i *Immediate) Step(cpu *CPU, u *Umbrella) bool {
 	return false
 }
 
-func (i *Immediate) Reset(cpu *CPU) {
+func (i *Immediate) Reset() {
 	i.state = FETCH_OP_1
 }
 
@@ -599,6 +599,6 @@ func (i *StackS) Step(cpu *CPU, u *Umbrella) bool {
 	return false
 }
 
-func (i *StackS) Reset(cpu *CPU) {
+func (i *StackS) Reset() {
 	i.state = FETCH_OP_1
 }

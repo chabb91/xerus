@@ -17,7 +17,7 @@ func (i *Accumulator) Step(cpu *CPU) bool {
 	cpu.r.SetA(i.result)
 	return true
 }
-func (i *Accumulator) Reset(cpu *CPU) {
+func (i *Accumulator) Reset() {
 }
 
 // 2 cycle implied struct. there are many instructions that just fetch opcode and execute a function.
@@ -31,7 +31,7 @@ func (i *TwoCycleImplied) Step(cpu *CPU) bool {
 	return true
 }
 
-func (i *TwoCycleImplied) Reset(cpu *CPU) {
+func (i *TwoCycleImplied) Reset() {
 }
 
 // stack Push/Pull implied instructions
@@ -63,7 +63,7 @@ func (i *Ipld) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *Ipld) Reset(cpu *CPU) {
+func (i *Ipld) Reset() {
 	i.state = 0
 }
 
@@ -91,7 +91,7 @@ func (i *Iplp) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *Iplp) Reset(cpu *CPU) {
+func (i *Iplp) Reset() {
 	i.state = 0
 }
 
@@ -116,7 +116,7 @@ func (i *Iplb) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *Iplb) Reset(cpu *CPU) {
+func (i *Iplb) Reset() {
 	i.state = 0
 }
 
@@ -136,7 +136,7 @@ func (i *Iphb) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *Iphb) Reset(cpu *CPU) {
+func (i *Iphb) Reset() {
 	i.state = 0
 }
 
@@ -163,7 +163,7 @@ func (i *Iphd) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *Iphd) Reset(cpu *CPU) {
+func (i *Iphd) Reset() {
 	i.state = 0
 }
 
@@ -183,7 +183,7 @@ func (i *Iphk) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *Iphk) Reset(cpu *CPU) {
+func (i *Iphk) Reset() {
 	i.state = 0
 }
 
@@ -203,7 +203,7 @@ func (i *Iphp) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *Iphp) Reset(cpu *CPU) {
+func (i *Iphp) Reset() {
 	i.state = 0
 }
 
@@ -232,7 +232,7 @@ func (i *PushAXY) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *PushAXY) Reset(cpu *CPU) {
+func (i *PushAXY) Reset() {
 	i.state = 0
 }
 
@@ -272,7 +272,7 @@ func (i *PullAXY) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *PullAXY) Reset(cpu *CPU) {
+func (i *PullAXY) Reset() {
 	i.state = 0
 }
 
@@ -320,6 +320,6 @@ func (i *SrcDest) Step(cpu *CPU) bool {
 	return false
 }
 
-func (i *SrcDest) Reset(cpu *CPU) {
+func (i *SrcDest) Reset() {
 	i.state = 0
 }

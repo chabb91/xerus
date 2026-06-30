@@ -86,9 +86,7 @@ func (c *CPU) handleReset() bool {
 	if !c.resetSignal {
 		return false
 	}
-	c.currentInstruction = c.hwInterrupts[resetId]
-	c.currentInstruction.Reset(c)
-	c.previousIFlag = -1
+	c.setCurrentInstruction(c.hwInterrupts[resetId])
 	//reset clears all other interrupts
 	c.resetSignal = false
 	c.abortSignal = false
@@ -102,13 +100,12 @@ func (c *CPU) handleAbort() bool {
 	if !c.abortSignal {
 		return false
 	}
-	abort := c.hwInterrupts[abortId]
-	//reset before assigning it to CPU to not break things.
+	abort, ok := c.hwInterrupts[abortId].(*AbortSequence)
+	if !ok {
+		panic("CPU: couldnt cast to AbortSequence. HW interrupt table is likely corrupted.")
+	}
 	//this is a footgun so it should be addressed but this is the only place where its relevant
-	//so ill just write this comment instead
-	abort.Reset(c)
-	c.previousIFlag = -1
-	c.currentInstruction = abort
+	c.setCurrentInstruction(abort.snapshotPc(c))
 	c.abortSignal = false
 	c.executionState = normalState
 	return true
@@ -124,9 +121,7 @@ func (c *CPU) handleNMI() bool {
 		return true
 	}
 	c.CyclesTaken = c.bus.GetAccessClass(mapOffsetToBank(c.r.PB, c.r.PC))
-	c.currentInstruction = c.hwInterrupts[nmiId]
-	c.currentInstruction.Reset(c)
-	c.previousIFlag = -1
+	c.setCurrentInstruction(c.hwInterrupts[nmiId])
 	c.NmiSignal = false
 	return true
 }
@@ -155,9 +150,7 @@ func (c *CPU) handleIRQ() bool {
 
 	if !hasFlag {
 		c.CyclesTaken = c.bus.GetAccessClass(mapOffsetToBank(c.r.PB, c.r.PC))
-		c.currentInstruction = c.hwInterrupts[irqId]
-		c.currentInstruction.Reset(c)
-		c.previousIFlag = -1
+		c.setCurrentInstruction(c.hwInterrupts[irqId])
 		c.executionState = normalState
 		return true
 	}
@@ -167,9 +160,7 @@ func (c *CPU) handleIRQ() bool {
 func (c *CPU) executeNextInstruction() bool {
 	if c.currentInstruction == nil {
 		c.r.instrPC = c.r.PC
-		c.previousIFlag = -1
-		c.currentInstruction = c.instructions[c.fetchByte()]
-		c.currentInstruction.Reset(c)
+		c.setCurrentInstruction(c.instructions[c.fetchByte()])
 		return false
 	}
 	if c.currentInstruction.Step(c) {
@@ -177,6 +168,12 @@ func (c *CPU) executeNextInstruction() bool {
 		return true
 	}
 	return false
+}
+
+func (c *CPU) setCurrentInstruction(i Instruction) {
+	i.Reset()
+	c.previousIFlag = -1
+	c.currentInstruction = i
 }
 
 // fetchByte maps PC to 24 bit then goes and reads a byte from memory
