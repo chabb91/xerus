@@ -41,6 +41,13 @@ func NewBus(cartridge *cartridge.Cartridge) *SnesBus {
 		cartridge: cartridge,
 		memsel:    SLOW_REGION,
 	}
+
+	/*
+		for i := range rb.WRAM {
+			rb.WRAM[i] = byte(rand.UintN(0x100))
+		}
+	*/
+
 	if cartridge.Coprocessor != nil {
 		rm := cartridge.Coprocessor.GetRegisterMap()
 		rb.registers.RegisterRange(rm.Start, rm.End, cartridge.Coprocessor, rm.Name)
