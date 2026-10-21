@@ -688,12 +688,11 @@ type ExecAndWrite8x2Access struct {
 
 	func8 InstructionFunc8x2
 
-	val1, val2   byte
-	addr1, addr2 uint16
-	regPointer1  *byte
+	ext, am1IsRegister, skipWrite, writeImmediately, writeAddr1 bool
+	incrementXafter                                             bool //for one very special instruction
 
-	next, am1IsRegister, skipWrite, writeImmediately, writeAddr1 bool
-	incrementXafter                                              bool //for one very special instruction
+	ra1, ra2 *ResolvedAddress
+	ret      byte
 }
 
 // HUGE TODO
@@ -701,27 +700,26 @@ func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		ra := i.am1.step(cpu)
-		if ra != nil {
-			i.val1 = ra.getValueAtAddress()
-			i.addr1 = ra.address
-			i.state++
+		if ra == nil {
+			return false
 		}
-	//another footgun. when its a register read its a cycle shorter
+		i.state++
+		i.ra1 = ra
+		if ra.isMemory() {
+			return false
+		}
+		fallthrough
 	case 1:
 		ra := i.am2.step(cpu)
 		if ra == nil {
 			return false
 		}
-		i.val2 = ra.getValueAtAddress()
-		i.addr2 = ra.address
+		i.ra2 = ra
 
 		if i.am1IsRegister {
-			ra := i.am1.step(cpu) //next is always true
-			i.regPointer1 = ra.register
-			i.val1 = *ra.register
-			ret := i.func8(cpu, i.val1, i.val2)
+			i.ret = i.func8(cpu, i.ra1.getValueAtAddress(), i.ra2.getValueAtAddress())
 			if !i.skipWrite {
-				*i.regPointer1 = ret
+				i.ra1.setRegister(i.ret)
 			}
 			if !i.incrementXafter {
 				return true
@@ -730,12 +728,12 @@ func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 				return false
 			}
 		} else {
-			i.val2 = i.func8(cpu, i.val2, i.val1)
+			i.ret = i.func8(cpu, i.ra2.getValueAtAddress(), i.ra1.getValueAtAddress())
 			if i.writeImmediately { //mov instructions skip a write cycle sometimes
 				if i.writeAddr1 {
-					cpu.psram.Write8(i.addr1, i.val2)
+					i.ra1.writeData(cpu, i.ret)
 				} else {
-					cpu.psram.Write8(i.addr2, i.val2)
+					i.ra2.writeData(cpu, i.ret)
 				}
 				return true
 			}
@@ -744,9 +742,9 @@ func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 	case 2:
 		if !i.skipWrite {
 			if i.writeAddr1 {
-				cpu.psram.Write8(i.addr1, i.val2)
+				i.ra1.writeData(cpu, i.ret)
 			} else {
-				cpu.psram.Write8(i.addr2, i.val2)
+				i.ra2.writeData(cpu, i.ret)
 			}
 		}
 		return true
@@ -758,11 +756,7 @@ func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 }
 
 func (i *ExecAndWrite8x2Access) Reset() {
-	if i.am1IsRegister {
-		i.state = 1
-	} else {
-		i.state = 0
-	}
+	i.state = 0
 	i.am1.reset()
 	i.am2.reset()
 }
