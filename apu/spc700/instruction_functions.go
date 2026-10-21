@@ -1,33 +1,38 @@
 package spc700
 
-type InstructionFunc8 func(*CPU, byte, uint16) byte
+type InstructionFunc8 func(*CPU, ResolvedAddress) byte
 type InstructionFunc8x2 func(*CPU, byte, byte) byte
 type ImpliedFunc func(*CPU)
 type InstructionFunc16 func(*CPU, uint16, uint16)
 
-func tclr1(cpu *CPU, val byte, addr uint16) byte {
-	cpu.psram.Read8(addr) //dummy read
+func tClrSet1Flags(cpu *CPU, ra ResolvedAddress) byte {
+	ra.dummyRead(cpu)
+
+	val := ra.getValueAtAddress()
 
 	result := int16(cpu.r.A) - int16(val)
 	cpu.r.setFlag(FlagZ, result != 0)
 	cpu.r.setFlag(FlagN, (result&0x80) == 0)
+
+	return val
+}
+
+func tclr1(cpu *CPU, ra ResolvedAddress) byte {
+	val := tClrSet1Flags(cpu, ra)
 	val &= ^cpu.r.A
 
 	return val
 }
 
-func tset1(cpu *CPU, val byte, addr uint16) byte {
-	cpu.psram.Read8(addr) //dummy read
-
-	result := int16(cpu.r.A) - int16(val)
-	cpu.r.setFlag(FlagZ, result != 0)
-	cpu.r.setFlag(FlagN, (result&0x80) == 0)
+func tset1(cpu *CPU, ra ResolvedAddress) byte {
+	val := tClrSet1Flags(cpu, ra)
 	val |= cpu.r.A
 
 	return val
 }
 
-func asl(cpu *CPU, val byte, _ uint16) byte {
+func asl(cpu *CPU, ra ResolvedAddress) byte {
+	val := ra.getValueAtAddress()
 	resetCarry := val&0x80 == 0
 
 	val <<= 1
@@ -38,7 +43,8 @@ func asl(cpu *CPU, val byte, _ uint16) byte {
 	return val
 }
 
-func lsr(cpu *CPU, val byte, _ uint16) byte {
+func lsr(cpu *CPU, ra ResolvedAddress) byte {
+	val := ra.getValueAtAddress()
 	resetCarry := val&1 == 0
 
 	val >>= 1
@@ -49,7 +55,8 @@ func lsr(cpu *CPU, val byte, _ uint16) byte {
 	return val
 }
 
-func rol(cpu *CPU, val byte, _ uint16) byte {
+func rol(cpu *CPU, ra ResolvedAddress) byte {
+	val := ra.getValueAtAddress()
 	resetCarry := val&0x80 == 0
 
 	val <<= 1
@@ -65,7 +72,8 @@ func rol(cpu *CPU, val byte, _ uint16) byte {
 	return val
 }
 
-func ror(cpu *CPU, val byte, _ uint16) byte {
+func ror(cpu *CPU, ra ResolvedAddress) byte {
+	val := ra.getValueAtAddress()
 	resetCarry := val&1 == 0
 
 	val >>= 1
@@ -81,14 +89,16 @@ func ror(cpu *CPU, val byte, _ uint16) byte {
 	return val
 }
 
-func inc(cpu *CPU, val byte, _ uint16) byte {
+func inc(cpu *CPU, ra ResolvedAddress) byte {
+	val := ra.getValueAtAddress()
 	val++
 	cpu.r.setFlag(FlagZ, val != 0)
 	cpu.r.setFlag(FlagN, (val&0x80) == 0)
 	return val
 }
 
-func dec(cpu *CPU, val byte, _ uint16) byte {
+func dec(cpu *CPU, ra ResolvedAddress) byte {
+	val := ra.getValueAtAddress()
 	val--
 	cpu.r.setFlag(FlagZ, val != 0)
 	cpu.r.setFlag(FlagN, (val&0x80) == 0)

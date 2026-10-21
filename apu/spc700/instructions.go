@@ -496,8 +496,7 @@ type Relative struct {
 	am    AddressMode
 	state int
 
-	lo   byte
-	addr uint16
+	ra ResolvedAddress
 
 	branchCondition func(*CPU, byte, uint16) bool
 	shouldBranch    bool
@@ -506,23 +505,26 @@ type Relative struct {
 func (i *Relative) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		next, val, addr, _ := i.am.step(cpu)
-		if next {
-			i.lo = val
-			i.addr = addr
+		ra := i.am.step(cpu)
+		if ra != nil {
+			//i.lo = val
+			//i.addr = addr
+
+			i.ra = *ra
 			i.state++
 		}
 	case 1:
-		i.shouldBranch = i.branchCondition(cpu, i.lo, i.addr)
+		//TODO branchcondition can just be cpu, ra
+		i.shouldBranch = i.branchCondition(cpu, i.ra.getValueAtAddress(), i.ra.address)
 		i.state++
 	//FOOTGUN: state is reset to 2 if there is no addressing mode for regular branches
 	case 2:
 		if i.am == nil {
-			i.shouldBranch = i.branchCondition(cpu, i.lo, i.addr)
+			i.shouldBranch = i.branchCondition(cpu, i.ra.getValueAtAddress(), i.ra.address)
 		}
-		i.lo = cpu.fetchByte()
+		res := cpu.fetchByte()
 		if i.shouldBranch {
-			cpu.r.PC += uint16(int8(i.lo))
+			cpu.r.PC += uint16(int8(res))
 			i.state++
 		} else {
 			return true
@@ -641,21 +643,25 @@ type ExecAndWrite8 struct {
 
 	lo   byte
 	addr uint16
+
+	ra ResolvedAddress
 }
 
 func (i *ExecAndWrite8) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		next, val, addr, register := i.am.step(cpu)
-		if next {
-			i.lo = val
-			i.addr = addr
-			if register != nil {
-				*register = i.func8(cpu, i.lo, i.addr)
+		ra := i.am.step(cpu)
+		//TODO
+		if ra != nil {
+			i.lo = ra.getValueAtAddress()
+			i.addr = ra.address
+			i.ra = *ra
+			if ra.isRegister() {
+				ra.setRegister(i.func8(cpu, *ra))
 				return true
 			}
 			if i.executeImmediately {
-				i.lo = i.func8(cpu, i.lo, i.addr)
+				i.lo = i.func8(cpu, *ra)
 			}
 			if i.skipExec {
 				i.state = 2
@@ -664,7 +670,7 @@ func (i *ExecAndWrite8) Step(cpu *CPU) bool {
 			}
 		}
 	case 1:
-		i.lo = i.func8(cpu, i.lo, i.addr)
+		i.lo = i.func8(cpu, i.ra)
 		i.state++
 	case 2:
 		cpu.psram.Write8(i.addr, i.lo)
@@ -692,21 +698,29 @@ type ExecAndWrite8x2Access struct {
 	incrementXafter                                              bool //for one very special instruction
 }
 
+// HUGE TODO
 func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		i.next, i.val1, i.addr1, _ = i.am1.step(cpu)
-		if i.next {
+		ra := i.am1.step(cpu)
+		if ra != nil {
+			i.val1 = ra.getValueAtAddress()
+			i.addr1 = ra.address
 			i.state++
 		}
 	//another footgun. when its a register read its a cycle shorter
 	case 1:
-		i.next, i.val2, i.addr2, _ = i.am2.step(cpu)
-		if !i.next {
+		ra := i.am2.step(cpu)
+		if ra == nil {
 			return false
 		}
+		i.val2 = ra.getValueAtAddress()
+		i.addr2 = ra.address
+
 		if i.am1IsRegister {
-			_, i.val1, _, i.regPointer1 = i.am1.step(cpu) //next is always true
+			ra := i.am1.step(cpu) //next is always true
+			i.regPointer1 = ra.register
+			i.val1 = *ra.register
 			ret := i.func8(cpu, i.val1, i.val2)
 			if !i.skipWrite {
 				*i.regPointer1 = ret
@@ -900,9 +914,10 @@ type Exec16 struct {
 func (i *Exec16) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		next, val, addr, _ := i.am.step(cpu)
-		if next {
-			i.lo, i.addr = val, addr
+		//TODO
+		ra := i.am.step(cpu)
+		if ra != nil {
+			i.lo, i.addr = ra.getValueAtAddress(), ra.address
 			if i.skipIdleCycle {
 				i.state = 2
 			} else {
@@ -939,9 +954,10 @@ type ExecAndWrite16 struct {
 func (i *ExecAndWrite16) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		next, val, addr, _ := i.am.step(cpu)
-		if next {
-			i.lo, i.addr = val, addr
+		ra := i.am.step(cpu)
+		if ra != nil {
+			//TODO
+			i.lo, i.addr = ra.getValueAtAddress(), ra.address
 			i.state = 1
 		}
 	case 1:
@@ -967,14 +983,17 @@ type IncWDecW struct {
 	lo, hi byte
 	carry  bool
 	amount byte
+
+	ra ResolvedAddress
 }
 
 func (i *IncWDecW) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		next, val, addr, _ := i.am.step(cpu)
-		if next {
-			i.lo, i.addr = val, addr
+		ra := i.am.step(cpu)
+		if ra != nil {
+			//TODO
+			i.lo, i.addr = ra.getValueAtAddress(), ra.address
 			i.state++
 		}
 	case 1:
