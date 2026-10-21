@@ -15,7 +15,7 @@ func NewInstructionMap() []Instruction {
 	ret[0x1F] = &JmpAbs{indirect: true}
 
 	//BBC
-	branchIfEqual := func(_ *CPU, b byte, _ uint16) bool { return b == 0 }
+	branchIfEqual := func(_ *CPU, ra *ResolvedAddress) bool { return ra.getValueAtAddress() == 0 }
 	ret[0x13] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x01 }}}
 	ret[0x33] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x02 }}}
 	ret[0x53] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x04 }}}
@@ -25,7 +25,7 @@ func NewInstructionMap() []Instruction {
 	ret[0xD3] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x40 }}}
 	ret[0xF3] = &Relative{branchCondition: branchIfEqual, am: &DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x80 }}}
 	//BBS
-	branchIfNotEqual := func(_ *CPU, b byte, _ uint16) bool { return b != 0 }
+	branchIfNotEqual := func(_ *CPU, ra *ResolvedAddress) bool { return ra.getValueAtAddress() != 0 }
 	ret[0x03] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x01 }}}
 	ret[0x23] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x02 }}}
 	ret[0x43] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x04 }}}
@@ -35,24 +35,29 @@ func NewInstructionMap() []Instruction {
 	ret[0xC3] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x40 }}}
 	ret[0xE3] = &Relative{branchCondition: branchIfNotEqual, am: &DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x80 }}}
 	//DBNZ
-	ret[0x6E] = &Relative{branchCondition: func(c *CPU, b byte, a uint16) bool { b--; c.psram.Write8(a, b); return b != 0 },
+	ret[0x6E] = &Relative{branchCondition: func(c *CPU, ra *ResolvedAddress) bool {
+		val := ra.getValueAtAddress()
+		val--
+		ra.writeData(c, val)
+		return val != 0
+	},
 		am: &DirectPage{mode: DEFAULT}}
-	ret[0xFE] = &Relative{branchCondition: func(c *CPU, b byte, a uint16) bool { c.r.Y--; return c.r.Y != 0 },
+	ret[0xFE] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { c.r.Y--; return c.r.Y != 0 },
 		am: &AccessRegister{mode: REGISTER_Y}}
 	//CBNE
-	branchIfAccumulatorNotEqual := func(c *CPU, b byte, _ uint16) bool { return b != c.r.A }
+	branchIfAccumulatorNotEqual := func(c *CPU, ra *ResolvedAddress) bool { return ra.getValueAtAddress() != c.r.A }
 	ret[0xDE] = &Relative{branchCondition: branchIfAccumulatorNotEqual, am: &DirectPage{mode: X_INDEXED}}
 	ret[0x2E] = &Relative{branchCondition: branchIfAccumulatorNotEqual, am: &DirectPage{mode: DEFAULT}}
 	//standard branch operations: BRA, BEQ, BNE, BCS, BCC, BVS, BVC, BMI, BPL
-	ret[0x2F] = &Relative{branchCondition: func(_ *CPU, _ byte, _ uint16) bool { return true }, am: nil}
-	ret[0xF0] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return c.r.hasFlag(FlagZ) }, am: nil}
-	ret[0xD0] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return !c.r.hasFlag(FlagZ) }, am: nil}
-	ret[0xB0] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return c.r.hasFlag(FlagC) }, am: nil}
-	ret[0x90] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return !c.r.hasFlag(FlagC) }, am: nil}
-	ret[0x70] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return c.r.hasFlag(FlagV) }, am: nil}
-	ret[0x50] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return !c.r.hasFlag(FlagV) }, am: nil}
-	ret[0x30] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return c.r.hasFlag(FlagN) }, am: nil}
-	ret[0x10] = &Relative{branchCondition: func(c *CPU, _ byte, _ uint16) bool { return !c.r.hasFlag(FlagN) }, am: nil}
+	ret[0x2F] = &Relative{branchCondition: func(_ *CPU, _ *ResolvedAddress) bool { return true }, am: nil}
+	ret[0xF0] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return c.r.hasFlag(FlagZ) }, am: nil}
+	ret[0xD0] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return !c.r.hasFlag(FlagZ) }, am: nil}
+	ret[0xB0] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return c.r.hasFlag(FlagC) }, am: nil}
+	ret[0x90] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return !c.r.hasFlag(FlagC) }, am: nil}
+	ret[0x70] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return c.r.hasFlag(FlagV) }, am: nil}
+	ret[0x50] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return !c.r.hasFlag(FlagV) }, am: nil}
+	ret[0x30] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return c.r.hasFlag(FlagN) }, am: nil}
+	ret[0x10] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return !c.r.hasFlag(FlagN) }, am: nil}
 
 	//SET1
 	ret[0x02] = &ExecAndWrite8{skipExec: true, am: &DirectPage{mode: BIT, bitOp: func(b byte) byte { return b | 0x01 }}}
@@ -496,9 +501,9 @@ type Relative struct {
 	am    AddressMode
 	state int
 
-	ra ResolvedAddress
+	ra *ResolvedAddress
 
-	branchCondition func(*CPU, byte, uint16) bool
+	branchCondition func(*CPU, *ResolvedAddress) bool
 	shouldBranch    bool
 }
 
@@ -507,21 +512,18 @@ func (i *Relative) Step(cpu *CPU) bool {
 	case 0:
 		ra := i.am.step(cpu)
 		if ra != nil {
-			//i.lo = val
-			//i.addr = addr
-
-			i.ra = *ra
+			i.ra = ra
 			i.state++
 		}
 	case 1:
-		//TODO branchcondition can just be cpu, ra
-		i.shouldBranch = i.branchCondition(cpu, i.ra.getValueAtAddress(), i.ra.address)
+		//FOOTGUN: state is reset to 1 if there is no addressing mode for regular branches
+		i.shouldBranch = i.branchCondition(cpu, i.ra)
 		i.state++
-	//FOOTGUN: state is reset to 2 if there is no addressing mode for regular branches
-	case 2:
-		if i.am == nil {
-			i.shouldBranch = i.branchCondition(cpu, i.ra.getValueAtAddress(), i.ra.address)
+		if i.am != nil {
+			return false
 		}
+		fallthrough
+	case 2:
 		res := cpu.fetchByte()
 		if i.shouldBranch {
 			cpu.r.PC += uint16(int8(res))
@@ -540,7 +542,7 @@ func (i *Relative) Step(cpu *CPU) bool {
 
 func (i *Relative) Reset() {
 	if i.am == nil {
-		i.state = 2
+		i.state = 1
 	} else {
 		i.state = 0
 		i.am.reset()
