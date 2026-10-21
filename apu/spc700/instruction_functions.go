@@ -132,6 +132,7 @@ func sbc(cpu *CPU, val1, val2 byte) byte {
 
 	// apparently for any integer A represented in twos complement form this holds true:
 	// -A = ~A +1 or in this case: ~A = -A -1
+	// A-B-C == A-B+(-1+~C) == A+(-B-1)+~C == A+~B+~C
 	adcFlagSetter(cpu, val1, ^val2, 1-carryIn)
 	cpu.r.setFlag(FlagC, result16 > 0xFF)
 
