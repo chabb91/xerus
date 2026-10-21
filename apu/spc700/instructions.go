@@ -139,23 +139,23 @@ func NewInstructionMap() []Instruction {
 	ret[0xDC] = &ExecAndWrite8{func8: dec, am: &AccessRegister{mode: REGISTER_Y}}
 
 	//8-bit logical
-	ret[0x28] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
+	ret[0x28] = &ExecAndWrite8x2Access{func8: and,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Immediate{}}
-	ret[0x26] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
+	ret[0x26] = &ExecAndWrite8x2Access{func8: and,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: REGISTER_X}}
-	ret[0x24] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
+	ret[0x24] = &ExecAndWrite8x2Access{func8: and,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: DEFAULT}}
-	ret[0x34] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
+	ret[0x34] = &ExecAndWrite8x2Access{func8: and,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: X_INDEXED}}
-	ret[0x25] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
+	ret[0x25] = &ExecAndWrite8x2Access{func8: and,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: DEFAULT}}
-	ret[0x35] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
+	ret[0x35] = &ExecAndWrite8x2Access{func8: and,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: X_INDEXED}}
-	ret[0x36] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
+	ret[0x36] = &ExecAndWrite8x2Access{func8: and,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: Y_INDEXED}}
-	ret[0x27] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
+	ret[0x27] = &ExecAndWrite8x2Access{func8: and,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: INDEXED_INDIRECT}}
-	ret[0x37] = &ExecAndWrite8x2Access{func8: and, am1IsRegister: true,
+	ret[0x37] = &ExecAndWrite8x2Access{func8: and,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: INDIRECT_INDEXED}}
 	ret[0x39] = &ExecAndWrite8x2Access{func8: and,
 		am1: &DirectPage{mode: REGISTER_Y}, am2: &DirectPage{mode: REGISTER_X, indexAndResolve: true}}
@@ -164,23 +164,23 @@ func NewInstructionMap() []Instruction {
 	ret[0x38] = &ExecAndWrite8x2Access{func8: and,
 		am1: &Immediate{}, am2: &DirectPage{mode: DEFAULT}}
 
-	ret[0x08] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+	ret[0x08] = &ExecAndWrite8x2Access{func8: or,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Immediate{}}
-	ret[0x06] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+	ret[0x06] = &ExecAndWrite8x2Access{func8: or,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: REGISTER_X}}
-	ret[0x04] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+	ret[0x04] = &ExecAndWrite8x2Access{func8: or,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: DEFAULT}}
-	ret[0x14] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+	ret[0x14] = &ExecAndWrite8x2Access{func8: or,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: X_INDEXED}}
-	ret[0x05] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+	ret[0x05] = &ExecAndWrite8x2Access{func8: or,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: DEFAULT}}
-	ret[0x15] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+	ret[0x15] = &ExecAndWrite8x2Access{func8: or,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: X_INDEXED}}
-	ret[0x16] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+	ret[0x16] = &ExecAndWrite8x2Access{func8: or,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: Y_INDEXED}}
-	ret[0x07] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+	ret[0x07] = &ExecAndWrite8x2Access{func8: or,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: INDEXED_INDIRECT}}
-	ret[0x17] = &ExecAndWrite8x2Access{func8: or, am1IsRegister: true,
+	ret[0x17] = &ExecAndWrite8x2Access{func8: or,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: INDIRECT_INDEXED}}
 	ret[0x19] = &ExecAndWrite8x2Access{func8: or,
 		am1: &DirectPage{mode: REGISTER_Y}, am2: &DirectPage{mode: REGISTER_X, indexAndResolve: true}}
@@ -189,23 +189,23 @@ func NewInstructionMap() []Instruction {
 	ret[0x18] = &ExecAndWrite8x2Access{func8: or,
 		am1: &Immediate{}, am2: &DirectPage{mode: DEFAULT}}
 
-	ret[0x48] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+	ret[0x48] = &ExecAndWrite8x2Access{func8: eor,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Immediate{}}
-	ret[0x46] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+	ret[0x46] = &ExecAndWrite8x2Access{func8: eor,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: REGISTER_X}}
-	ret[0x44] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+	ret[0x44] = &ExecAndWrite8x2Access{func8: eor,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: DEFAULT}}
-	ret[0x54] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+	ret[0x54] = &ExecAndWrite8x2Access{func8: eor,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: X_INDEXED}}
-	ret[0x45] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+	ret[0x45] = &ExecAndWrite8x2Access{func8: eor,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: DEFAULT}}
-	ret[0x55] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+	ret[0x55] = &ExecAndWrite8x2Access{func8: eor,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: X_INDEXED}}
-	ret[0x56] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+	ret[0x56] = &ExecAndWrite8x2Access{func8: eor,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: Y_INDEXED}}
-	ret[0x47] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+	ret[0x47] = &ExecAndWrite8x2Access{func8: eor,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: INDEXED_INDIRECT}}
-	ret[0x57] = &ExecAndWrite8x2Access{func8: eor, am1IsRegister: true,
+	ret[0x57] = &ExecAndWrite8x2Access{func8: eor,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: INDIRECT_INDEXED}}
 	ret[0x59] = &ExecAndWrite8x2Access{func8: eor,
 		am1: &DirectPage{mode: REGISTER_Y}, am2: &DirectPage{mode: REGISTER_X, indexAndResolve: true}}
@@ -215,23 +215,23 @@ func NewInstructionMap() []Instruction {
 		am1: &Immediate{}, am2: &DirectPage{mode: DEFAULT}}
 
 	//8-bit arithmetic
-	ret[0x88] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+	ret[0x88] = &ExecAndWrite8x2Access{func8: adc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Immediate{}}
-	ret[0x86] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+	ret[0x86] = &ExecAndWrite8x2Access{func8: adc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: REGISTER_X}}
-	ret[0x84] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+	ret[0x84] = &ExecAndWrite8x2Access{func8: adc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: DEFAULT}}
-	ret[0x94] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+	ret[0x94] = &ExecAndWrite8x2Access{func8: adc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: X_INDEXED}}
-	ret[0x85] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+	ret[0x85] = &ExecAndWrite8x2Access{func8: adc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: DEFAULT}}
-	ret[0x95] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+	ret[0x95] = &ExecAndWrite8x2Access{func8: adc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: X_INDEXED}}
-	ret[0x96] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+	ret[0x96] = &ExecAndWrite8x2Access{func8: adc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: Y_INDEXED}}
-	ret[0x87] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+	ret[0x87] = &ExecAndWrite8x2Access{func8: adc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: INDEXED_INDIRECT}}
-	ret[0x97] = &ExecAndWrite8x2Access{func8: adc, am1IsRegister: true,
+	ret[0x97] = &ExecAndWrite8x2Access{func8: adc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: INDIRECT_INDEXED}}
 	ret[0x99] = &ExecAndWrite8x2Access{func8: adc,
 		am1: &DirectPage{mode: REGISTER_Y}, am2: &DirectPage{mode: REGISTER_X, indexAndResolve: true}}
@@ -240,23 +240,23 @@ func NewInstructionMap() []Instruction {
 	ret[0x98] = &ExecAndWrite8x2Access{func8: adc,
 		am1: &Immediate{}, am2: &DirectPage{mode: DEFAULT}}
 
-	ret[0xA8] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+	ret[0xA8] = &ExecAndWrite8x2Access{func8: sbc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Immediate{}}
-	ret[0xA6] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+	ret[0xA6] = &ExecAndWrite8x2Access{func8: sbc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: REGISTER_X}}
-	ret[0xA4] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+	ret[0xA4] = &ExecAndWrite8x2Access{func8: sbc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: DEFAULT}}
-	ret[0xB4] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+	ret[0xB4] = &ExecAndWrite8x2Access{func8: sbc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: X_INDEXED}}
-	ret[0xA5] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+	ret[0xA5] = &ExecAndWrite8x2Access{func8: sbc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: DEFAULT}}
-	ret[0xB5] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+	ret[0xB5] = &ExecAndWrite8x2Access{func8: sbc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: X_INDEXED}}
-	ret[0xB6] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+	ret[0xB6] = &ExecAndWrite8x2Access{func8: sbc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: Y_INDEXED}}
-	ret[0xA7] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+	ret[0xA7] = &ExecAndWrite8x2Access{func8: sbc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: INDEXED_INDIRECT}}
-	ret[0xB7] = &ExecAndWrite8x2Access{func8: sbc, am1IsRegister: true,
+	ret[0xB7] = &ExecAndWrite8x2Access{func8: sbc,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: INDIRECT_INDEXED}}
 	ret[0xB9] = &ExecAndWrite8x2Access{func8: sbc,
 		am1: &DirectPage{mode: REGISTER_Y}, am2: &DirectPage{mode: REGISTER_X, indexAndResolve: true}}
@@ -265,23 +265,23 @@ func NewInstructionMap() []Instruction {
 	ret[0xB8] = &ExecAndWrite8x2Access{func8: sbc,
 		am1: &Immediate{}, am2: &DirectPage{mode: DEFAULT}}
 
-	ret[0x68] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+	ret[0x68] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Immediate{}}
-	ret[0x66] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+	ret[0x66] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: REGISTER_X}}
-	ret[0x64] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+	ret[0x64] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: DEFAULT}}
-	ret[0x74] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+	ret[0x74] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: X_INDEXED}}
-	ret[0x65] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+	ret[0x65] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: DEFAULT}}
-	ret[0x75] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+	ret[0x75] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: X_INDEXED}}
-	ret[0x76] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+	ret[0x76] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: Y_INDEXED}}
-	ret[0x67] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+	ret[0x67] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: INDEXED_INDIRECT}}
-	ret[0x77] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+	ret[0x77] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: INDIRECT_INDEXED}}
 	ret[0x79] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &DirectPage{mode: REGISTER_Y}, am2: &DirectPage{mode: REGISTER_X, indexAndResolve: true}}
@@ -289,17 +289,17 @@ func NewInstructionMap() []Instruction {
 		am1: &DirectPage{mode: DEFAULT}, am2: &DirectPage{mode: DEFAULT}}
 	ret[0x78] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &Immediate{}, am2: &DirectPage{mode: DEFAULT}}
-	ret[0xC8] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+	ret[0xC8] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &AccessRegister{mode: REGISTER_X}, am2: &Immediate{}}
-	ret[0x3E] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+	ret[0x3E] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &AccessRegister{mode: REGISTER_X}, am2: &DirectPage{mode: DEFAULT}}
-	ret[0x1E] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+	ret[0x1E] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &AccessRegister{mode: REGISTER_X}, am2: &Absolute{mode: DEFAULT}}
-	ret[0xAD] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+	ret[0xAD] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &AccessRegister{mode: REGISTER_Y}, am2: &Immediate{}}
-	ret[0x7E] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+	ret[0x7E] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &AccessRegister{mode: REGISTER_Y}, am2: &DirectPage{mode: DEFAULT}}
-	ret[0x5E] = &ExecAndWrite8x2Access{func8: cmp, am1IsRegister: true, skipWrite: true,
+	ret[0x5E] = &ExecAndWrite8x2Access{func8: cmp, skipWrite: true,
 		am1: &AccessRegister{mode: REGISTER_Y}, am2: &Absolute{mode: DEFAULT}}
 
 	//MOV
@@ -308,17 +308,17 @@ func NewInstructionMap() []Instruction {
 		am1: &DirectPage{mode: DEFAULT}, am2: &DirectPage{mode: DEFAULT, skipRead: true}}
 	ret[0x8F] = &ExecAndWrite8x2Access{func8: movNoFlag,
 		am1: &Immediate{}, am2: &DirectPage{mode: DEFAULT}}
-	ret[0xBD] = &ExecAndWrite8x2Access{func8: movNoFlag, am1IsRegister: true,
+	ret[0xBD] = &ExecAndWrite8x2Access{func8: movNoFlag,
 		am1: &AccessRegister{mode: STACK_POINTER}, am2: &AccessRegister{mode: REGISTER_X}}
-	ret[0x9D] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0x9D] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: REGISTER_X}, am2: &AccessRegister{mode: STACK_POINTER}}
-	ret[0xFD] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xFD] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: REGISTER_Y}, am2: &AccessRegister{mode: ACCUMULATOR}}
-	ret[0x5D] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0x5D] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: REGISTER_X}, am2: &AccessRegister{mode: ACCUMULATOR}}
-	ret[0xDD] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xDD] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &AccessRegister{mode: REGISTER_Y}}
-	ret[0x7D] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0x7D] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &AccessRegister{mode: REGISTER_X}}
 
 	//8-bit write
@@ -354,42 +354,42 @@ func NewInstructionMap() []Instruction {
 		am2: &AccessRegister{mode: REGISTER_Y}, am1: &Absolute{mode: DEFAULT}}
 
 	//8-bit read
-	ret[0xE8] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xE8] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Immediate{}}
-	ret[0xE6] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xE6] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: REGISTER_X}}
-	ret[0xBF] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true, incrementXafter: true,
+	ret[0xBF] = &ExecAndWrite8x2Access{func8: mov, incrementXafter: true,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: REGISTER_X}}
-	ret[0xE4] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xE4] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: DEFAULT}}
-	ret[0xF4] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xF4] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: X_INDEXED}}
-	ret[0xE5] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xE5] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: DEFAULT}}
-	ret[0xF5] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xF5] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: X_INDEXED}}
-	ret[0xF6] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xF6] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &Absolute{mode: Y_INDEXED}}
-	ret[0xE7] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xE7] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: INDEXED_INDIRECT}}
-	ret[0xF7] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xF7] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: ACCUMULATOR}, am2: &DirectPage{mode: INDIRECT_INDEXED}}
 
-	ret[0xCD] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xCD] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: REGISTER_X}, am2: &Immediate{}}
-	ret[0xF8] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xF8] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: REGISTER_X}, am2: &DirectPage{mode: DEFAULT}}
-	ret[0xF9] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xF9] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: REGISTER_X}, am2: &DirectPage{mode: Y_INDEXED}}
-	ret[0xE9] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xE9] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: REGISTER_X}, am2: &Absolute{mode: DEFAULT}}
-	ret[0x8D] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0x8D] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: REGISTER_Y}, am2: &Immediate{}}
-	ret[0xEB] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xEB] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: REGISTER_Y}, am2: &DirectPage{mode: DEFAULT}}
-	ret[0xFB] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xFB] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: REGISTER_Y}, am2: &DirectPage{mode: X_INDEXED}}
-	ret[0xEC] = &ExecAndWrite8x2Access{func8: mov, am1IsRegister: true,
+	ret[0xEC] = &ExecAndWrite8x2Access{func8: mov,
 		am1: &AccessRegister{mode: REGISTER_Y}, am2: &Absolute{mode: DEFAULT}}
 
 	//mul/div
@@ -684,18 +684,17 @@ func (i *ExecAndWrite8) Reset() {
 
 type ExecAndWrite8x2Access struct {
 	am1, am2 AddressMode
+	ra1, ra2 *ResolvedAddress
 	state    int
 
 	func8 InstructionFunc8x2
 
-	ext, am1IsRegister, skipWrite, writeImmediately, writeAddr1 bool
-	incrementXafter                                             bool //for one very special instruction
+	skipWrite, writeImmediately, writeAddr1 bool
+	incrementXafter                         bool //for one very special instruction
 
-	ra1, ra2 *ResolvedAddress
-	ret      byte
+	ret byte
 }
 
-// HUGE TODO
 func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
@@ -716,38 +715,32 @@ func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 		}
 		i.ra2 = ra
 
-		if i.am1IsRegister {
+		if i.ra1.isRegister() {
 			i.ret = i.func8(cpu, i.ra1.getValueAtAddress(), i.ra2.getValueAtAddress())
-			if !i.skipWrite {
-				i.ra1.setRegister(i.ret)
-			}
-			if !i.incrementXafter {
-				return true
-			} else {
-				i.state = 3
-				return false
-			}
 		} else {
 			i.ret = i.func8(cpu, i.ra2.getValueAtAddress(), i.ra1.getValueAtAddress())
-			if i.writeImmediately { //mov instructions skip a write cycle sometimes
-				if i.writeAddr1 {
-					i.ra1.writeData(cpu, i.ret)
-				} else {
-					i.ra2.writeData(cpu, i.ret)
-				}
-				return true
-			}
 		}
+
 		i.state++
+		//mov instructions skip a write cycle sometimes, register writes never skip
+		if !i.writeImmediately && i.ra1.isMemory() {
+			return false
+		}
+		fallthrough
 	case 2:
 		if !i.skipWrite {
-			if i.writeAddr1 {
+			if i.writeAddr1 || i.ra1.isRegister() {
 				i.ra1.writeData(cpu, i.ret)
 			} else {
 				i.ra2.writeData(cpu, i.ret)
 			}
 		}
-		return true
+		if i.incrementXafter {
+			i.state = 3
+			return false
+		} else {
+			return true
+		}
 	case 3:
 		cpu.r.X++
 		return true
