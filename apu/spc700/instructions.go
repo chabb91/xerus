@@ -899,10 +899,9 @@ type Exec16 struct {
 func (i *Exec16) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		//TODO
 		ra := i.am.step(cpu)
-		if ra != nil {
-			i.lo, i.addr = ra.getValueAtAddress(), ra.address
+		if ra != nil && ra.isMemory() {
+			i.lo, i.addr = ra.value, ra.address
 			if i.skipIdleCycle {
 				i.state = 2
 			} else {
@@ -940,9 +939,8 @@ func (i *ExecAndWrite16) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		ra := i.am.step(cpu)
-		if ra != nil {
-			//TODO
-			i.lo, i.addr = ra.getValueAtAddress(), ra.address
+		if ra != nil && ra.isMemory() {
+			i.lo, i.addr = ra.value, ra.address
 			i.state = 1
 		}
 	case 1:
@@ -976,9 +974,8 @@ func (i *IncWDecW) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
 		ra := i.am.step(cpu)
-		if ra != nil {
-			//TODO
-			i.lo, i.addr = ra.getValueAtAddress(), ra.address
+		if ra != nil && ra.isMemory() {
+			i.lo, i.addr = ra.value, ra.address
 			i.state++
 		}
 	case 1:

@@ -17,22 +17,22 @@ func tClrSet1Flags(cpu *CPU, ra ResolvedAddress) byte {
 	return val
 }
 
-func tclr1(cpu *CPU, ra ResolvedAddress) byte {
-	val := tClrSet1Flags(cpu, ra)
+func tclr1(cpu *CPU, ra ResolvedAddress) (val byte) {
+	val = tClrSet1Flags(cpu, ra)
 	val &= ^cpu.r.A
 
-	return val
+	return
 }
 
-func tset1(cpu *CPU, ra ResolvedAddress) byte {
-	val := tClrSet1Flags(cpu, ra)
+func tset1(cpu *CPU, ra ResolvedAddress) (val byte) {
+	val = tClrSet1Flags(cpu, ra)
 	val |= cpu.r.A
 
-	return val
+	return
 }
 
-func asl(cpu *CPU, ra ResolvedAddress) byte {
-	val := ra.getValueAtAddress()
+func asl(cpu *CPU, ra ResolvedAddress) (val byte) {
+	val = ra.getValueAtAddress()
 	resetCarry := val&0x80 == 0
 
 	val <<= 1
@@ -40,11 +40,11 @@ func asl(cpu *CPU, ra ResolvedAddress) byte {
 	cpu.r.setFlag(FlagN, (val&0x80) == 0)
 	cpu.r.setFlag(FlagC, resetCarry)
 
-	return val
+	return
 }
 
-func lsr(cpu *CPU, ra ResolvedAddress) byte {
-	val := ra.getValueAtAddress()
+func lsr(cpu *CPU, ra ResolvedAddress) (val byte) {
+	val = ra.getValueAtAddress()
 	resetCarry := val&1 == 0
 
 	val >>= 1
@@ -52,11 +52,11 @@ func lsr(cpu *CPU, ra ResolvedAddress) byte {
 	cpu.r.setFlag(FlagN, (val&0x80) == 0)
 	cpu.r.setFlag(FlagC, resetCarry)
 
-	return val
+	return
 }
 
-func rol(cpu *CPU, ra ResolvedAddress) byte {
-	val := ra.getValueAtAddress()
+func rol(cpu *CPU, ra ResolvedAddress) (val byte) {
+	val = ra.getValueAtAddress()
 	resetCarry := val&0x80 == 0
 
 	val <<= 1
@@ -69,11 +69,11 @@ func rol(cpu *CPU, ra ResolvedAddress) byte {
 	cpu.r.setFlag(FlagN, (val&0x80) == 0)
 	cpu.r.setFlag(FlagC, resetCarry)
 
-	return val
+	return
 }
 
-func ror(cpu *CPU, ra ResolvedAddress) byte {
-	val := ra.getValueAtAddress()
+func ror(cpu *CPU, ra ResolvedAddress) (val byte) {
+	val = ra.getValueAtAddress()
 	resetCarry := val&1 == 0
 
 	val >>= 1
@@ -86,23 +86,23 @@ func ror(cpu *CPU, ra ResolvedAddress) byte {
 	cpu.r.setFlag(FlagN, (val&0x80) == 0)
 	cpu.r.setFlag(FlagC, resetCarry)
 
-	return val
+	return
 }
 
-func inc(cpu *CPU, ra ResolvedAddress) byte {
-	val := ra.getValueAtAddress()
+func inc(cpu *CPU, ra ResolvedAddress) (val byte) {
+	val = ra.getValueAtAddress()
 	val++
 	cpu.r.setFlag(FlagZ, val != 0)
 	cpu.r.setFlag(FlagN, (val&0x80) == 0)
-	return val
+	return
 }
 
-func dec(cpu *CPU, ra ResolvedAddress) byte {
-	val := ra.getValueAtAddress()
+func dec(cpu *CPU, ra ResolvedAddress) (val byte) {
+	val = ra.getValueAtAddress()
 	val--
 	cpu.r.setFlag(FlagZ, val != 0)
 	cpu.r.setFlag(FlagN, (val&0x80) == 0)
-	return val
+	return
 }
 
 func and(cpu *CPU, val1, val2 byte) byte {
