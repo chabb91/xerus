@@ -73,10 +73,12 @@ func (amr *ResolvedAddress) isRegister() bool {
 	return amr.tag == REGISTER_REGION
 }
 
-func (amr *ResolvedAddress) setRegister(value byte) {
-	if amr.isRegister() {
+func (amr *ResolvedAddress) setRegister(value byte) bool {
+	isReg := amr.isRegister()
+	if isReg {
 		*amr.register = value
 	}
+	return isReg
 }
 
 func (amr *ResolvedAddress) getValueAtAddress() byte {

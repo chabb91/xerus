@@ -88,8 +88,9 @@ func NewInstructionMap() []Instruction {
 	ret[0xEA] = &MemBit{bitFuncWrite: func(_ *CPU, b byte) bool { return b != 0 }, isWrite: true, extraCycle: false}
 
 	//TSET1 TCLR1
-	ret[0x0E] = &ExecAndWrite8{func8: tset1, am: &Absolute{mode: DEFAULT}}
-	ret[0x4E] = &ExecAndWrite8{func8: tclr1, am: &Absolute{mode: DEFAULT}}
+	//these contain a dummy read that delays the function execution by a cycle
+	ret[0x0E] = &ExecAndWrite8{delayExecution: true, func8: tset1, am: &Absolute{mode: DEFAULT}}
+	ret[0x4E] = &ExecAndWrite8{delayExecution: true, func8: tclr1, am: &Absolute{mode: DEFAULT}}
 
 	//Stack Operations
 	ret[0x2D] = &StackOp{isPush: true, getVal: func(c *CPU) *byte { return &c.r.A }}
@@ -104,36 +105,36 @@ func NewInstructionMap() []Instruction {
 
 	//8 bit shifts
 	ret[0x1C] = &ExecAndWrite8{func8: asl, am: &AccessRegister{mode: ACCUMULATOR}}
-	ret[0x0B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: asl, am: &DirectPage{mode: DEFAULT}}
-	ret[0x1B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: asl, am: &DirectPage{mode: X_INDEXED}}
-	ret[0x0C] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: asl, am: &Absolute{mode: DEFAULT}}
+	ret[0x0B] = &ExecAndWrite8{func8: asl, am: &DirectPage{mode: DEFAULT}}
+	ret[0x1B] = &ExecAndWrite8{func8: asl, am: &DirectPage{mode: X_INDEXED}}
+	ret[0x0C] = &ExecAndWrite8{func8: asl, am: &Absolute{mode: DEFAULT}}
 	ret[0x5C] = &ExecAndWrite8{func8: lsr, am: &AccessRegister{mode: ACCUMULATOR}}
-	ret[0x4B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: lsr, am: &DirectPage{mode: DEFAULT}}
-	ret[0x5B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: lsr, am: &DirectPage{mode: X_INDEXED}}
-	ret[0x4C] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: lsr, am: &Absolute{mode: DEFAULT}}
+	ret[0x4B] = &ExecAndWrite8{func8: lsr, am: &DirectPage{mode: DEFAULT}}
+	ret[0x5B] = &ExecAndWrite8{func8: lsr, am: &DirectPage{mode: X_INDEXED}}
+	ret[0x4C] = &ExecAndWrite8{func8: lsr, am: &Absolute{mode: DEFAULT}}
 	ret[0x3C] = &ExecAndWrite8{func8: rol, am: &AccessRegister{mode: ACCUMULATOR}}
-	ret[0x2B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: rol, am: &DirectPage{mode: DEFAULT}}
-	ret[0x3B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: rol, am: &DirectPage{mode: X_INDEXED}}
-	ret[0x2C] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: rol, am: &Absolute{mode: DEFAULT}}
+	ret[0x2B] = &ExecAndWrite8{func8: rol, am: &DirectPage{mode: DEFAULT}}
+	ret[0x3B] = &ExecAndWrite8{func8: rol, am: &DirectPage{mode: X_INDEXED}}
+	ret[0x2C] = &ExecAndWrite8{func8: rol, am: &Absolute{mode: DEFAULT}}
 	ret[0x7C] = &ExecAndWrite8{func8: ror, am: &AccessRegister{mode: ACCUMULATOR}}
-	ret[0x6B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: ror, am: &DirectPage{mode: DEFAULT}}
-	ret[0x7B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: ror, am: &DirectPage{mode: X_INDEXED}}
-	ret[0x6C] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: ror, am: &Absolute{mode: DEFAULT}}
+	ret[0x6B] = &ExecAndWrite8{func8: ror, am: &DirectPage{mode: DEFAULT}}
+	ret[0x7B] = &ExecAndWrite8{func8: ror, am: &DirectPage{mode: X_INDEXED}}
+	ret[0x6C] = &ExecAndWrite8{func8: ror, am: &Absolute{mode: DEFAULT}}
 
 	ret[0x9F] = &XCN{}
 
 	//8-bit inc/dec
 	ret[0xBC] = &ExecAndWrite8{func8: inc, am: &AccessRegister{mode: ACCUMULATOR}}
-	ret[0xAB] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: inc, am: &DirectPage{mode: DEFAULT}}
-	ret[0xBB] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: inc, am: &DirectPage{mode: X_INDEXED}}
-	ret[0xAC] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: inc, am: &Absolute{mode: DEFAULT}}
+	ret[0xAB] = &ExecAndWrite8{func8: inc, am: &DirectPage{mode: DEFAULT}}
+	ret[0xBB] = &ExecAndWrite8{func8: inc, am: &DirectPage{mode: X_INDEXED}}
+	ret[0xAC] = &ExecAndWrite8{func8: inc, am: &Absolute{mode: DEFAULT}}
 	ret[0x3D] = &ExecAndWrite8{func8: inc, am: &AccessRegister{mode: REGISTER_X}}
 	ret[0xFC] = &ExecAndWrite8{func8: inc, am: &AccessRegister{mode: REGISTER_Y}}
 
 	ret[0x9C] = &ExecAndWrite8{func8: dec, am: &AccessRegister{mode: ACCUMULATOR}}
-	ret[0x8B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: dec, am: &DirectPage{mode: DEFAULT}}
-	ret[0x9B] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: dec, am: &DirectPage{mode: X_INDEXED}}
-	ret[0x8C] = &ExecAndWrite8{executeImmediately: true, skipExec: true, func8: dec, am: &Absolute{mode: DEFAULT}}
+	ret[0x8B] = &ExecAndWrite8{func8: dec, am: &DirectPage{mode: DEFAULT}}
+	ret[0x9B] = &ExecAndWrite8{func8: dec, am: &DirectPage{mode: X_INDEXED}}
+	ret[0x8C] = &ExecAndWrite8{func8: dec, am: &Absolute{mode: DEFAULT}}
 	ret[0x1D] = &ExecAndWrite8{func8: dec, am: &AccessRegister{mode: REGISTER_X}}
 	ret[0xDC] = &ExecAndWrite8{func8: dec, am: &AccessRegister{mode: REGISTER_Y}}
 
@@ -637,45 +638,40 @@ func (i *XCN) Reset() {
 
 type ExecAndWrite8 struct {
 	am    AddressMode
+	ra    *ResolvedAddress
 	state int
 
-	skipExec           bool
-	executeImmediately bool
-	func8              InstructionFunc8
+	delayExecution bool
+	skipExec       bool
 
-	lo   byte
-	addr uint16
-
-	ra ResolvedAddress
+	func8 InstructionFunc8
+	ret   byte
 }
 
 func (i *ExecAndWrite8) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		ra := i.am.step(cpu)
-		//TODO
-		if ra != nil {
-			i.lo = ra.getValueAtAddress()
-			i.addr = ra.address
-			i.ra = *ra
-			if ra.isRegister() {
-				ra.setRegister(i.func8(cpu, *ra))
-				return true
-			}
-			if i.executeImmediately {
-				i.lo = i.func8(cpu, *ra)
-			}
-			if i.skipExec {
-				i.state = 2
-			} else {
-				i.state = 1
-			}
+		i.ra = i.am.step(cpu)
+		if i.ra == nil {
+			return false
 		}
-	case 1:
-		i.lo = i.func8(cpu, i.ra)
+		if i.skipExec {
+			//BIT has side effect
+			i.ret = i.ra.getValueAtAddress()
+			i.state = 2
+			return false
+		}
 		i.state++
+		if i.delayExecution {
+			return false
+		}
+		fallthrough
+	case 1:
+		i.state++
+		i.ret = i.func8(cpu, *i.ra)
+		return i.ra.setRegister(i.ret)
 	case 2:
-		cpu.psram.Write8(i.addr, i.lo)
+		i.ra.writeData(cpu, i.ret)
 		return true
 	}
 	return false
