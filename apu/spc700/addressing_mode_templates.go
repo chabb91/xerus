@@ -32,6 +32,69 @@ type AddressMode interface {
 	reset()
 }
 
+type AmResultTypeTag int
+
+const (
+	MEMORY_REGION AmResultTypeTag = iota
+	REGISTER_REGION
+)
+
+type ResolvedAddress struct {
+	tag AmResultTypeTag
+
+	//Memory variant
+	value   byte
+	address uint16
+
+	//Register variant
+	register *byte
+}
+
+func newMemoryResult(value byte, address uint16) ResolvedAddress {
+	return ResolvedAddress{
+		tag:     MEMORY_REGION,
+		value:   value,
+		address: address,
+	}
+}
+
+func newRegisterResult(register *byte) ResolvedAddress {
+	return ResolvedAddress{
+		tag:      REGISTER_REGION,
+		register: register,
+	}
+}
+
+func (amr *ResolvedAddress) isMemory() bool {
+	return amr.tag == MEMORY_REGION
+}
+
+func (amr *ResolvedAddress) isRegister() bool {
+	return amr.tag == REGISTER_REGION
+}
+
+func (amr *ResolvedAddress) setRegister(value byte) {
+	if amr.isRegister() {
+		*amr.register = value
+	}
+}
+
+func (amr *ResolvedAddress) getValueAtAddress() byte {
+	if amr.isMemory() {
+		return amr.value
+	} else {
+		return *amr.register
+	}
+}
+
+func (amr *ResolvedAddress) writeData(cpu *CPU, value byte) {
+	if amr.isRegister() {
+		*amr.register = value
+	} else {
+		cpu.psram.Write8(amr.address, value)
+	}
+}
+
 type DirectPage struct {
 	mode  AddressingMode
 	state InstructionState
