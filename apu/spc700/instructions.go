@@ -579,13 +579,7 @@ func (i *MemBit) Step(cpu *CPU) bool {
 			i.state = 3
 			return false
 		}
-		if i.isWrite {
-			i.state = 4
-			return false
-		}
-		hasBit := i.lo&(1<<i.bit) != 0
-		i.bitFunc(cpu, hasBit)
-		return true
+		fallthrough
 	case 3:
 		if i.isWrite {
 			i.state = 4
@@ -853,7 +847,6 @@ func (i *Div) Reset() {
 	i.state = 0
 }
 
-// TODO make this into a more generic 3cycleImplied template if possible
 type ThreeCycleImplied struct {
 	state int
 
@@ -1071,9 +1064,7 @@ type RetReti struct {
 
 func (i *RetReti) Step(cpu *CPU) bool {
 	switch i.state {
-	case 0:
-		i.state++
-	case 1:
+	case 0, 1:
 		i.state++
 	case 2:
 		if i.isReti {
