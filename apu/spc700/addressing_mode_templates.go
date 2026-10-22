@@ -28,7 +28,7 @@ const (
 )
 
 type AddressMode interface {
-	step(*CPU) *ResolvedAddress
+	step(*CPU) (result ResolvedAddress, ok bool)
 	reset()
 }
 
@@ -50,30 +50,30 @@ type ResolvedAddress struct {
 	register *byte
 }
 
-func newMemoryResult(value byte, address uint16) *ResolvedAddress {
-	return &ResolvedAddress{
+func newMemoryResult(value byte, address uint16) ResolvedAddress {
+	return ResolvedAddress{
 		tag:     MEMORY_REGION,
 		value:   value,
 		address: address,
 	}
 }
 
-func newRegisterResult(register *byte) *ResolvedAddress {
-	return &ResolvedAddress{
+func newRegisterResult(register *byte) ResolvedAddress {
+	return ResolvedAddress{
 		tag:      REGISTER_REGION,
 		register: register,
 	}
 }
 
-func (amr *ResolvedAddress) isMemory() bool {
+func (amr ResolvedAddress) isMemory() bool {
 	return amr.tag == MEMORY_REGION
 }
 
-func (amr *ResolvedAddress) isRegister() bool {
+func (amr ResolvedAddress) isRegister() bool {
 	return amr.tag == REGISTER_REGION
 }
 
-func (amr *ResolvedAddress) setRegister(value byte) bool {
+func (amr ResolvedAddress) setRegister(value byte) bool {
 	isReg := amr.isRegister()
 	if isReg {
 		*amr.register = value
@@ -81,7 +81,7 @@ func (amr *ResolvedAddress) setRegister(value byte) bool {
 	return isReg
 }
 
-func (amr *ResolvedAddress) getValueAtAddress() byte {
+func (amr ResolvedAddress) getValueAtAddress() byte {
 	if amr.isMemory() {
 		return amr.value
 	} else {
@@ -89,7 +89,7 @@ func (amr *ResolvedAddress) getValueAtAddress() byte {
 	}
 }
 
-func (amr *ResolvedAddress) writeData(cpu *CPU, value byte) {
+func (amr ResolvedAddress) writeData(cpu *CPU, value byte) {
 	if amr.isRegister() {
 		*amr.register = value
 	} else {
@@ -97,7 +97,7 @@ func (amr *ResolvedAddress) writeData(cpu *CPU, value byte) {
 	}
 }
 
-func (amr *ResolvedAddress) dummyRead(cpu *CPU) {
+func (amr ResolvedAddress) dummyRead(cpu *CPU) {
 	if amr.isMemory() {
 		cpu.psram.Read8(amr.address)
 	}
@@ -137,7 +137,7 @@ func (dp *DirectPage) init() *DirectPage {
 	return dp
 }
 
-func (dp *DirectPage) step(cpu *CPU) *ResolvedAddress {
+func (dp *DirectPage) step(cpu *CPU) (ResolvedAddress, bool) {
 	switch dp.state {
 	case FETCH_BYTE1:
 		dp.lo = cpu.fetchByte()
@@ -153,14 +153,14 @@ func (dp *DirectPage) step(cpu *CPU) *ResolvedAddress {
 		case INDIRECT_INDEXED_LAST:
 			dp.reg = uint16(cpu.r.Y)
 			dp.state = RESOLVE_INDIRECTION
-			return nil
+			return ResolvedAddress{}, false
 		case REGISTER_X:
 			dp.lo = cpu.r.X
 			cpu.r.X += dp.autoIncrement
 			if dp.indexAndResolve {
 				dp.addr = uint16(cpu.r.getDirectPageNum())<<8 | uint16(dp.lo)
 				dp.lo = cpu.psram.Read8(dp.addr)
-				return newMemoryResult(dp.lo, dp.addr)
+				return newMemoryResult(dp.lo, dp.addr), true
 			}
 		case REGISTER_Y:
 			dp.lo = cpu.r.Y
@@ -168,7 +168,7 @@ func (dp *DirectPage) step(cpu *CPU) *ResolvedAddress {
 			if dp.indexAndResolve {
 				dp.addr = uint16(cpu.r.getDirectPageNum())<<8 | uint16(dp.lo)
 				dp.lo = cpu.psram.Read8(dp.addr)
-				return newMemoryResult(dp.lo, dp.addr)
+				return newMemoryResult(dp.lo, dp.addr), true
 			}
 		}
 		dp.state = RESOLVE_ADDRESS1
@@ -176,7 +176,7 @@ func (dp *DirectPage) step(cpu *CPU) *ResolvedAddress {
 		dp.addr = uint16(cpu.r.getDirectPageNum())<<8 | uint16(dp.lo)
 
 		if dp.skipRead {
-			return newMemoryResult(dp.lo, dp.addr)
+			return newMemoryResult(dp.lo, dp.addr), true
 		}
 
 		dp.lo = cpu.psram.Read8(dp.addr)
@@ -185,7 +185,7 @@ func (dp *DirectPage) step(cpu *CPU) *ResolvedAddress {
 		}
 
 		if !(dp.isIndirect) {
-			return newMemoryResult(dp.lo, dp.addr)
+			return newMemoryResult(dp.lo, dp.addr), true
 		} else {
 			dp.state = RESOLVE_ADDRESS2
 		}
@@ -201,9 +201,9 @@ func (dp *DirectPage) step(cpu *CPU) *ResolvedAddress {
 	case RESOLVE_INDIRECTION:
 		dp.addr += dp.reg
 		dp.lo = cpu.psram.Read8(dp.addr)
-		return newMemoryResult(dp.lo, dp.addr)
+		return newMemoryResult(dp.lo, dp.addr), true
 	}
-	return nil
+	return ResolvedAddress{}, false
 }
 
 func (dp *DirectPage) reset() {
@@ -222,7 +222,7 @@ type Absolute struct {
 	addr        uint16
 }
 
-func (a *Absolute) step(cpu *CPU) *ResolvedAddress {
+func (a *Absolute) step(cpu *CPU) (ResolvedAddress, bool) {
 	switch a.state {
 	case FETCH_BYTE1:
 		a.lo = cpu.fetchByte()
@@ -249,10 +249,10 @@ func (a *Absolute) step(cpu *CPU) *ResolvedAddress {
 		a.addr = (uint16(a.hi)<<8 | uint16(a.lo)) + uint16(a.reg)
 
 		a.lo = cpu.psram.Read8(a.addr)
-		return newMemoryResult(a.lo, a.addr)
+		return newMemoryResult(a.lo, a.addr), true
 
 	}
-	return nil
+	return ResolvedAddress{}, false
 }
 
 func (a *Absolute) reset() {
@@ -262,9 +262,9 @@ func (a *Absolute) reset() {
 type Immediate struct {
 }
 
-func (r *Immediate) step(cpu *CPU) *ResolvedAddress {
+func (r *Immediate) step(cpu *CPU) (ResolvedAddress, bool) {
 	pc := cpu.r.PC //probably unnecessary but for correctness
-	return newMemoryResult(cpu.fetchByte(), pc)
+	return newMemoryResult(cpu.fetchByte(), pc), true
 }
 
 func (r *Immediate) reset() {
@@ -274,17 +274,17 @@ type AccessRegister struct {
 	mode AddressingMode
 }
 
-func (r *AccessRegister) step(cpu *CPU) *ResolvedAddress {
+func (r *AccessRegister) step(cpu *CPU) (ResolvedAddress, bool) {
 	switch r.mode {
 	case REGISTER_X:
-		return newRegisterResult(&cpu.r.X)
+		return newRegisterResult(&cpu.r.X), true
 	case REGISTER_Y:
-		return newRegisterResult(&cpu.r.Y)
+		return newRegisterResult(&cpu.r.Y), true
 	case STACK_POINTER:
-		return newRegisterResult(&cpu.r.SP)
+		return newRegisterResult(&cpu.r.SP), true
 	default:
 		//accumulator
-		return newRegisterResult(&cpu.r.A)
+		return newRegisterResult(&cpu.r.A), true
 	}
 }
 

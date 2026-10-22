@@ -15,7 +15,7 @@ func NewInstructionMap() []Instruction {
 	ret[0x1F] = &JmpAbs{indirect: true}
 
 	//BBC
-	branchIfEqual := func(_ *CPU, ra *ResolvedAddress) bool { return ra.getValueAtAddress() == 0 }
+	branchIfEqual := func(_ *CPU, ra ResolvedAddress) bool { return ra.getValueAtAddress() == 0 }
 	ret[0x13] = &Relative{branchCondition: branchIfEqual, am: (&DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x01 }}).init()}
 	ret[0x33] = &Relative{branchCondition: branchIfEqual, am: (&DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x02 }}).init()}
 	ret[0x53] = &Relative{branchCondition: branchIfEqual, am: (&DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x04 }}).init()}
@@ -25,7 +25,7 @@ func NewInstructionMap() []Instruction {
 	ret[0xD3] = &Relative{branchCondition: branchIfEqual, am: (&DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x40 }}).init()}
 	ret[0xF3] = &Relative{branchCondition: branchIfEqual, am: (&DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x80 }}).init()}
 	//BBS
-	branchIfNotEqual := func(_ *CPU, ra *ResolvedAddress) bool { return ra.getValueAtAddress() != 0 }
+	branchIfNotEqual := func(_ *CPU, ra ResolvedAddress) bool { return ra.getValueAtAddress() != 0 }
 	ret[0x03] = &Relative{branchCondition: branchIfNotEqual, am: (&DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x01 }}).init()}
 	ret[0x23] = &Relative{branchCondition: branchIfNotEqual, am: (&DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x02 }}).init()}
 	ret[0x43] = &Relative{branchCondition: branchIfNotEqual, am: (&DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x04 }}).init()}
@@ -35,29 +35,29 @@ func NewInstructionMap() []Instruction {
 	ret[0xC3] = &Relative{branchCondition: branchIfNotEqual, am: (&DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x40 }}).init()}
 	ret[0xE3] = &Relative{branchCondition: branchIfNotEqual, am: (&DirectPage{mode: BIT, bitOp: func(b byte) byte { return b & 0x80 }}).init()}
 	//DBNZ
-	ret[0x6E] = &Relative{branchCondition: func(c *CPU, ra *ResolvedAddress) bool {
+	ret[0x6E] = &Relative{branchCondition: func(c *CPU, ra ResolvedAddress) bool {
 		val := ra.getValueAtAddress()
 		val--
 		ra.writeData(c, val)
 		return val != 0
 	},
 		am: (&DirectPage{mode: DEFAULT}).init()}
-	ret[0xFE] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { c.r.Y--; return c.r.Y != 0 },
+	ret[0xFE] = &Relative{branchCondition: func(c *CPU, _ ResolvedAddress) bool { c.r.Y--; return c.r.Y != 0 },
 		am: &AccessRegister{mode: REGISTER_Y}}
 	//CBNE
-	branchIfAccumulatorNotEqual := func(c *CPU, ra *ResolvedAddress) bool { return ra.getValueAtAddress() != c.r.A }
+	branchIfAccumulatorNotEqual := func(c *CPU, ra ResolvedAddress) bool { return ra.getValueAtAddress() != c.r.A }
 	ret[0xDE] = &Relative{branchCondition: branchIfAccumulatorNotEqual, am: (&DirectPage{mode: X_INDEXED}).init()}
 	ret[0x2E] = &Relative{branchCondition: branchIfAccumulatorNotEqual, am: (&DirectPage{mode: DEFAULT}).init()}
 	//standard branch operations: BRA, BEQ, BNE, BCS, BCC, BVS, BVC, BMI, BPL
-	ret[0x2F] = &Relative{branchCondition: func(_ *CPU, _ *ResolvedAddress) bool { return true }, am: nil}
-	ret[0xF0] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return c.r.hasFlag(FlagZ) }, am: nil}
-	ret[0xD0] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return !c.r.hasFlag(FlagZ) }, am: nil}
-	ret[0xB0] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return c.r.hasFlag(FlagC) }, am: nil}
-	ret[0x90] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return !c.r.hasFlag(FlagC) }, am: nil}
-	ret[0x70] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return c.r.hasFlag(FlagV) }, am: nil}
-	ret[0x50] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return !c.r.hasFlag(FlagV) }, am: nil}
-	ret[0x30] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return c.r.hasFlag(FlagN) }, am: nil}
-	ret[0x10] = &Relative{branchCondition: func(c *CPU, _ *ResolvedAddress) bool { return !c.r.hasFlag(FlagN) }, am: nil}
+	ret[0x2F] = &Relative{branchCondition: func(_ *CPU, _ ResolvedAddress) bool { return true }, am: nil}
+	ret[0xF0] = &Relative{branchCondition: func(c *CPU, _ ResolvedAddress) bool { return c.r.hasFlag(FlagZ) }, am: nil}
+	ret[0xD0] = &Relative{branchCondition: func(c *CPU, _ ResolvedAddress) bool { return !c.r.hasFlag(FlagZ) }, am: nil}
+	ret[0xB0] = &Relative{branchCondition: func(c *CPU, _ ResolvedAddress) bool { return c.r.hasFlag(FlagC) }, am: nil}
+	ret[0x90] = &Relative{branchCondition: func(c *CPU, _ ResolvedAddress) bool { return !c.r.hasFlag(FlagC) }, am: nil}
+	ret[0x70] = &Relative{branchCondition: func(c *CPU, _ ResolvedAddress) bool { return c.r.hasFlag(FlagV) }, am: nil}
+	ret[0x50] = &Relative{branchCondition: func(c *CPU, _ ResolvedAddress) bool { return !c.r.hasFlag(FlagV) }, am: nil}
+	ret[0x30] = &Relative{branchCondition: func(c *CPU, _ ResolvedAddress) bool { return c.r.hasFlag(FlagN) }, am: nil}
+	ret[0x10] = &Relative{branchCondition: func(c *CPU, _ ResolvedAddress) bool { return !c.r.hasFlag(FlagN) }, am: nil}
 
 	//SET1
 	ret[0x02] = &ExecAndWrite8{skipExec: true, am: (&DirectPage{mode: BIT, bitOp: func(b byte) byte { return b | 0x01 }}).init()}
@@ -502,17 +502,17 @@ type Relative struct {
 	am    AddressMode
 	state int
 
-	ra *ResolvedAddress
+	ra ResolvedAddress
 
-	branchCondition func(*CPU, *ResolvedAddress) bool
+	branchCondition func(*CPU, ResolvedAddress) bool
 	shouldBranch    bool
 }
 
 func (i *Relative) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		ra := i.am.step(cpu)
-		if ra != nil {
+		ra, ok := i.am.step(cpu)
+		if ok {
 			i.ra = ra
 			i.state++
 		}
@@ -638,7 +638,7 @@ func (i *XCN) Reset() {
 
 type ExecAndWrite8 struct {
 	am    AddressMode
-	ra    *ResolvedAddress
+	ra    ResolvedAddress
 	state int
 
 	delayExecution bool
@@ -651,10 +651,11 @@ type ExecAndWrite8 struct {
 func (i *ExecAndWrite8) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		i.ra = i.am.step(cpu)
-		if i.ra == nil {
+		ra, ok := i.am.step(cpu)
+		if !ok {
 			return false
 		}
+		i.ra = ra
 		if i.skipExec {
 			//BIT has side effect
 			i.ret = i.ra.getValueAtAddress()
@@ -668,7 +669,7 @@ func (i *ExecAndWrite8) Step(cpu *CPU) bool {
 		fallthrough
 	case 1:
 		i.state++
-		i.ret = i.func8(cpu, *i.ra)
+		i.ret = i.func8(cpu, i.ra)
 		return i.ra.setRegister(i.ret)
 	case 2:
 		i.ra.writeData(cpu, i.ret)
@@ -684,7 +685,7 @@ func (i *ExecAndWrite8) Reset() {
 
 type ExecAndWrite8x2Access struct {
 	am1, am2 AddressMode
-	ra1, ra2 *ResolvedAddress
+	ra1, ra2 ResolvedAddress
 	state    int
 
 	func8 InstructionFunc8x2
@@ -698,8 +699,8 @@ type ExecAndWrite8x2Access struct {
 func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		ra := i.am1.step(cpu)
-		if ra == nil {
+		ra, ok := i.am1.step(cpu)
+		if !ok {
 			return false
 		}
 		i.state++
@@ -709,8 +710,8 @@ func (i *ExecAndWrite8x2Access) Step(cpu *CPU) bool {
 		}
 		fallthrough
 	case 1:
-		ra := i.am2.step(cpu)
-		if ra == nil {
+		ra, ok := i.am2.step(cpu)
+		if !ok {
 			return false
 		}
 		i.ra2 = ra
@@ -899,8 +900,8 @@ type Exec16 struct {
 func (i *Exec16) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		ra := i.am.step(cpu)
-		if ra != nil && ra.isMemory() {
+		ra, ok := i.am.step(cpu)
+		if ok && ra.isMemory() {
 			i.lo, i.addr = ra.value, ra.address
 			if i.skipIdleCycle {
 				i.state = 2
@@ -938,8 +939,8 @@ type ExecAndWrite16 struct {
 func (i *ExecAndWrite16) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		ra := i.am.step(cpu)
-		if ra != nil && ra.isMemory() {
+		ra, ok := i.am.step(cpu)
+		if ok && ra.isMemory() {
 			i.lo, i.addr = ra.value, ra.address
 			i.state = 1
 		}
@@ -966,15 +967,13 @@ type IncWDecW struct {
 	lo, hi byte
 	carry  bool
 	amount byte
-
-	ra ResolvedAddress
 }
 
 func (i *IncWDecW) Step(cpu *CPU) bool {
 	switch i.state {
 	case 0:
-		ra := i.am.step(cpu)
-		if ra != nil && ra.isMemory() {
+		ra, ok := i.am.step(cpu)
+		if ok && ra.isMemory() {
 			i.lo, i.addr = ra.value, ra.address
 			i.state++
 		}
