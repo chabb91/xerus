@@ -118,35 +118,43 @@ type DirectPage struct {
 
 	indexAndResolve bool
 	autoIncrement   byte
+
+	//fields for optimization
+	afterFetch InstructionState
+	isIndirect bool
+}
+
+func (dp *DirectPage) init() *DirectPage {
+	switch dp.mode {
+	case X_INDEXED, Y_INDEXED, INDEXED_INDIRECT, INDIRECT_INDEXED:
+		dp.afterFetch = INDEX_DATA
+	case DEFAULT, BIT, INDIRECT_INDEXED_LAST:
+		dp.afterFetch = RESOLVE_ADDRESS1
+	}
+
+	dp.isIndirect = dp.mode == INDEXED_INDIRECT || dp.mode == INDIRECT_INDEXED || dp.mode == INDIRECT_INDEXED_LAST
+
+	return dp
 }
 
 func (dp *DirectPage) step(cpu *CPU) *ResolvedAddress {
 	switch dp.state {
 	case FETCH_BYTE1:
 		dp.lo = cpu.fetchByte()
-
-		switch dp.mode {
-		case X_INDEXED, Y_INDEXED, INDEXED_INDIRECT, INDIRECT_INDEXED:
-			dp.state = INDEX_DATA
-		case DEFAULT, BIT, INDIRECT_INDEXED_LAST:
-			dp.state = RESOLVE_ADDRESS1
-		}
+		dp.state = dp.afterFetch
 	case INDEX_DATA:
-		if dp.mode == X_INDEXED || dp.mode == INDEXED_INDIRECT {
+		switch dp.mode {
+		case X_INDEXED, INDEXED_INDIRECT:
 			dp.lo += cpu.r.X
-		}
-		if dp.mode == Y_INDEXED {
+		case Y_INDEXED:
 			dp.lo += cpu.r.Y
-		}
-		if dp.mode == INDIRECT_INDEXED {
+		case INDIRECT_INDEXED:
 			dp.reg = uint16(cpu.r.Y)
-		}
-		if dp.mode == INDIRECT_INDEXED_LAST {
+		case INDIRECT_INDEXED_LAST:
 			dp.reg = uint16(cpu.r.Y)
 			dp.state = RESOLVE_INDIRECTION
 			return nil
-		}
-		if dp.mode == REGISTER_X {
+		case REGISTER_X:
 			dp.lo = cpu.r.X
 			cpu.r.X += dp.autoIncrement
 			if dp.indexAndResolve {
@@ -154,8 +162,7 @@ func (dp *DirectPage) step(cpu *CPU) *ResolvedAddress {
 				dp.lo = cpu.psram.Read8(dp.addr)
 				return newMemoryResult(dp.lo, dp.addr)
 			}
-		}
-		if dp.mode == REGISTER_Y {
+		case REGISTER_Y:
 			dp.lo = cpu.r.Y
 			cpu.r.Y += dp.autoIncrement
 			if dp.indexAndResolve {
@@ -177,7 +184,7 @@ func (dp *DirectPage) step(cpu *CPU) *ResolvedAddress {
 			dp.lo = dp.bitOp(dp.lo)
 		}
 
-		if !(dp.mode == INDEXED_INDIRECT || dp.mode == INDIRECT_INDEXED || dp.mode == INDIRECT_INDEXED_LAST) {
+		if !(dp.isIndirect) {
 			return newMemoryResult(dp.lo, dp.addr)
 		} else {
 			dp.state = RESOLVE_ADDRESS2
