@@ -6,11 +6,6 @@ package ppu
 
 import "github.com/chabb91/xerus/ui"
 
-// used in renderMainScreen and renderSubScreen for extremely fast access
-var colorCache [5]int
-var spritePrio byte
-var spriteMath bool
-
 var currentTimingRow *[H_TOTAL]VisibilityEntry
 var currentPixelBufferRow *[SCREEN_WIDTH]ui.SnesColorData
 

@@ -98,7 +98,7 @@ func newObjects(ds tileDataSource, priorityRotation func() byte, layer ppuLayer)
 }
 
 func (ob *Objects) GetDotAt(H, _ uint16) (int, byte, bool) {
-	ret := ob.resolvedDotsOnScanLine[H]
+	ret := ob.resolvedDotsOnScanLine[H>>uint16(hires)]
 	return ret.color, ret.priority, ret.partakesInColorMath
 }
 

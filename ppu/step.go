@@ -18,8 +18,9 @@ func (ppu *PPU) Step() uint64 {
 			//not sure which is correct, mesen does it the first way
 			if hires|pseudoHires == 1 {
 				//flipping this causes artifacts because the subscreen is always first in the rendering order
-				ss, l2, _ := ppu.renderSubScreen(h, v)
-				ms, l1, math := ppu.renderMainScreen(h, v)
+				H := h << uint16(hires)
+				ss, l2, _ := ppu.renderScreen(H, v, ppu.subRenderPipeline)
+				ms, l1, math := ppu.renderScreen(H+uint16(hires), v, ppu.subRenderPipeline)
 				if math {
 					//TODO subscreen color math unfortunately depends on the previous ms pixel. this matters in some cases
 					//try fixing it later
@@ -30,9 +31,9 @@ func (ppu *PPU) Step() uint64 {
 					currentPixelBufferRow[h].SetColor(ss, ms, ppu.brightness)
 				}
 			} else {
-				ms, l1, math := ppu.renderMainScreen(h, v)
+				ms, l1, math := ppu.renderScreen(h, v, ppu.mainRenderPipeline)
 				if math {
-					ss, l2, _ := ppu.renderSubScreen(h, v)
+					ss, l2, _ := ppu.renderScreen(h, v, ppu.subRenderPipeline)
 					cm1 := ppu.WINDOWS.performColorMath(ms, ss, h, l1, l2)
 					currentPixelBufferRow[h].SetColor(cm1, cm1, ppu.brightness)
 				} else {

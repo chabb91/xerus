@@ -21,112 +21,111 @@ type pipelineTemplate struct {
 
 	renderer rendererFunction
 
-	mainScreenMask *[SCREEN_WIDTH]bool
-	subScreenMask  *[SCREEN_WIDTH]bool
+	screenMask *[SCREEN_WIDTH]bool
 }
 
 var modePriorityOrder = map[byte][]pipelineTemplate{
 	renderMode0: {
-		{obj, 3, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{bg2, 1, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{bg1, 0, nil, nil, nil},
-		{bg2, 0, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg3, 1, nil, nil, nil},
-		{bg4, 1, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
-		{bg3, 0, nil, nil, nil},
-		{bg4, 0, nil, nil, nil},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{bg2, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{bg1, 0, nil, nil},
+		{bg2, 0, nil, nil},
+		{obj, 1, nil, nil},
+		{bg3, 1, nil, nil},
+		{bg4, 1, nil, nil},
+		{obj, 0, nil, nil},
+		{bg3, 0, nil, nil},
+		{bg4, 0, nil, nil},
 	},
 	renderMode1: {
-		{obj, 3, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{bg2, 1, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{bg1, 0, nil, nil, nil},
-		{bg2, 0, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg3, 1, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
-		{bg3, 0, nil, nil, nil},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{bg2, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{bg1, 0, nil, nil},
+		{bg2, 0, nil, nil},
+		{obj, 1, nil, nil},
+		{bg3, 1, nil, nil},
+		{obj, 0, nil, nil},
+		{bg3, 0, nil, nil},
 	},
 	renderMode1Bg3Prio: {
-		{bg3, 1, nil, nil, nil},
-		{obj, 3, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{bg2, 1, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{bg1, 0, nil, nil, nil},
-		{bg2, 0, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
-		{bg3, 0, nil, nil, nil},
+		{bg3, 1, nil, nil},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{bg2, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{bg1, 0, nil, nil},
+		{bg2, 0, nil, nil},
+		{obj, 1, nil, nil},
+		{obj, 0, nil, nil},
+		{bg3, 0, nil, nil},
 	},
 	renderMode2: {
-		{obj, 3, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{bg2, 1, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg1, 0, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
-		{bg2, 0, nil, nil, nil},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{bg2, 1, nil, nil},
+		{obj, 1, nil, nil},
+		{bg1, 0, nil, nil},
+		{obj, 0, nil, nil},
+		{bg2, 0, nil, nil},
 	},
 	renderMode3: {
-		{obj, 3, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{bg2, 1, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg1, 0, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
-		{bg2, 0, nil, nil, nil},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{bg2, 1, nil, nil},
+		{obj, 1, nil, nil},
+		{bg1, 0, nil, nil},
+		{obj, 0, nil, nil},
+		{bg2, 0, nil, nil},
 	},
 	renderMode4: {
-		{obj, 3, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{bg2, 1, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg1, 0, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
-		{bg2, 0, nil, nil, nil},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{bg2, 1, nil, nil},
+		{obj, 1, nil, nil},
+		{bg1, 0, nil, nil},
+		{obj, 0, nil, nil},
+		{bg2, 0, nil, nil},
 	},
 	renderMode5: {
-		{obj, 3, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{bg2, 1, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg1, 0, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
-		{bg2, 0, nil, nil, nil},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{bg2, 1, nil, nil},
+		{obj, 1, nil, nil},
+		{bg1, 0, nil, nil},
+		{obj, 0, nil, nil},
+		{bg2, 0, nil, nil},
 	},
 	renderMode6: {
-		{obj, 3, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg1, 0, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
+		{obj, 3, nil, nil},
+		{bg1, 1, nil, nil},
+		{obj, 2, nil, nil},
+		{obj, 1, nil, nil},
+		{bg1, 0, nil, nil},
+		{obj, 0, nil, nil},
 	},
 	renderMode7: {
-		{obj, 3, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
+		{obj, 3, nil, nil},
+		{obj, 2, nil, nil},
+		{obj, 1, nil, nil},
+		{bg1, 1, nil, nil},
+		{obj, 0, nil, nil},
 	},
 	renderMode7Extbg: {
-		{obj, 3, nil, nil, nil},
-		{obj, 2, nil, nil, nil},
-		{bg2, 1, nil, nil, nil},
-		{obj, 1, nil, nil, nil},
-		{bg1, 1, nil, nil, nil},
-		{obj, 0, nil, nil, nil},
-		{bg2, 0, nil, nil, nil},
+		{obj, 3, nil, nil},
+		{obj, 2, nil, nil},
+		{bg2, 1, nil, nil},
+		{obj, 1, nil, nil},
+		{bg1, 1, nil, nil},
+		{obj, 0, nil, nil},
+		{bg2, 0, nil, nil},
 	},
 }
 
@@ -278,12 +277,12 @@ func (ppu *PPU) regeneratePipelines() {
 	for _, step := range template {
 		if ppu.isEnabledOnMain(step.layer) {
 			step.renderer = ppu.getLayerRenderer(step.layer)
-			step.mainScreenMask = &ppu.WINDOWS.layers[step.layer].mainCache
+			step.screenMask = &ppu.WINDOWS.layers[step.layer].mainCache
 			ppu.mainRenderPipeline = append(ppu.mainRenderPipeline, step)
 		}
 		if ppu.isEnabledOnSub(step.layer) {
 			step.renderer = ppu.getLayerRenderer(step.layer)
-			step.subScreenMask = &ppu.WINDOWS.layers[step.layer].subCache
+			step.screenMask = &ppu.WINDOWS.layers[step.layer].subCache
 			ppu.subRenderPipeline = append(ppu.subRenderPipeline, step)
 		}
 	}
@@ -297,7 +296,7 @@ func (ppu *PPU) regenerateMainPipeline() {
 	for _, step := range template {
 		if ppu.isEnabledOnMain(step.layer) {
 			step.renderer = ppu.getLayerRenderer(step.layer)
-			step.mainScreenMask = &ppu.WINDOWS.layers[step.layer].mainCache
+			step.screenMask = &ppu.WINDOWS.layers[step.layer].mainCache
 			ppu.mainRenderPipeline = append(ppu.mainRenderPipeline, step)
 		}
 	}
@@ -311,7 +310,7 @@ func (ppu *PPU) regenerateSubPipeline() {
 	for _, step := range template {
 		if ppu.isEnabledOnSub(step.layer) {
 			step.renderer = ppu.getLayerRenderer(step.layer)
-			step.subScreenMask = &ppu.WINDOWS.layers[step.layer].subCache
+			step.screenMask = &ppu.WINDOWS.layers[step.layer].subCache
 			ppu.subRenderPipeline = append(ppu.subRenderPipeline, step)
 		}
 	}
@@ -404,65 +403,12 @@ func (ppu *PPU) getLayerRenderer(layer ppuLayer) rendererFunction {
 	return nil
 }
 
-func (ppu *PPU) renderMainScreen(H, V uint16) (uint16, ppuLayer, bool) {
-	var val int
-	var prio byte
-	var math bool
-	for _, v := range ppu.mainRenderPipeline {
-		if v.mainScreenMask[H] {
-			continue
-		}
+func (ppu *PPU) renderScreen(H, V uint16, pipeline []pipelineTemplate) (uint16, ppuLayer, bool) {
+	normalH := H >> uint16(hires)
+	for _, v := range pipeline {
+		val, prio, math := v.renderer(H, V)
 
-		if v.layer == obj {
-			if v.priority == 3 {
-				val, prio, math = v.renderer(H, V)
-				colorCache[v.layer], spritePrio, spriteMath = val, prio, math
-			} else {
-				val, prio, math = colorCache[v.layer], spritePrio, spriteMath
-			}
-		} else {
-			if v.priority == 1 {
-				val, prio, math = v.renderer(H<<uint16(hires)+uint16(hires), V)
-				colorCache[v.layer] = val
-			} else {
-				val, prio, math = colorCache[v.layer], 0, true
-			}
-		}
-
-		if val == BG_BACKDROP_COLOR || prio != v.priority {
-			continue
-		}
-		return uint16(val), v.layer, math
-	}
-	return ppu.CGRAM.CGRAM[0], backdrop, true
-}
-
-func (ppu *PPU) renderSubScreen(H, V uint16) (uint16, ppuLayer, bool) {
-	var val int
-	var prio byte
-	var math bool
-	for _, v := range ppu.subRenderPipeline {
-		if v.subScreenMask[H] {
-			continue
-		}
-
-		if v.layer == obj {
-			if v.priority == 3 {
-				val, prio, math = v.renderer(H, V)
-				colorCache[v.layer], spritePrio, spriteMath = val, prio, math
-			} else {
-				val, prio, math = colorCache[v.layer], spritePrio, spriteMath
-			}
-		} else {
-			if v.priority == 1 {
-				val, prio, math = v.renderer(H<<uint16(hires), V)
-				colorCache[v.layer] = val
-			} else {
-				val, prio, math = colorCache[v.layer], 0, true
-			}
-		}
-
-		if val == BG_BACKDROP_COLOR || prio != v.priority {
+		if val == BG_BACKDROP_COLOR || prio != v.priority || v.screenMask[normalH] {
 			continue
 		}
 		return uint16(val), v.layer, math
