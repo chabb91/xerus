@@ -131,8 +131,10 @@ func NewDsp(psram *SPCMemory) *DSP {
 
 func (dsp *DSP) Step() {
 	dsp.state++
-	dsp.poll16k = dsp.poll16k != true
 	if dsp.state <= 31 {
+		if dsp.state == 1 {
+			dsp.poll16k = dsp.poll16k != true
+		}
 		if dsp.state == 29 {
 			//dsp.counter = (dsp.counter - 1) & 0x77FF
 			dsp.counter--
@@ -144,6 +146,7 @@ func (dsp *DSP) Step() {
 			}
 		}
 		if dsp.state == 30 {
+			dsp.noiseRate = dsp.registers[FLG] & 0x1F
 			if dsp.poll16k {
 				dsp.KOn = dsp.newKOn
 				dsp.KOff = dsp.registers[KOff]
@@ -160,20 +163,22 @@ func (dsp *DSP) Step() {
 				dsp.noiseSample = int16(dsp.noiseSampleRaw << 1)
 			}
 		}
-		if dsp.state == 14 {
-			for _, v := range dsp.Voices {
-				id := v.idReg
-				v.envelope.setAdsr1(dsp.registers[id|VxAdsr1])
-				v.envelope.setAdsr2(dsp.registers[id|VxAdsr2])
-				v.envelope.setGain(dsp.registers[id|VxGain])
+		/*
+			if dsp.state == 14 {
+				for _, v := range dsp.Voices {
+					id := v.idReg
+					v.envelope.setAdsr1(dsp.registers[id|VxAdsr1])
+					v.envelope.setAdsr2(dsp.registers[id|VxAdsr2])
+					v.envelope.setGain(dsp.registers[id|VxGain])
+				}
 			}
-		}
-		if dsp.state == 23 {
+		*/
+		/*if dsp.state == 23 {
 			for _, v := range dsp.Voices {
 				id := v.idReg
 				dsp.registers[id|VxEnvX] = byte(v.envelope.level >> 4)
 			}
-		}
+		}*/
 		if dsp.state == 24 {
 			//dsp.echoBufferSize = uint16(dsp.registers[EDL]&0xF) << 9
 			dsp.echoBufferAddress = uint16(dsp.registers[ESA]) << 8
@@ -190,14 +195,26 @@ func (dsp *DSP) Step() {
 
 	var outL, outR, echoL, echoR int32
 	for _, v := range dsp.Voices {
-		out := int32(v.Tick()) //>> 1
-		leftChan := (out * int32(int8(dsp.registers[v.idReg|VxVolL]))) >> 7
-		rightChan := (out * int32(int8(dsp.registers[v.idReg|VxVolR]))) >> 7
-		outL = clamp16(outL + leftChan)
-		outR = clamp16(outR + rightChan)
+		v.S1()
+		v.S2()
+		v.S3a()
+		v.S3b()
+		v.S3c(dsp)
+		v.S4()
+		v.S5()
+		v.S6()
+		v.S7()
+		v.S8()
+		v.S9()
+
+		//	out := int32(v.Tick()) //>> 1
+		//	leftChan := (out * int32(int8(dsp.registers[v.idReg|VxVolL]))) >> 7
+		//	rightChan := (out * int32(int8(dsp.registers[v.idReg|VxVolR]))) >> 7
+		outL = clamp16(outL + v.registerCache.sampleL)
+		outR = clamp16(outR + v.registerCache.sampleR)
 		if dsp.registers[EOn]&v.idMask != 0 {
-			echoL = clamp16(echoL + leftChan)
-			echoR = clamp16(echoR + rightChan)
+			echoL = clamp16(echoL + v.registerCache.sampleL)
+			echoR = clamp16(echoR + v.registerCache.sampleR)
 		}
 	}
 
@@ -308,41 +325,47 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 		if reg == KOn {
 			d.newKOn = val
 			//fmt.Println("KEYON: ", val)
-			for i := range 8 {
-				if val&(1<<i) != 0 {
-					d.Voices[i].keyOn()
+			/*
+				for i := range 8 {
+					if val&(1<<i) != 0 {
+						d.Voices[i].keyOn()
+					}
+				}
+			*/
+		}
+		/*
+			if reg == KOff {
+				//fmt.Println("KEYOFF: ", val)
+				for i := range 8 {
+					if val&(1<<i) != 0 {
+						//d.Voices[i].keyOff()
+					}
 				}
 			}
-		}
-		if reg == KOff {
-			//fmt.Println("KEYOFF: ", val)
-			for i := range 8 {
-				if val&(1<<i) != 0 {
-					d.Voices[i].keyOff()
-				}
+			if reg&0x0F == VxPitchL {
+				pitch := &d.Voices[reg>>4].pitchValue
+				*pitch = (*pitch & 0x3F00) | uint16(val)
 			}
-		}
-		if reg&0x0F == VxPitchL {
-			pitch := &d.Voices[reg>>4].pitchValue
-			*pitch = (*pitch & 0x3F00) | uint16(val)
-		}
-		if reg&0x0F == VxPitchH {
-			pitch := &d.Voices[reg>>4].pitchValue
-			*pitch = (*pitch & 0xFF) | uint16(val&0x3F)<<8
-		}
-		if reg == PMOn {
-			//fmt.Println("PMON: ", val)
-		}
+			if reg&0x0F == VxPitchH {
+				pitch := &d.Voices[reg>>4].pitchValue
+				*pitch = (*pitch & 0xFF) | uint16(val&0x3F)<<8
+			}
+			if reg == PMOn {
+				//fmt.Println("PMON: ", val)
+			}
+		*/
 		if reg == FLG {
 			//fmt.Println("FLG: ", val)
-			if val >= 0x80 {
-				for i := range 8 {
-					//TODO voices are supposed to stay this state till the bit is reset
-					d.Voices[i].keyOff()
-					d.Voices[i].envelope.reset()
+			/*
+				if val >= 0x80 {
+					for i := range 8 {
+						//TODO voices are supposed to stay this state till the bit is reset
+						d.Voices[i].keyOff()
+						d.Voices[i].envelope.reset()
+					}
 				}
-			}
-			d.noiseRate = val & 0x1F
+			*/
+			//d.noiseRate = val & 0x1F
 		}
 	}
 

@@ -88,7 +88,6 @@ type Voice struct {
 	ram  *[PSRAM_SIZE]byte
 
 	pitchAccumulator uint16
-	pitchValue       uint16
 
 	sampleBuffer [12]int32
 	sampleCursor int
@@ -117,12 +116,15 @@ func newVoice(id int, dspRegs *[DSP_REG_SIZE]byte, psram *[PSRAM_SIZE]byte) *Voi
 	}
 }
 
+/*
+
 func (v *Voice) Tick() int16 {
+
 	window := v.getWindow(int(v.pitchAccumulator >> 12))
 	fraction := (v.pitchAccumulator >> 4) & 0xFF
 	sample := v.interpolateGaussian(window, fraction)
 
-	pitch := int16(v.pitchValue)
+	pitch := int16(v.registerCache.pitch)
 	if v.pmon && !v.useNoiseSample && v.id > 0 {
 		pitch += ((*v.prevVoiceOut >> 5) * pitch) >> 10
 	}
@@ -141,12 +143,15 @@ func (v *Voice) Tick() int16 {
 	v.voiceOut = sample
 	v.regs[v.idReg|VxOutX] = byte(sample >> 8)
 	return sample
+
 }
+*/
 
 func (v *Voice) keyOn() {
 	v.regs[EndX] &= ^v.idMask
 
-	brrAddr := uint16(v.regs[DIR])<<8 + uint16(v.regs[v.idReg|VxScrn])<<2
+	//brrAddr := uint16(v.regs[DIR])<<8 + uint16(v.regs[v.idReg|VxScrn])<<2
+	brrAddr := v.registerCache.SamplePointer
 	brrStartAddr := uint16(v.ram[brrAddr+1])<<8 | uint16(v.ram[brrAddr])
 
 	v.pitchAccumulator = 0
@@ -230,7 +235,8 @@ func (bb *brrBlock) decode4(v *Voice) {
 		if bb.end {
 			v.regs[EndX] |= v.idMask
 
-			brrAddr := uint16(v.regs[DIR])<<8 + uint16(v.regs[v.idReg|VxScrn])<<2
+			//brrAddr := uint16(v.regs[DIR])<<8 + uint16(v.regs[v.idReg|VxScrn])<<2
+			brrAddr := v.registerCache.SamplePointer
 			bb.blockPointer = uint16(v.ram[brrAddr+3])<<8 | uint16(v.ram[brrAddr+2])
 		}
 	}
@@ -297,16 +303,16 @@ func (v *Voice) S3a() {
 	v.registerCache.pitch = (v.registerCache.pitch & 0xFF) | uint16(v.regs[v.idReg|VxPitchH])<<8
 }
 
-func (v *Voice) S2b() {
+func (v *Voice) S3b() {
 	//TODO preload brr header and first byte
 }
 
-func (v *Voice) S2c(dsp *DSP) {
+func (v *Voice) S3c(dsp *DSP) {
 	if v.pmon && !v.useNoiseSample && v.id > 0 {
 		v.registerCache.pitch += uint16((*v.prevVoiceOut>>5)*int16(v.registerCache.pitch)) >> 10
 	}
 	//This is the value used for modulating the next voice's pitch, if applicable.
-	v.envelope.applyLevel(&v.registerCache.sample)
+	//v.envelope.applyLevel(&v.registerCache.sample)
 	if v.regs[FLG]&0x80 > 0 {
 		v.envelope.reset()
 		v.keyOff()
@@ -327,6 +333,7 @@ func (v *Voice) S2c(dsp *DSP) {
 	}
 
 	//TODO update envelope. apply level and update are two separate things
+	v.envelope.applyLevel(&v.registerCache.sample)
 }
 
 func (v *Voice) S4() {
@@ -337,21 +344,21 @@ func (v *Voice) S4() {
 	}
 	v.pitchAccumulator += uint16(v.registerCache.pitch)
 	v.pitchAccumulator &= 0x7FFF
+}
+
+func (v *Voice) S5() {
+	v.registerCache.sampleR = scaleSample(int32(v.registerCache.sample), v.regs[v.idReg|VxVolR])
 
 	window := v.getWindow(int(v.pitchAccumulator >> 12))
 	fraction := (v.pitchAccumulator >> 4) & 0xFF
 	v.registerCache.sample = v.interpolateGaussian(window, fraction)
 }
 
-func (v *Voice) S5() {
-	v.registerCache.sampleR = scaleSample(int32(v.registerCache.sample), v.regs[v.idReg|VxVolR])
-}
-
 func (v *Voice) S6() {
-	//TODO preload brr header and first byte
+	//TODO
 }
 func (v *Voice) S7() {
-	//TODO preload brr header and first byte
+	//TODO
 }
 func (v *Voice) S8() {
 	v.regs[v.idReg|VxOutX] = byte(v.registerCache.sample >> 8)
