@@ -84,8 +84,8 @@ type Voice struct {
 	idMask byte
 	idReg  dspReg
 
-	regs *[DSP_REG_SIZE]byte
-	ram  *[PSRAM_SIZE]byte
+	dspRegs *DspRegisters
+	ram     *[PSRAM_SIZE]byte
 
 	pitchAccumulator uint16
 
@@ -106,13 +106,13 @@ type Voice struct {
 	registerCache VoiceRegisterCache
 }
 
-func newVoice(id int, dspRegs *[DSP_REG_SIZE]byte, psram *[PSRAM_SIZE]byte) *Voice {
+func newVoice(id int, dspRegs *DspRegisters, psram *[PSRAM_SIZE]byte) *Voice {
 	return &Voice{
-		id:     id,
-		idMask: 1 << id,
-		idReg:  dspReg(id) << 4,
-		regs:   dspRegs,
-		ram:    psram,
+		id:      id,
+		idMask:  1 << id,
+		idReg:   dspReg(id) << 4,
+		dspRegs: dspRegs,
+		ram:     psram,
 	}
 }
 
@@ -148,7 +148,7 @@ func (v *Voice) Tick() int16 {
 */
 
 func (v *Voice) keyOn() {
-	v.regs[EndX] &= ^v.idMask
+	v.dspRegs.registers[EndX] &= ^v.idMask
 
 	//brrAddr := uint16(v.regs[DIR])<<8 + uint16(v.regs[v.idReg|VxScrn])<<2
 	brrAddr := v.registerCache.SamplePointer
@@ -233,7 +233,7 @@ func (bb *brrBlock) decode4(v *Voice) {
 	if bb.blockPos == 9 {
 		bb.blockPos = 0
 		if bb.end {
-			v.regs[EndX] |= v.idMask
+			v.dspRegs.registers[EndX] |= v.idMask
 
 			//brrAddr := uint16(v.regs[DIR])<<8 + uint16(v.regs[v.idReg|VxScrn])<<2
 			brrAddr := v.registerCache.SamplePointer
@@ -287,49 +287,51 @@ type VoiceRegisterCache struct {
 
 	sample           int16
 	sampleL, sampleR int32
+
+	endx, outx, envx byte
 }
 
 func (v *Voice) S1() {
-	v.registerCache.VxSrcn = v.regs[v.idReg|VxScrn]
+	v.registerCache.VxSrcn = v.dspRegs.registers[v.idReg|VxScrn]
 }
 
 func (v *Voice) S2() {
-	v.registerCache.SamplePointer = uint16(v.regs[DIR])<<8 + uint16(v.registerCache.VxSrcn)<<2
-	v.registerCache.pitch = (v.registerCache.pitch & 0x3F00) | uint16(v.regs[v.idReg|VxPitchL])
-	v.envelope.setAdsr1(v.regs[v.idReg|VxAdsr1])
+	v.registerCache.SamplePointer = uint16(v.dspRegs.DIR)<<8 + uint16(v.registerCache.VxSrcn)<<2
+	v.registerCache.pitch = (v.registerCache.pitch & 0x3F00) | uint16(v.dspRegs.registers[v.idReg|VxPitchL])
+	v.envelope.setAdsr1(v.dspRegs.registers[v.idReg|VxAdsr1])
 }
 
 func (v *Voice) S3a() {
-	v.registerCache.pitch = (v.registerCache.pitch & 0xFF) | uint16(v.regs[v.idReg|VxPitchH])<<8
+	v.registerCache.pitch = (v.registerCache.pitch & 0xFF) | uint16(v.dspRegs.registers[v.idReg|VxPitchH])<<8
 }
 
 func (v *Voice) S3b() {
 	//TODO preload brr header and first byte
 }
 
-func (v *Voice) S3c(dsp *DSP) {
+func (v *Voice) S3c() {
 	if v.pmon && !v.useNoiseSample && v.id > 0 {
 		v.registerCache.pitch += uint16((*v.prevVoiceOut>>5)*int16(v.registerCache.pitch)) >> 10
 	}
 	//This is the value used for modulating the next voice's pitch, if applicable.
 	//v.envelope.applyLevel(&v.registerCache.sample)
-	if v.regs[FLG]&0x80 > 0 {
+	if v.dspRegs.registers[FLG]&0x80 > 0 {
 		v.envelope.reset()
 		v.keyOff()
 	}
 	//TODO Check BRR header 'e' and 'l' bits to determine if the voice ends.
-	if dsp.poll16k {
-		if dsp.KOff&v.idMask != 0 {
+	if v.dspRegs.poll16k {
+		if v.dspRegs.KOff&v.idMask != 0 {
 			v.keyOff()
 		}
-		if dsp.KOn&v.idMask != 0 {
+		if v.dspRegs.KOn&v.idMask != 0 {
 			v.keyOn()
 		}
 	}
 	if v.envelope.adsrEnable {
-		v.envelope.setAdsr2(v.regs[v.idReg|VxAdsr2])
+		v.envelope.setAdsr2(v.dspRegs.registers[v.idReg|VxAdsr2])
 	} else {
-		v.envelope.setGain(dsp.registers[v.idReg|VxGain])
+		v.envelope.setGain(v.dspRegs.registers[v.idReg|VxGain])
 	}
 
 	//TODO update envelope. apply level and update are two separate things
@@ -337,7 +339,7 @@ func (v *Voice) S3c(dsp *DSP) {
 }
 
 func (v *Voice) S4() {
-	v.registerCache.sampleL = scaleSample(int32(v.registerCache.sample), v.regs[v.idReg|VxVolL])
+	v.registerCache.sampleL = scaleSample(int32(v.registerCache.sample), v.dspRegs.registers[v.idReg|VxVolL])
 	if v.pitchAccumulator >= 0x4000 {
 		v.brrBlock.decode4(v)
 		v.pitchAccumulator -= 0x4000
@@ -347,7 +349,8 @@ func (v *Voice) S4() {
 }
 
 func (v *Voice) S5() {
-	v.registerCache.sampleR = scaleSample(int32(v.registerCache.sample), v.regs[v.idReg|VxVolR])
+	v.registerCache.sampleR = scaleSample(int32(v.registerCache.sample), v.dspRegs.registers[v.idReg|VxVolR])
+	//TODO prep ENDX
 
 	window := v.getWindow(int(v.pitchAccumulator >> 12))
 	fraction := (v.pitchAccumulator >> 4) & 0xFF
@@ -355,16 +358,17 @@ func (v *Voice) S5() {
 }
 
 func (v *Voice) S6() {
-	//TODO
+	v.registerCache.outx = byte(v.registerCache.sample >> 8)
 }
 func (v *Voice) S7() {
-	//TODO
+	//TODO ENDX
+	v.registerCache.envx = byte(v.envelope.level >> 4)
 }
 func (v *Voice) S8() {
-	v.regs[v.idReg|VxOutX] = byte(v.registerCache.sample >> 8)
+	v.dspRegs.registers[v.idReg|VxOutX] = v.registerCache.outx
 }
 func (v *Voice) S9() {
-	v.regs[v.idReg|VxEnvX] = byte(v.envelope.level >> 4)
+	v.dspRegs.registers[v.idReg|VxEnvX] = v.registerCache.envx
 }
 
 type gainFunc func(envelope, unclampedEnvelope int) int

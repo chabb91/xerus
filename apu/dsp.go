@@ -79,14 +79,19 @@ type DSPInterface interface {
 	WriteRegister(reg byte, val byte)
 }
 
-type DSP struct {
-	state     int
+type DspRegisters struct {
 	registers [DSP_REG_SIZE]byte
 
 	newKOn  byte //the internal KON latch (when the register is written)
 	KOn     byte //the currently tracked internal KON value
 	KOff    byte
 	poll16k bool
+
+	NON, EON, DIR byte
+}
+
+type DSP struct {
+	state int
 
 	counter int
 
@@ -99,6 +104,8 @@ type DSP struct {
 	fir                              fir
 
 	ram *[PSRAM_SIZE]byte
+
+	DspRegisters
 
 	Buffer
 
@@ -113,7 +120,7 @@ func NewDsp(psram *SPCMemory) *DSP {
 		ram:    &psram.ram,
 	}
 	for i := range len(dsp.Voices) {
-		dsp.Voices[i] = newVoice(i, &dsp.registers, &psram.ram)
+		dsp.Voices[i] = newVoice(i, &dsp.DspRegisters, &psram.ram)
 		dsp.Voices[i].envelope.advanceEnvelope = dsp.rateEvent
 		dsp.Voices[i].currentNoiseSample = &dsp.noiseSample
 
@@ -153,9 +160,11 @@ func (dsp *DSP) Step() {
 			}
 		}
 		if dsp.state == 28 {
-			non := dsp.registers[NOn]
+			dsp.NON = dsp.registers[NOn]
+			dsp.EON = dsp.registers[EOn]
+			dsp.DIR = dsp.registers[DIR]
 			for i := range 8 {
-				dsp.Voices[i].useNoiseSample = non&dsp.Voices[i].idMask != 0
+				dsp.Voices[i].useNoiseSample = dsp.NON&dsp.Voices[i].idMask != 0
 			}
 			if dsp.rateEvent(dsp.noiseRate) {
 				N := uint(dsp.noiseSampleRaw) //just storing the generated noise bits as unsigned
@@ -199,7 +208,7 @@ func (dsp *DSP) Step() {
 		v.S2()
 		v.S3a()
 		v.S3b()
-		v.S3c(dsp)
+		v.S3c()
 		v.S4()
 		v.S5()
 		v.S6()
