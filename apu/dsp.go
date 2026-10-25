@@ -83,6 +83,11 @@ type DSP struct {
 	state     int
 	registers [DSP_REG_SIZE]byte
 
+	newKOn  byte //the internal KON latch (when the register is written)
+	KOn     byte //the currently tracked internal KON value
+	KOff    byte
+	poll16k bool
+
 	counter int
 
 	noiseRate      byte
@@ -126,12 +131,22 @@ func NewDsp(psram *SPCMemory) *DSP {
 
 func (dsp *DSP) Step() {
 	dsp.state++
+	dsp.poll16k = dsp.poll16k != true
 	if dsp.state <= 31 {
 		if dsp.state == 29 {
 			//dsp.counter = (dsp.counter - 1) & 0x77FF
 			dsp.counter--
 			if dsp.counter < 0 {
 				dsp.counter = 0x77FF
+			}
+			if dsp.poll16k {
+				dsp.newKOn &^= dsp.KOn
+			}
+		}
+		if dsp.state == 30 {
+			if dsp.poll16k {
+				dsp.KOn = dsp.newKOn
+				dsp.KOff = dsp.registers[KOff]
 			}
 		}
 		if dsp.state == 28 {
@@ -291,6 +306,7 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 		reg := dspReg(reg)
 
 		if reg == KOn {
+			d.newKOn = val
 			//fmt.Println("KEYON: ", val)
 			for i := range 8 {
 				if val&(1<<i) != 0 {
