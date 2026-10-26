@@ -103,7 +103,16 @@ type Voice struct {
 	prevVoiceOut *int16
 	pmon         bool
 
-	registerCache VoiceRegisterCache
+	//cached registers
+	srcn          byte
+	SamplePointer uint16
+	pitch         uint16
+
+	sample           int16
+	sampleL, sampleR int32
+
+	outx, envx byte
+	endx       endXState
 }
 
 func newVoice(id int, dspRegs *DspRegisters, psram *[PSRAM_SIZE]byte) *Voice {
@@ -113,6 +122,7 @@ func newVoice(id int, dspRegs *DspRegisters, psram *[PSRAM_SIZE]byte) *Voice {
 		idReg:   dspReg(id) << 4,
 		dspRegs: dspRegs,
 		ram:     psram,
+		endx:    NONE,
 	}
 }
 
@@ -148,10 +158,11 @@ func (v *Voice) Tick() int16 {
 */
 
 func (v *Voice) keyOn() {
-	v.dspRegs.registers[EndX] &= ^v.idMask
+	//v.dspRegs.registers[EndX] &= ^v.idMask
+	v.endx.clear()
 
 	//brrAddr := uint16(v.regs[DIR])<<8 + uint16(v.regs[v.idReg|VxScrn])<<2
-	brrAddr := v.registerCache.SamplePointer
+	brrAddr := v.SamplePointer
 	brrStartAddr := uint16(v.ram[brrAddr+1])<<8 | uint16(v.ram[brrAddr])
 
 	v.pitchAccumulator = 0
@@ -187,10 +198,6 @@ func (bb *brrBlock) decode4(v *Voice) {
 		bb.loop = (header & 0x02) != 0
 		bb.blockPointer++
 		bb.blockPos++
-
-		if bb.end && !bb.loop {
-			v.envelope.state = RELEASE
-		}
 	}
 
 	var data byte
@@ -233,10 +240,11 @@ func (bb *brrBlock) decode4(v *Voice) {
 	if bb.blockPos == 9 {
 		bb.blockPos = 0
 		if bb.end {
-			v.dspRegs.registers[EndX] |= v.idMask
+			//v.dspRegs.registers[EndX] |= v.idMask
+			v.endx.set()
 
 			//brrAddr := uint16(v.regs[DIR])<<8 + uint16(v.regs[v.idReg|VxScrn])<<2
-			brrAddr := v.registerCache.SamplePointer
+			brrAddr := v.SamplePointer
 			bb.blockPointer = uint16(v.ram[brrAddr+3])<<8 | uint16(v.ram[brrAddr+2])
 		}
 	}
@@ -244,6 +252,11 @@ func (bb *brrBlock) decode4(v *Voice) {
 func (bb *brrBlock) reset(startAddr uint16) {
 	bb.blockPointer = startAddr
 	bb.blockPos = 0
+}
+func (v *Voice) releaseIfNeeded() {
+	if v.brrBlock.end && !v.brrBlock.loop {
+		v.envelope.state = RELEASE
+	}
 }
 
 func (v *Voice) writeSample(sample int32) {
@@ -280,29 +293,21 @@ func (v *Voice) interpolateGaussian(window [4]int16, fraction uint16) int16 {
 	return int16(outx)
 }
 
-type VoiceRegisterCache struct {
-	VxSrcn        byte
-	SamplePointer uint16
-	pitch         uint16
-
-	sample           int16
-	sampleL, sampleR int32
-
-	endx, outx, envx byte
-}
-
 func (v *Voice) S1() {
-	v.registerCache.VxSrcn = v.dspRegs.registers[v.idReg|VxScrn]
+	v.srcn = v.dspRegs.registers[v.idReg|VxScrn]
 }
 
 func (v *Voice) S2() {
-	v.registerCache.SamplePointer = uint16(v.dspRegs.DIR)<<8 + uint16(v.registerCache.VxSrcn)<<2
-	v.registerCache.pitch = (v.registerCache.pitch & 0x3F00) | uint16(v.dspRegs.registers[v.idReg|VxPitchL])
+	v.SamplePointer = uint16(v.dspRegs.DIR)<<8 + uint16(v.srcn)<<2
+	v.pitch = (v.pitch & 0x3F00) | uint16(v.dspRegs.registers[v.idReg|VxPitchL])
 	v.envelope.setAdsr1(v.dspRegs.registers[v.idReg|VxAdsr1])
 }
 
 func (v *Voice) S3a() {
-	v.registerCache.pitch = (v.registerCache.pitch & 0xFF) | uint16(v.dspRegs.registers[v.idReg|VxPitchH])<<8
+	v.pitch = (v.pitch & 0xFF) | uint16(v.dspRegs.registers[v.idReg|VxPitchH])<<8
+	if v.pmon && !v.useNoiseSample && v.id > 0 {
+		v.pitch += uint16((*v.prevVoiceOut>>5)*int16(v.pitch)) >> 10
+	}
 }
 
 func (v *Voice) S3b() {
@@ -310,16 +315,16 @@ func (v *Voice) S3b() {
 }
 
 func (v *Voice) S3c() {
-	if v.pmon && !v.useNoiseSample && v.id > 0 {
-		v.registerCache.pitch += uint16((*v.prevVoiceOut>>5)*int16(v.registerCache.pitch)) >> 10
+	if v.useNoiseSample {
+		v.sample = *v.currentNoiseSample
 	}
-	//This is the value used for modulating the next voice's pitch, if applicable.
-	//v.envelope.applyLevel(&v.registerCache.sample)
+	v.envelope.applyLevel(&v.sample)
+	v.voiceOut = v.sample
 	if v.dspRegs.registers[FLG]&0x80 > 0 {
 		v.envelope.reset()
 		v.keyOff()
 	}
-	//TODO Check BRR header 'e' and 'l' bits to determine if the voice ends.
+	v.releaseIfNeeded()
 	if v.dspRegs.poll16k {
 		if v.dspRegs.KOff&v.idMask != 0 {
 			v.keyOff()
@@ -333,42 +338,40 @@ func (v *Voice) S3c() {
 	} else {
 		v.envelope.setGain(v.dspRegs.registers[v.idReg|VxGain])
 	}
-
-	//TODO update envelope. apply level and update are two separate things
-	v.envelope.applyLevel(&v.registerCache.sample)
+	v.envelope.update()
 }
 
 func (v *Voice) S4() {
-	v.registerCache.sampleL = scaleSample(int32(v.registerCache.sample), v.dspRegs.registers[v.idReg|VxVolL])
+	v.sampleL = scaleSample(int32(v.sample), v.dspRegs.registers[v.idReg|VxVolL])
 	if v.pitchAccumulator >= 0x4000 {
 		v.brrBlock.decode4(v)
 		v.pitchAccumulator -= 0x4000
 	}
-	v.pitchAccumulator += uint16(v.registerCache.pitch)
+	v.pitchAccumulator += uint16(v.pitch)
 	v.pitchAccumulator &= 0x7FFF
 }
 
 func (v *Voice) S5() {
-	v.registerCache.sampleR = scaleSample(int32(v.registerCache.sample), v.dspRegs.registers[v.idReg|VxVolR])
-	//TODO prep ENDX
+	v.sampleR = scaleSample(int32(v.sample), v.dspRegs.registers[v.idReg|VxVolR])
+	v.endx.prepare(v.idMask)
 
 	window := v.getWindow(int(v.pitchAccumulator >> 12))
 	fraction := (v.pitchAccumulator >> 4) & 0xFF
-	v.registerCache.sample = v.interpolateGaussian(window, fraction)
+	v.sample = v.interpolateGaussian(window, fraction)
 }
 
 func (v *Voice) S6() {
-	v.registerCache.outx = byte(v.registerCache.sample >> 8)
+	v.outx = byte(v.sample >> 8)
 }
 func (v *Voice) S7() {
-	//TODO ENDX
-	v.registerCache.envx = byte(v.envelope.level >> 4)
+	v.endx.commit(&v.dspRegs.registers[EndX])
+	v.envx = byte(v.envelope.level >> 4)
 }
 func (v *Voice) S8() {
-	v.dspRegs.registers[v.idReg|VxOutX] = v.registerCache.outx
+	v.dspRegs.registers[v.idReg|VxOutX] = v.outx
 }
 func (v *Voice) S9() {
-	v.dspRegs.registers[v.idReg|VxEnvX] = v.registerCache.envx
+	v.dspRegs.registers[v.idReg|VxEnvX] = v.envx
 }
 
 type gainFunc func(envelope, unclampedEnvelope int) int
@@ -424,7 +427,7 @@ func (e *envelope) setGain(val byte) {
 	}
 }
 
-func (e *envelope) applyLevel(sample *int16) {
+func (e *envelope) update() {
 	///////////////////
 	//anomies docs are very opaque on this but apparently what he tried to say was
 	//a candidate envelope value is calculated every sample and then
@@ -496,6 +499,9 @@ func (e *envelope) applyLevel(sample *int16) {
 			e.level = max(0, min(envelope, 0x7FF))
 		}
 	}
+}
+
+func (e *envelope) applyLevel(sample *int16) {
 	*sample = int16((int(*sample) * e.level) >> 11)
 }
 
@@ -522,6 +528,45 @@ func gainBentIncrease(envelope, unclampedEnvelope int) int {
 		envelope += 32
 	}
 	return envelope
+}
+
+const (
+	NONE  endXState = 0x1000
+	CLEAR endXState = 0x2000
+	SET   endXState = 0x3000
+)
+
+type endXState uint
+
+func (e *endXState) set() {
+	if *e == NONE {
+		*e = SET
+	}
+}
+
+func (e *endXState) clear() {
+	if *e == NONE {
+		*e = CLEAR
+	}
+}
+
+func (e *endXState) prepare(mask byte) {
+	ev := *e & 0xFF00
+	switch ev {
+	case SET, CLEAR:
+		*e = ev | endXState(mask)
+	}
+}
+
+func (e *endXState) commit(reg *byte) {
+	switch *e & 0xFF00 {
+	case SET:
+		*reg |= byte(*e)
+	case CLEAR:
+		*reg &= ^byte(*e)
+	}
+
+	*e = NONE
 }
 
 func clamp16(v int32) int32 {

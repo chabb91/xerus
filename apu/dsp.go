@@ -219,11 +219,11 @@ func (dsp *DSP) Step() {
 		//	out := int32(v.Tick()) //>> 1
 		//	leftChan := (out * int32(int8(dsp.registers[v.idReg|VxVolL]))) >> 7
 		//	rightChan := (out * int32(int8(dsp.registers[v.idReg|VxVolR]))) >> 7
-		outL = clamp16(outL + v.registerCache.sampleL)
-		outR = clamp16(outR + v.registerCache.sampleR)
+		outL = clamp16(outL + v.sampleL)
+		outR = clamp16(outR + v.sampleR)
 		if dsp.registers[EOn]&v.idMask != 0 {
-			echoL = clamp16(echoL + v.registerCache.sampleL)
-			echoR = clamp16(echoR + v.registerCache.sampleR)
+			echoL = clamp16(echoL + v.sampleL)
+			echoR = clamp16(echoR + v.sampleR)
 		}
 	}
 
