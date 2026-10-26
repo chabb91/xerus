@@ -341,6 +341,12 @@ func (v *Voice) S3c() {
 	v.envelope.update()
 }
 
+func (v *Voice) S3() {
+	v.S3a()
+	v.S3b()
+	v.S3c()
+}
+
 func (v *Voice) S4() {
 	v.sampleL = scaleSample(int32(v.sample), v.dspRegs.registers[v.idReg|VxVolL])
 	if v.pitchAccumulator >= 0x4000 {
