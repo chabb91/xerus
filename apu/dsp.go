@@ -106,7 +106,7 @@ type DSP struct {
 	fir   fir
 	ecenx bool // flg bit 5
 
-	echoBufferL, echoBufferR int16 //fresh echo samples going into echo
+	echoBufferL, echoBufferR int16 //fresh echo samples going into the buffer
 
 	mainL, mainR int32 //main samples
 	echoL, echoR int32 //old echo samples leaving fir
@@ -128,13 +128,13 @@ func NewDsp(psram *SPCMemory) *DSP {
 		ram:    &psram.ram,
 	}
 	for i := range len(dsp.Voices) {
-		dsp.Voices[i] = newVoice(i, &dsp.DspRegisters, &psram.ram)
-		dsp.Voices[i].envelope.advanceEnvelope = dsp.rateEvent
-		dsp.Voices[i].currentNoiseSample = &dsp.noiseSample
-
+		var prevVoice *int16 = nil
 		if i > 0 {
-			dsp.Voices[i].prevVoiceOut = &dsp.Voices[i-1].voiceOut
+			prevVoice = &dsp.Voices[i-1].voiceOut
 		}
+
+		dsp.Voices[i] = newVoice(i, &dsp.DspRegisters, &psram.ram, &dsp.noiseSample, prevVoice)
+		dsp.Voices[i].envelope.advanceEnvelope = dsp.rateEvent
 	}
 
 	//TODO this is not the right way to do this but

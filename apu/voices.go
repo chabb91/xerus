@@ -112,14 +112,21 @@ type Voice struct {
 	endx       endXState
 }
 
-func newVoice(id int, dspRegs *DspRegisters, psram *[PSRAM_SIZE]byte) *Voice {
+func newVoice(
+	id int,
+	dspRegs *DspRegisters,
+	psram *[PSRAM_SIZE]byte,
+	noiseSample *int16,
+	prevVoice *int16) *Voice {
 	return &Voice{
-		id:      id,
-		idMask:  1 << id,
-		idReg:   dspReg(id) << 4,
-		dspRegs: dspRegs,
-		ram:     psram,
-		endx:    NONE,
+		id:                 id,
+		idMask:             1 << id,
+		idReg:              dspReg(id) << 4,
+		dspRegs:            dspRegs,
+		ram:                psram,
+		currentNoiseSample: noiseSample,
+		prevVoiceOut:       prevVoice,
+		endx:               NONE,
 	}
 }
 
