@@ -95,13 +95,10 @@ type Voice struct {
 	brrBlock brrBlock
 	envelope envelope
 
-	voiceOut int16
-
-	useNoiseSample     bool
 	currentNoiseSample *int16
 
 	prevVoiceOut *int16
-	pmon         bool
+	voiceOut     int16
 
 	//cached registers
 	srcn          byte
@@ -249,10 +246,12 @@ func (bb *brrBlock) decode4(v *Voice) {
 		}
 	}
 }
+
 func (bb *brrBlock) reset(startAddr uint16) {
 	bb.blockPointer = startAddr
 	bb.blockPos = 0
 }
+
 func (v *Voice) releaseIfNeeded() {
 	if v.brrBlock.end && !v.brrBlock.loop {
 		v.envelope.state = RELEASE
@@ -305,7 +304,7 @@ func (v *Voice) S2() {
 
 func (v *Voice) S3a() {
 	v.pitch = (v.pitch & 0xFF) | uint16(v.dspRegs.registers[v.idReg|VxPitchH])<<8
-	if v.pmon && !v.useNoiseSample && v.id > 0 {
+	if v.dspRegs.PMON&v.idMask > 1 && v.dspRegs.NON&v.idMask == 0 {
 		v.pitch += uint16((*v.prevVoiceOut>>5)*int16(v.pitch)) >> 10
 	}
 }
@@ -315,7 +314,7 @@ func (v *Voice) S3b() {
 }
 
 func (v *Voice) S3c() {
-	if v.useNoiseSample {
+	if v.dspRegs.NON&v.idMask != 0 {
 		v.sample = *v.currentNoiseSample
 	}
 	v.envelope.applyLevel(&v.sample)

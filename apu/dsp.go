@@ -87,8 +87,8 @@ type DspRegisters struct {
 	KOff    byte
 	poll16k bool
 
-	NON, EON, DIR byte
-	ESA           byte
+	PMON, NON, EON byte
+	DIR, ESA       byte
 }
 
 type DSP struct {
@@ -100,15 +100,16 @@ type DSP struct {
 	noiseSampleRaw uint16
 	noiseSample    int16
 
-	echoBufferIdx, echoBufferAddress uint16
-	echoBufferSize, echoPointer      uint16
-	fir                              fir
-	ecenx                            bool // flg bit 5
+	echoBufferIdx, echoBufferSize uint16
+	echoPointer                   uint16
 
-	echoBufferL, echoBufferR int16
+	fir   fir
+	ecenx bool // flg bit 5
 
-	outL, outR   int32
-	echoL, echoR int32
+	echoBufferL, echoBufferR int16 //fresh echo samples going into echo
+
+	mainL, mainR int32 //main samples
+	echoL, echoR int32 //old echo samples leaving fir
 
 	ram *[PSRAM_SIZE]byte
 
@@ -236,9 +237,8 @@ func (dsp *DSP) Step() {
 		dsp.Voices[6].S9()
 		dsp.Voices[7].S6()
 
-		//TODO unnecessay var
-		dsp.echoBufferAddress = uint16(dsp.registers[ESA]) << 8
-		dsp.echoPointer = dsp.echoBufferAddress + dsp.echoBufferIdx<<2
+		echoBufferAddress := uint16(dsp.registers[ESA]) << 8
+		dsp.echoPointer = echoBufferAddress + dsp.echoBufferIdx<<2
 
 		idx := dsp.echoPointer
 		dsp.echoBufferL = int16(uint16(dsp.ram[idx+0])|uint16(dsp.ram[idx+1])<<8) >> 1 // <<1
@@ -265,48 +265,47 @@ func (dsp *DSP) Step() {
 		dsp.latchFirCoeffAt(6)
 		dsp.latchFirCoeffAt(7)
 	case 26:
-		dsp.outL, dsp.outR = 0, 0
-		dsp.echoL, dsp.echoR = 0, 0
+		dsp.mainL, dsp.mainR = 0, 0
+		var mixedEchoL, mixedEchoR int32 //intermediate echo samples
 
 		for _, v := range dsp.Voices {
-			dsp.outL = clamp16(dsp.outL + v.sampleL)
-			dsp.outR = clamp16(dsp.outR + v.sampleR)
+			dsp.mainL = clamp16(dsp.mainL + v.sampleL)
+			dsp.mainR = clamp16(dsp.mainR + v.sampleR)
 			if dsp.EON&v.idMask != 0 {
-				dsp.echoL = clamp16(dsp.echoL + v.sampleL)
-				dsp.echoR = clamp16(dsp.echoR + v.sampleR)
+				mixedEchoL = clamp16(mixedEchoL + v.sampleL)
+				mixedEchoR = clamp16(mixedEchoR + v.sampleR)
 			}
 		}
 
-		dsp.fir.getSample(dsp)
+		dsp.fir.getSample(dsp.echoBufferL, dsp.echoBufferR)
+
+		//dsp.mainL = (dsp.mainL * int32(int8(dsp.registers[MVolL])) >> 7)
+		//dsp.echoL = (dsp.fir.left * int32(int8(dsp.registers[EVolL])) >> 7)
+		dsp.mainL = scaleSample(dsp.mainL, dsp.registers[MVolL])
+		dsp.echoL = scaleSample(dsp.fir.left, dsp.registers[EVolL])
+
 		efb := int32(int8(dsp.registers[EFB]))
-		dsp.echoBufferL = int16(clamp16(((dsp.fir.left*efb)>>7)+dsp.echoL)) &^ 1
-		dsp.echoBufferR = int16(clamp16(((dsp.fir.right*efb)>>7)+dsp.echoR)) &^ 1
-
-		dsp.echoL = (int32(dsp.fir.left) * int32(int8(dsp.registers[EVolL])) >> 7)
-		dsp.echoR = (int32(dsp.fir.right) * int32(int8(dsp.registers[EVolR])) >> 7)
-
-		dsp.outL = (dsp.outL * int32(int8(dsp.registers[MVolL])) >> 7)
-		dsp.outR = (dsp.outR * int32(int8(dsp.registers[MVolR])) >> 7)
+		dsp.echoBufferL = int16(clamp16(((dsp.fir.left*efb)>>7)+mixedEchoL)) &^ 1
+		dsp.echoBufferR = int16(clamp16(((dsp.fir.right*efb)>>7)+mixedEchoR)) &^ 1
 	case 27:
+		dsp.mainR = scaleSample(dsp.mainR, dsp.registers[MVolR])
+		dsp.echoR = scaleSample(dsp.fir.right, dsp.registers[EVolR])
+		//dsp.mainR = (dsp.mainR * int32(int8(dsp.registers[MVolR])) >> 7)
+		//dsp.echoR = (dsp.fir.right * int32(int8(dsp.registers[EVolR])) >> 7)
+
 		if dsp.registers[FLG]&0x40 == 0 {
-			dsp.Buffer.Write(int16(clamp16(dsp.outL+dsp.echoL)), int16(clamp16(dsp.outR+dsp.echoR)))
+			dsp.Buffer.Write(
+				int16(clamp16(dsp.mainL+dsp.echoL)),
+				int16(clamp16(dsp.mainR+dsp.echoR)))
 		} else {
 			dsp.Buffer.Write(0, 0)
 		}
 
-		//TODO not like this
-		pmon := dsp.registers[PMOn]
-		for _, v := range dsp.Voices {
-			v.pmon = pmon&v.idMask > 1
-		}
+		dsp.PMON = dsp.registers[PMOn]
 	case 28:
 		dsp.NON = dsp.registers[NOn]
 		dsp.EON = dsp.registers[EOn]
 		dsp.DIR = dsp.registers[DIR]
-		for i := range 8 {
-			//TODO useNoiseSample is not necessary, this check should be done by each voice
-			dsp.Voices[i].useNoiseSample = dsp.NON&dsp.Voices[i].idMask != 0
-		}
 		dsp.updateEcenx()
 	case 29:
 		//dsp.counter = (dsp.counter - 1) & 0x77FF
@@ -317,7 +316,8 @@ func (dsp *DSP) Step() {
 
 		if !dsp.ecenx {
 			idx := dsp.echoPointer
-			dsp.ram[idx+0], dsp.ram[idx+1] = byte(uint16(dsp.echoBufferL)), byte(uint16(dsp.echoBufferL)>>8)
+			ebL := uint16(dsp.echoBufferL)
+			dsp.ram[idx+0], dsp.ram[idx+1] = byte(ebL), byte(ebL>>8)
 		}
 
 		if dsp.echoBufferIdx == 0 {
@@ -335,7 +335,8 @@ func (dsp *DSP) Step() {
 
 		if !dsp.ecenx {
 			idx := dsp.echoPointer
-			dsp.ram[idx+2], dsp.ram[idx+3] = byte(uint16(dsp.echoBufferR)), byte(uint16(dsp.echoBufferR)>>8)
+			ebR := uint16(dsp.echoBufferR)
+			dsp.ram[idx+2], dsp.ram[idx+3] = byte(ebR), byte(ebR>>8)
 		}
 
 		dsp.echoBufferIdx++
@@ -344,7 +345,8 @@ func (dsp *DSP) Step() {
 		}
 		dsp.noiseRate = dsp.registers[FLG] & 0x1F
 		if dsp.rateEvent(dsp.noiseRate) {
-			N := uint(dsp.noiseSampleRaw) //just storing the generated noise bits as unsigned
+			//just storing the generated noise bits as unsigned
+			N := uint(dsp.noiseSampleRaw)
 			dsp.noiseSampleRaw = uint16((N>>1)|(((N<<14)^(N<<13))&0x4000)) & 0x7FFF
 			dsp.noiseSample = int16(dsp.noiseSampleRaw << 1)
 		}
@@ -489,7 +491,8 @@ func (d *DSP) updateEcenx() {
 // TODO figure out how the real snes writes these bytes
 func (d *DSP) writeEchoBuffer(echoL, echoR int16) {
 	if d.registers[FLG]&0x20 == 0 {
-		idx := d.echoBufferAddress + d.echoBufferIdx<<2
+		//idx := d.echoBufferAddress + d.echoBufferIdx<<2
+		idx := d.echoPointer
 		d.ram[idx+0], d.ram[idx+1] = byte(uint16(echoL)), byte(uint16(echoL)>>8)
 		d.ram[idx+2], d.ram[idx+3] = byte(uint16(echoR)), byte(uint16(echoR)>>8)
 	} else {
@@ -505,11 +508,16 @@ func (d *DSP) writeEchoBuffer(echoL, echoR int16) {
 }
 
 func (d *DSP) readEchoBuffer() (echoL, echoR int16) {
-	idx := d.echoBufferAddress + d.echoBufferIdx<<2
+	//idx := d.echoBufferAddress + d.echoBufferIdx<<2
+	idx := d.echoPointer
 	echoL = int16(uint16(d.ram[idx+0])|uint16(d.ram[idx+1])<<8) >> 1 // <<1
 	echoR = int16(uint16(d.ram[idx+2])|uint16(d.ram[idx+3])<<8) >> 1 // <<1
 
 	return
+}
+
+func (d *DSP) latchFirCoeffAt(index int) {
+	d.fir.coeffs[index] = int32(int8(d.registers[index<<4|int(FFCx)]))
 }
 
 type fir struct {
@@ -523,13 +531,9 @@ type fir struct {
 	idx int
 }
 
-func (d *DSP) latchFirCoeffAt(index int) {
-	d.fir.coeffs[index] = int32(int8(d.registers[index<<4|int(FFCx)]))
-}
-
-func (f *fir) getSample(d *DSP) (echoL, echoR int32) {
+func (f *fir) getSample(bufferL, bufferR int16) (echoL, echoR int32) {
 	//f.leftSampleBuffer[f.idx], f.rightSampleBuffer[f.idx] = d.readEchoBuffer()
-	f.leftSampleBuffer[f.idx], f.rightSampleBuffer[f.idx] = d.echoBufferL, d.echoBufferR
+	f.leftSampleBuffer[f.idx], f.rightSampleBuffer[f.idx] = bufferL, bufferR
 	f.idx = (f.idx + 1) & 7
 
 	for i := range 8 {
@@ -547,8 +551,6 @@ func (f *fir) getSample(d *DSP) (echoL, echoR int32) {
 	//i==7 aka newest sample
 	echoL = clamp16(echoL) &^ 1
 	echoR = clamp16(echoR) &^ 1
-
-	//fmt.Println(echoL)
 
 	f.left = echoL
 	f.right = echoR
