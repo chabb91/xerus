@@ -245,6 +245,9 @@ func (bb *brrBlock) decode4(v *Voice) {
 		bb.blockPos = 0
 		if bb.end {
 			//v.dspRegs.registers[EndX] |= v.idMask
+			//TODO the bit is set at the START of decoding the BRR block, not at the end.
+			//ENDX is set when the block is complete and the next block will be that pointed
+			//to by the loop pointer for this sample (see DIR and VxSRCN)
 			v.endx.set()
 
 			//brrAddr := uint16(v.regs[DIR])<<8 + uint16(v.regs[v.idReg|VxScrn])<<2
@@ -262,6 +265,7 @@ func (bb *brrBlock) reset(startAddr uint16) {
 func (v *Voice) releaseIfNeeded() {
 	if v.brrBlock.end && !v.brrBlock.loop {
 		v.envelope.state = RELEASE
+		v.envelope.reset()
 	}
 }
 
