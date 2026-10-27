@@ -319,6 +319,8 @@ func (v *Voice) S3c() {
 	}
 	v.envelope.applyLevel(&v.sample)
 	v.voiceOut = v.sample
+
+	//TODO voices are supposed to stay this state till the bit is reset
 	if v.dspRegs.registers[FLG]&0x80 > 0 {
 		v.envelope.reset()
 		v.keyOff()
