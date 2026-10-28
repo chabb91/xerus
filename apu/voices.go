@@ -197,7 +197,7 @@ func (bb *brrBlock) decode(v *Voice) {
 			//to by the loop pointer for this sample (see DIR and VxSRCN)
 			v.endx.set()
 
-			bb.headerPointer = bb.samplePointer
+			bb.headerPointer = bb.samplePointer //reset
 		} else {
 			bb.headerPointer += 9
 		}
@@ -205,7 +205,7 @@ func (bb *brrBlock) decode(v *Voice) {
 }
 
 func (bb *brrBlock) reset() {
-	bb.headerPointer = bb.samplePointer
+	bb.headerPointer = bb.samplePointer //start
 	bb.offset = 1
 	//header is reset on kon --bsnes
 	bb.shift, bb.filter = 0, 0
@@ -258,11 +258,14 @@ func (v *Voice) S1() {
 }
 
 func (v *Voice) S2() {
-	samplePointer := uint16(v.dspRegs.DIR)<<8 + uint16(v.srcn)<<2
+	voicePointer := uint16(v.dspRegs.DIR)<<8 + uint16(v.srcn)<<2
+	// from blargg. I calculated samplePointer when needed but it has to be cached
+	// so there is no other way of writing this
 	if v.konInitDelay != 5 {
-		samplePointer += 2
+		v.brrBlock.samplePointer = uint16(v.ram[voicePointer+3])<<8 | uint16(v.ram[voicePointer+2])
+	} else {
+		v.brrBlock.samplePointer = uint16(v.ram[voicePointer+1])<<8 | uint16(v.ram[voicePointer])
 	}
-	v.brrBlock.samplePointer = uint16(v.ram[samplePointer+1])<<8 | uint16(v.ram[samplePointer])
 	v.pitch = (v.pitch & 0x3F00) | uint16(v.dspRegs.registers[v.idReg|VxPitchL])
 	v.envelope.setAdsr1(v.dspRegs.registers[v.idReg|VxAdsr1])
 }
@@ -287,7 +290,7 @@ func (v *Voice) S3c() {
 		v.sample = *v.currentNoiseSample
 	}
 
-	//this kon part is again very similar to bsnes but again anomie's docs were opaque
+	//this kon part is again very similar to bsnes/blargg but again anomie's docs were opaque
 	//on how brr keeps decoding on the sample before the first 0 (step #0).
 	//the answer: the kon delay is checked before its set.
 	if v.konInitDelay > 0 {
