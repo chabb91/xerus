@@ -110,6 +110,8 @@ type Voice struct {
 
 	outx, envx byte
 	endx       endXState
+
+	konInitDelay int
 }
 
 func newVoice(
@@ -159,13 +161,9 @@ func (v *Voice) Tick() int16 {
 	return sample
 
 }
-*/
-
 func (v *Voice) keyOn() {
-	//v.dspRegs.registers[EndX] &= ^v.idMask
 	v.endx.clear()
 
-	//brrAddr := uint16(v.regs[DIR])<<8 + uint16(v.regs[v.idReg|VxScrn])<<2
 	brrAddr := v.SamplePointer
 	brrStartAddr := uint16(v.ram[brrAddr+1])<<8 | uint16(v.ram[brrAddr])
 
@@ -180,6 +178,7 @@ func (v *Voice) keyOn() {
 	v.envelope.reset()
 	v.envelope.state = ATTACK
 }
+*/
 
 func (v *Voice) keyOff() {
 	v.envelope.state = RELEASE
@@ -244,13 +243,11 @@ func (bb *brrBlock) decode4(v *Voice) {
 	if bb.blockPos == 9 {
 		bb.blockPos = 0
 		if bb.end {
-			//v.dspRegs.registers[EndX] |= v.idMask
 			//TODO the bit is set at the START of decoding the BRR block, not at the end.
 			//ENDX is set when the block is complete and the next block will be that pointed
 			//to by the loop pointer for this sample (see DIR and VxSRCN)
 			v.endx.set()
 
-			//brrAddr := uint16(v.regs[DIR])<<8 + uint16(v.regs[v.idReg|VxScrn])<<2
 			brrAddr := v.SamplePointer
 			bb.blockPointer = uint16(v.ram[brrAddr+3])<<8 | uint16(v.ram[brrAddr+2])
 		}
@@ -315,8 +312,12 @@ func (v *Voice) S2() {
 
 func (v *Voice) S3a() {
 	v.pitch = (v.pitch & 0xFF) | uint16(v.dspRegs.registers[v.idReg|VxPitchH])<<8
-	if v.dspRegs.PMON&v.idMask > 1 && v.dspRegs.NON&v.idMask == 0 {
-		v.pitch += uint16((*v.prevVoiceOut>>5)*int16(v.pitch)) >> 10
+	if v.dspRegs.PMON&^v.dspRegs.NON&v.idMask > 1 {
+		//my samples are left shifted 16 bit instead of 15
+		//maybe shift by 6 instead of 5??
+		//also this value isnt part of the actual pitch so it poisons it.
+		//it resets every cycle tho so its K
+		v.pitch += uint16(((int(*v.prevVoiceOut) >> 5) * int(int16(v.pitch))) >> 10)
 	}
 }
 
@@ -325,9 +326,33 @@ func (v *Voice) S3b() {
 }
 
 func (v *Voice) S3c() {
-	if v.dspRegs.NON&v.idMask != 0 {
+	if v.konInitDelay == 0 && v.dspRegs.NON&v.idMask != 0 {
 		v.sample = *v.currentNoiseSample
 	}
+
+	//this kon part is again very similar to bsnes but again anomie's docs were opaque
+	//on how brr keeps decoding on the sample before the first 0 (step #0).
+	//the answer: the kon delay is checked before its set.
+	if v.konInitDelay > 0 {
+		v.pitch = 0
+		v.pitchAccumulator = 0
+		v.envelope.reset()
+
+		if v.konInitDelay == 5 {
+			v.sampleCursor = 0
+
+			brrAddr := v.SamplePointer
+			brrStartAddr := uint16(v.ram[brrAddr+1])<<8 | uint16(v.ram[brrAddr])
+
+			v.brrBlock.reset(brrStartAddr)
+		}
+
+		v.konInitDelay--
+		if v.konInitDelay&3 != 0 {
+			v.pitchAccumulator = 0x4000
+		}
+	}
+
 	v.envelope.applyLevel(&v.sample)
 	v.voiceOut = v.sample
 
@@ -342,7 +367,10 @@ func (v *Voice) S3c() {
 			v.keyOff()
 		}
 		if v.dspRegs.KOn&v.idMask != 0 {
-			v.keyOn()
+			v.endx.clear()
+
+			v.envelope.state = ATTACK
+			v.konInitDelay = 5
 		}
 	}
 	if v.envelope.adsrEnable {
@@ -350,7 +378,9 @@ func (v *Voice) S3c() {
 	} else {
 		v.envelope.setGain(v.dspRegs.registers[v.idReg|VxGain])
 	}
-	v.envelope.update()
+	if v.konInitDelay == 0 {
+		v.envelope.update()
+	}
 }
 
 func (v *Voice) S3() {
@@ -373,9 +403,13 @@ func (v *Voice) S5() {
 	v.sampleR = scaleSample(int32(v.sample), v.dspRegs.registers[v.idReg|VxVolR])
 	v.endx.prepare(v.idMask)
 
-	window := v.getWindow(int(v.pitchAccumulator >> 12))
-	fraction := (v.pitchAccumulator >> 4) & 0xFF
-	v.sample = v.interpolateGaussian(window, fraction)
+	if v.konInitDelay == 0 {
+		window := v.getWindow(int(v.pitchAccumulator >> 12))
+		fraction := (v.pitchAccumulator >> 4) & 0xFF
+		v.sample = v.interpolateGaussian(window, fraction)
+	} else {
+		v.sample = 0
+	}
 }
 
 func (v *Voice) S6() {
@@ -520,7 +554,7 @@ func (e *envelope) update() {
 }
 
 func (e *envelope) applyLevel(sample *int16) {
-	*sample = int16((int(*sample) * e.level) >> 11)
+	*sample = int16((int(*sample)*e.level)>>11) &^ 1
 }
 
 func gainLinearDercrease(envelope, _ int) int {
