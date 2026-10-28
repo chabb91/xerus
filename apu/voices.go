@@ -101,9 +101,8 @@ type Voice struct {
 	voiceOut     int16
 
 	//cached registers
-	srcn          byte
-	SamplePointer uint16
-	pitch         uint16
+	srcn  byte
+	pitch uint16
 
 	sample           int16
 	sampleL, sampleR int32
@@ -132,54 +131,6 @@ func newVoice(
 	}
 }
 
-/*
-
-func (v *Voice) Tick() int16 {
-
-	window := v.getWindow(int(v.pitchAccumulator >> 12))
-	fraction := (v.pitchAccumulator >> 4) & 0xFF
-	sample := v.interpolateGaussian(window, fraction)
-
-	pitch := int16(v.registerCache.pitch)
-	if v.pmon && !v.useNoiseSample && v.id > 0 {
-		pitch += ((*v.prevVoiceOut >> 5) * pitch) >> 10
-	}
-
-	v.pitchAccumulator += uint16(pitch)
-	v.pitchAccumulator &= 0x7FFF
-	if v.pitchAccumulator >= 0x4000 {
-		v.brrBlock.decode4(v)
-		v.pitchAccumulator -= 0x4000
-	}
-	if v.useNoiseSample {
-		sample = *v.currentNoiseSample
-	}
-	v.envelope.applyLevel(&sample)
-
-	v.voiceOut = sample
-	v.regs[v.idReg|VxOutX] = byte(sample >> 8)
-	return sample
-
-}
-func (v *Voice) keyOn() {
-	v.endx.clear()
-
-	brrAddr := v.SamplePointer
-	brrStartAddr := uint16(v.ram[brrAddr+1])<<8 | uint16(v.ram[brrAddr])
-
-	v.pitchAccumulator = 0
-	v.sampleCursor = 0
-
-	v.brrBlock.reset(brrStartAddr)
-	v.brrBlock.decode4(v)
-	v.brrBlock.decode4(v)
-	v.brrBlock.decode4(v)
-
-	v.envelope.reset()
-	v.envelope.state = ATTACK
-}
-*/
-
 func (v *Voice) keyOff() {
 	v.envelope.state = RELEASE
 }
@@ -188,8 +139,7 @@ type brrBlock struct {
 	shift, filter byte
 	loop, end     bool
 
-	blockPos     uint16
-	blockPointer uint16
+	samplePointer uint16 //holds the start/reset address (depending on state)
 
 	blockCache uint16 //the upcoming two samples to be decoded
 
@@ -207,7 +157,7 @@ func (bb *brrBlock) preLoad(v *Voice) {
 	bb.blockCache = uint16(v.ram[bb.headerPointer+bb.offset]) << 8
 }
 
-func (bb *brrBlock) decode420(v *Voice) {
+func (bb *brrBlock) decode(v *Voice) {
 	bb.blockCache |= uint16(v.ram[bb.headerPointer+bb.offset+1])
 	bb.offset += 2
 
@@ -247,86 +197,19 @@ func (bb *brrBlock) decode420(v *Voice) {
 			//to by the loop pointer for this sample (see DIR and VxSRCN)
 			v.endx.set()
 
-			bb.headerPointer = bb.blockPointer
+			bb.headerPointer = bb.samplePointer
 		} else {
 			bb.headerPointer += 9
 		}
 	}
 }
 
-func (bb *brrBlock) reset420() {
-	bb.headerPointer = bb.blockPointer
+func (bb *brrBlock) reset() {
+	bb.headerPointer = bb.samplePointer
 	bb.offset = 1
 	//header is reset on kon --bsnes
 	bb.shift, bb.filter = 0, 0
 	bb.end, bb.loop = false, false
-}
-
-func (bb *brrBlock) decode4(v *Voice) {
-	if bb.blockPos == 0 {
-		header := v.ram[bb.blockPointer]
-		bb.shift = header >> 4
-		bb.filter = (header >> 2) & 0x03
-		bb.end = (header & 0x01) != 0
-		bb.loop = (header & 0x02) != 0
-		bb.blockPointer++
-		bb.blockPos++
-	}
-
-	var data byte
-	for i := range 4 {
-		var nibble byte
-		if i&1 == 0 {
-			data = v.ram[bb.blockPointer]
-			bb.blockPointer++
-			bb.blockPos++
-			nibble = data >> 4
-		} else {
-			nibble = data & 0x0F
-		}
-
-		sample := (int32(int8(nibble<<4)>>4) << bb.shift) >> 1
-		if bb.shift >= 0xD { //shift is between 0-12
-			//	sample = (sample >> 25) << 11
-			if sample < 0 {
-				sample = -0x800
-			} else {
-				sample = 0
-			}
-		}
-
-		hist1, hist2 := v.getBrrHistory()
-
-		switch bb.filter {
-		case 1:
-			sample += hist1 + (-hist1 >> 4)
-		case 2:
-			sample += hist1<<1 + (-(hist1<<1 + hist1) >> 5) - hist2 + (hist2 >> 4)
-		case 3:
-			sample += hist1<<1 + (-(hist1 + hist1<<2 + hist1<<3) >> 6) - hist2 + ((hist2<<1 + hist2) >> 4)
-		}
-
-		sample = clamp16(sample)
-		v.writeSample(sample << 1)
-	}
-
-	if bb.blockPos == 9 {
-		bb.blockPos = 0
-		if bb.end {
-			//TODO the bit is set at the START of decoding the BRR block, not at the end.
-			//ENDX is set when the block is complete and the next block will be that pointed
-			//to by the loop pointer for this sample (see DIR and VxSRCN)
-			v.endx.set()
-
-			brrAddr := v.SamplePointer
-			bb.blockPointer = uint16(v.ram[brrAddr+3])<<8 | uint16(v.ram[brrAddr+2])
-		}
-	}
-}
-
-func (bb *brrBlock) reset(startAddr uint16) {
-	bb.blockPointer = startAddr
-	bb.blockPos = 0
 }
 
 func (v *Voice) releaseIfNeeded() {
@@ -375,11 +258,11 @@ func (v *Voice) S1() {
 }
 
 func (v *Voice) S2() {
-	v.SamplePointer = uint16(v.dspRegs.DIR)<<8 + uint16(v.srcn)<<2
+	samplePointer := uint16(v.dspRegs.DIR)<<8 + uint16(v.srcn)<<2
 	if v.konInitDelay != 5 {
-		v.SamplePointer += 2
+		samplePointer += 2
 	}
-	v.brrBlock.blockPointer = uint16(v.ram[v.SamplePointer+1])<<8 | uint16(v.ram[v.SamplePointer])
+	v.brrBlock.samplePointer = uint16(v.ram[samplePointer+1])<<8 | uint16(v.ram[samplePointer])
 	v.pitch = (v.pitch & 0x3F00) | uint16(v.dspRegs.registers[v.idReg|VxPitchL])
 	v.envelope.setAdsr1(v.dspRegs.registers[v.idReg|VxAdsr1])
 }
@@ -414,13 +297,7 @@ func (v *Voice) S3c() {
 
 		if v.konInitDelay == 5 {
 			v.sampleCursor = 0
-
-			//brrAddr := v.SamplePointer
-			//brrStartAddr := uint16(v.ram[brrAddr+1])<<8 | uint16(v.ram[brrAddr])
-
-			//v.brrBlock.reset(brrStartAddr)
-			//v.brrBlock.reset420(brrStartAddr)
-			v.brrBlock.reset420()
+			v.brrBlock.reset()
 		}
 
 		v.konInitDelay--
@@ -468,7 +345,7 @@ func (v *Voice) S3() {
 func (v *Voice) S4() {
 	v.sampleL = scaleSample(int32(v.sample), v.dspRegs.registers[v.idReg|VxVolL])
 	if v.pitchAccumulator >= 0x4000 {
-		v.brrBlock.decode420(v)
+		v.brrBlock.decode(v)
 		v.pitchAccumulator -= 0x4000
 	}
 	v.pitchAccumulator += uint16(v.pitch)
