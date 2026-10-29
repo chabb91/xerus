@@ -530,7 +530,7 @@ func gainLinearIncrease(envelope, _ int) int {
 
 func gainBentIncrease(envelope, unclampedEnvelope int) int {
 	//this needs the pre clamp envelope for some reason
-	if uint(unclampedEnvelope) > 0x600 {
+	if uint(unclampedEnvelope) >= 0x600 {
 		envelope += 8
 	} else {
 		envelope += 32
