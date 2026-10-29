@@ -127,6 +127,7 @@ func NewDsp(psram *SPCMemory) *DSP {
 		Buffer: newAtomicBuffer(11),
 		ram:    &psram.ram,
 	}
+	dsp.poll16k = true //on hardware its 50-50 on boot
 	for i := range len(dsp.Voices) {
 		var prevVoice *int16 = nil
 		if i > 0 {
@@ -322,14 +323,11 @@ func (dsp *DSP) Step() {
 		}
 		dsp.ESA = dsp.registers[ESA]
 		dsp.updateEcenx()
+		dsp.poll16k = dsp.poll16k != true
 		if dsp.poll16k {
 			dsp.newKOn &^= dsp.KOn
 		}
 	case 30:
-		dsp.poll16k = dsp.poll16k != true
-
-		dsp.Voices[0].S3c()
-
 		if !dsp.ecenx {
 			idx := dsp.echoPointer
 			ebR := uint16(dsp.echoBufferR)
@@ -351,6 +349,7 @@ func (dsp *DSP) Step() {
 			dsp.KOn = dsp.newKOn
 			dsp.KOff = dsp.registers[KOff]
 		}
+		dsp.Voices[0].S3c()
 	case 31:
 		dsp.Voices[0].S4()
 		dsp.Voices[2].S1()
@@ -417,8 +416,8 @@ func (d *DSP) ReadRegister(reg byte) byte {
 	if dspReg(reg) == VxOutX {
 		fmt.Println("READING OUTX ")
 	}
-	//if dspReg(reg) == VxEnvX {
-	//	fmt.Println("READING EVNELOPE FOR VOICE ", reg>>4)
+	//if dspReg(reg&0xF) == VxEnvX {
+	//	fmt.Println("READING EVNELOPE FOR VOICE ", reg>>4, " ", d.registers[reg&0x7F])
 	//}
 	return d.registers[reg&0x7F]
 }
