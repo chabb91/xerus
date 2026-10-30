@@ -2,7 +2,6 @@ package apu
 
 import (
 	"encoding/binary"
-	"fmt"
 	"sync"
 	"sync/atomic"
 )
@@ -413,9 +412,10 @@ func (f *fir) getSample(bufferL, bufferR int16) (echoL, echoR int32) {
 }
 
 func (d *DSP) ReadRegister(reg byte) byte {
-	if dspReg(reg) == VxOutX {
-		fmt.Println("READING OUTX ")
-	}
+	//log.Printf("READING DSP REGISTER 0x%02X -> 0x%02X", reg, d.registers[reg&0x7F])
+	//if dspReg(reg&0xF) == VxOutX {
+	//	log.Println("READING OUTIX FOR VOICE ", reg>>4, " ", d.registers[reg&0x7F])
+	//}
 	//if dspReg(reg&0xF) == VxEnvX {
 	//	fmt.Println("READING EVNELOPE FOR VOICE ", reg>>4, " ", d.registers[reg&0x7F])
 	//}
@@ -426,9 +426,7 @@ func (d *DSP) WriteRegister(reg byte, val byte) {
 	if reg <= 0x7F {
 		d.registers[reg] = val
 
-		reg := dspReg(reg)
-
-		if reg == KOn {
+		if dspReg(reg) == KOn {
 			d.newKOn = val
 		}
 	}
